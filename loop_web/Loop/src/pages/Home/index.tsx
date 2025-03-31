@@ -1,9 +1,11 @@
 import "./index.sass";
+// import  Counter  from "../Counter";
 
 const Home = () => {
   return (
     <>
-      <div>Home</div>
+      <div>123
+      </div>
     </>
   );
 };
