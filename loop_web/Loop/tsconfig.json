@@ -1,0 +1,8 @@
+{
+  "incremental": true, // 启用增量编译
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}
