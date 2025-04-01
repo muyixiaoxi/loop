@@ -1,14 +1,54 @@
 import "./index.scss";
 import { Button, Form, Input, Checkbox } from "antd";
 import { useState } from "react";
-import { LoginPost } from "@/api/user";
+import { LoginPost, RegisterPost } from "@/api/login";
+import { message } from "@/utils/message";
+import { useNavigate } from "react-router-dom";
 
 const Login = () => {
   const [form] = Form.useForm();
   const [login, setLogin] = useState<boolean>(true);
+  const navigate = useNavigate();
+
   const onFinish = async (value: any) => {
-    const result = await LoginPost(value);
-    console.log(value, result);
+    console.log(value);
+    if (!value.deal) {
+      message.error("请先阅读并同意服务协议和隐私保护指引");
+      return;
+    }
+
+    if (login) {
+      // 登录
+      const valueParams: any = {
+        phone: value.phone,
+        password: value.password,
+      };
+      const result: any = await LoginPost(valueParams);
+      console.log(result);
+      if (result?.code === 1000) {
+        localStorage.setItem("token", result.data.token);
+        navigate("/home");
+        message.success("登录成功");
+      } else {
+        message.error(result.msg);
+      }
+    } else {
+      // 注册
+      const valueParams: any = {
+        phone: value.phone,
+        password: value.password,
+        nickname: value.phone,
+      };
+      const result: any = await RegisterPost(valueParams);
+
+      // 进行登录
+      if (result?.code === 1000) {
+        setLogin(true);
+        message.success("注册成功,请登录");
+      } else {
+        message.error(result.msg);
+      }
+    }
   };
   return (
     <div className="login">
@@ -28,15 +68,44 @@ const Login = () => {
               <div className="form-subtitle">{login ? "登录" : "注册"}</div>
               <div className="not-found-helper">使用Loop,让生活更美好</div>
             </Form.Item>
-            <Form.Item name="phone" label="手机号">
+            <Form.Item
+              name="phone"
+              label="手机号"
+              rules={[
+                { required: true, message: "请输入手机号" },
+                { pattern: /^1[3-9]\d{9}$/, message: "请输入正确的手机号格式" },
+              ]}
+            >
               <Input />
             </Form.Item>
-            <Form.Item name="password" label="密码">
+            <Form.Item
+              name="password"
+              label="密码"
+              rules={[
+                { required: true, message: "请输入密码" },
+                { min: 6, message: "密码至少6位" },
+              ]}
+            >
               <Input.Password />
             </Form.Item>
 
             {!login && (
-              <Form.Item name="password_ok" label="确认密码">
+              <Form.Item
+                name="password_ok"
+                label="确认密码"
+                dependencies={["password"]}
+                rules={[
+                  { required: true, message: "请确认密码" },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (!value || getFieldValue("password") === value) {
+                        return Promise.resolve();
+                      }
+                      return Promise.reject(new Error("两次密码输入不一致"));
+                    },
+                  }),
+                ]}
+              >
                 <Input.Password />
               </Form.Item>
             )}
@@ -49,7 +118,14 @@ const Login = () => {
               </Form.Item>
             </Form.Item>
 
-            <Button type="primary" htmlType="submit" className="btn">
+            <Button
+              type="primary"
+              htmlType="submit"
+              className="btn"
+              disabled={form
+                .getFieldsError()
+                .some((field) => field.errors.length > 0)}
+            >
               {login ? "登录" : "注册"}
             </Button>
 
