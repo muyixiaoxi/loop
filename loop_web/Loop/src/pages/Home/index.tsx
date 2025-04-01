@@ -1,5 +1,4 @@
 import "./index.scss";
-// import  Counter  from "../Counter";
 
 const Home = () => {
   return (

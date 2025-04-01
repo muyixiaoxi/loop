@@ -1,12 +1,14 @@
 import "./index.scss";
 import { Button, Form, Input, Checkbox } from "antd";
 import { useState } from "react";
+import { LoginPost } from "@/api/user";
 
 const Login = () => {
   const [form] = Form.useForm();
   const [login, setLogin] = useState<boolean>(true);
-  const onFinish = (value: object) => {
-    console.log(value);
+  const onFinish = async (value: any) => {
+    const result = await LoginPost(value);
+    console.log(value, result);
   };
   return (
     <div className="login">
