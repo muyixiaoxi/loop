@@ -3,6 +3,7 @@ import { Button, Form, Input, Checkbox } from "antd";
 import { useState } from "react";
 import { LoginPost, RegisterPost } from "@/api/login";
 import { message } from "@/utils/message";
+import { generateNickname } from "@/utils/nickname";
 import { useNavigate } from "react-router-dom";
 
 const Login = () => {
@@ -37,7 +38,7 @@ const Login = () => {
       const valueParams: any = {
         phone: value.phone,
         password: value.password,
-        nickname: value.phone,
+        nickname: generateNickname(),
       };
       const result: any = await RegisterPost(valueParams);
 

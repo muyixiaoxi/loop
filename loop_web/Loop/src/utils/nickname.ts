@@ -1,0 +1,57 @@
+// src/utils/usernameGenerator.ts
+type UsernameStyle = 'default' | 'animal' | 'gamer' | 'professional' | 'emoji';
+
+interface UsernameOptions {
+    style?: UsernameStyle;
+    length?: number;
+    addNumbers?: boolean;
+    separator?: string;
+}
+
+const adjectives = [
+    '快乐的', '聪明的', '勇敢的', '神秘的', '优雅的', '活泼的', '安静的', '热情的',
+    '疯狂的', '温柔的', '机智的', '幽默的', '酷炫的', '无敌的', '超级的', '神秘的',
+    '兴奋的', '忧郁的', '愤怒的', '害羞的', '骄傲的', '困惑的', '惊讶的', '困倦的',
+    '敏捷的', '强壮的', '灵活的', '耐心的', '忠诚的', '好奇的', '慷慨的', '谨慎的',
+    '闪亮的', '毛茸茸的', '光滑的', '粗糙的', '冰冷的', '炽热的', '潮湿的', '干燥的',
+    '佛系的', '社恐的', '躺平的', '摸鱼的', '996的', '秃头的', '吃土的', '真香的'
+];
+
+const nouns = [
+    '熊猫', '狮子', '老虎', '猫咪', '狗狗', '兔子', '狐狸', '狼',
+    '鸟', '鱼', '海豚', '鲸鱼', '蝴蝶', '蜜蜂', '蚂蚁', '蜘蛛',
+    '龙', '独角兽', '企鹅', '考拉', '袋鼠', '河马', '长颈鹿', '恐龙',
+    '浣熊', '水獭', '树懒', '刺猬', '变色龙', '穿山甲', '火烈鸟', '猫头鹰',
+    '程序员', '设计师', '工程师', '科学家', '医生', '教师', '厨师', '作家',
+    '画家', '音乐家', '摄影师', '探险家', '宇航员', '消防员', '警察', '农民',
+    '黑客', '主播', 'UP主', '网红', '电竞选手', '自由职业者', '投资人', '外卖小哥',
+    '精灵', '巫师', '吸血鬼', '狼人', '天使', '恶魔', '矮人', '巨人',
+    '包子', '饺子', '火锅', '烧烤', '奶茶', '蛋糕', '寿司', '披萨',
+    '山峰', '河流', '森林', '星辰', '海洋', '沙漠', '彩虹', '极光',
+    '机器人', 'AI', '区块链', '元宇宙', '量子', '纳米', '算法', '大数据',
+    '战士', '法师', '刺客', '坦克', '射手', '辅助', '召唤师', '德鲁伊'
+];
+
+
+/**
+ * 随机用户名生成器
+ * @param options 生成选项
+ * @returns 生成的用户名
+ */
+export const generateNickname = (): string => {
+    // 随机选择元素
+    const randomElement = <T>(arr: T[]): T =>
+        arr[Math.floor(Math.random() * arr.length)];
+
+    // 生成随机数字后缀
+    const numberSuffix = Math.floor(Math.random() * 1000);
+
+    // 随机选择一个形容词和一个名词
+    const adjective = randomElement(adjectives);
+    const noun = randomElement(nouns);
+
+    // 组合用户名
+    const username = `${adjective}${noun}${numberSuffix}`;
+
+    return username;
+};
