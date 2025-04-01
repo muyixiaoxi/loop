@@ -5,7 +5,19 @@ interface User {
   id: number;
   name: string;
   email: string;
+  phone: string;
+  password: string;
 }
+
+// 登录接口
+interface LoginParams {
+  phone: string;
+  password: string;
+}
+
+export const login = (loginData: LoginParams) => {
+  return http.post<User>('/login', loginData);
+};
 
 // 获取用户列表接口
 export const getUsers = () => {
