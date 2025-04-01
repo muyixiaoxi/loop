@@ -1,4 +1,4 @@
-import "./index.sass";
+import "./index.scss";
 
 const Chat = () => {
   return (

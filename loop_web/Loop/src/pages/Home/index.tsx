@@ -1,11 +1,10 @@
-import "./index.sass";
+import "./index.scss";
 // import  Counter  from "../Counter";
 
 const Home = () => {
   return (
     <>
-      <div>123
-      </div>
+      <div>123</div>
     </>
   );
 };
