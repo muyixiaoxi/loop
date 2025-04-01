@@ -1,4 +1,3 @@
-// src/router/index.ts
 import { RouteObject } from "react-router-dom";
 import App from "../App";
 import Home from "@pages/Home";
