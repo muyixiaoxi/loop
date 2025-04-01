@@ -1,52 +1,74 @@
+// 基础变量
+$color-primary: #1890ff;
+$color-secondary: #f9bf2e;
+$color-text: #333;
+$color-border: #d9d9d9;
+
 .login {
   display: flex;
-  align-items: center;
   justify-content: center;
-  height: 100vh;
-  width: 100vw;
+  align-items: center;
+  min-height: 100vh;
 
-  .login-container {
-    box-shadow: -10px 10px 25px rgba(210, 210, 210, 0.9);
+  &-container {
     display: flex;
-    border-radius: 20px;
-    width: 55vw;
+    width: 100%;
+    max-width: 800px;
+    border-radius: 16px;
     overflow: hidden;
-    .logo {
-      width: 100%;
-      background-color: #f9bf2e;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background: white;
 
-      img {
-        min-width: 100px;
-        max-width: 360px;
+    @media (max-width: 768px) {
+      flex-direction: column;
+    }
+  }
+
+  .logo {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: $color-secondary;
+    padding: 2rem;
+
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+  }
+
+  .login-form {
+    flex: 1;
+    padding: 2rem;
+    max-width: 500px;
+    margin: 0 auto;
+
+    .form-subtitle {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: $color-text;
+    }
+
+    .ant-form-item {
+      margin-bottom: 0.5rem;
+
+      &-label {
+        padding-bottom: 0.25rem;
       }
     }
 
-    .login-form {
-      background-color: #fff;
-      min-width: 300px;
-      max-width: 400px;
+    .btn {
       width: 100%;
-      //   height: 409px;
-      padding: 60px 20px;
+      margin-top: 1rem;
+    }
 
-      .form-subtitle {
-        color: #000; // 主标题用最深灰
-        font-weight: 700;
-        font-size: 32px;
-      }
-      .ant-form-item-label {
-        padding: 3px !important;
-      }
-      .ant-form-item {
-        margin-bottom: 10px;
-      }
-
-      .btn {
-        width: 100%;
-      }
+    .toggle-action {
+      display: block;
+      text-align: center;
+      margin-top: 1rem;
+      color: $color-primary;
+      cursor: pointer;
     }
   }
 }
