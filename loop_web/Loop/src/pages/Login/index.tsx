@@ -25,7 +25,6 @@ const Login = () => {
         password: value.password,
       };
       const result: any = await LoginPost(valueParams);
-      console.log(result);
       if (result?.code === 1000) {
         localStorage.setItem("token", result.data.token);
         navigate("/home");
