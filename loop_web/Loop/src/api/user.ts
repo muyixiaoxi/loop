@@ -15,7 +15,7 @@ interface LoginParams {
   password: string;
 }
 
-export const login = (loginData: LoginParams) => {
+export const LoginPost = (loginData: LoginParams) => {
   return http.post<User>('/login', loginData);
 };
 

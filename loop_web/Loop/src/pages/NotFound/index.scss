@@ -1,0 +1,67 @@
+// 变量定义
+$primary-color: #1890ff;
+$error-color: #021666;
+$text-color: #333;
+$light-gray: #f5f5f5;
+$animation-duration: 0.5s;
+
+.not-found-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: $light-gray;
+}
+
+.not-found-content {
+  text-align: center;
+  animation: fadeIn $animation-duration ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.not-found-title {
+  font-size: 8rem;
+  font-weight: 700;
+  color: $error-color;
+  margin: 0;
+  line-height: 1;
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+
+  @media (max-width: 768px) {
+    font-size: 5rem;
+  }
+}
+
+.not-found-subtitle {
+  font-size: 2rem;
+  color: $text-color;
+  margin: 1rem 0;
+  font-weight: 500;
+
+  @media (max-width: 768px) {
+    font-size: 1.5rem;
+  }
+}
+
+.not-found-description {
+  font-size: 1.1rem;
+  color: lighten($text-color, 20%);
+  max-width: 500px;
+  margin: 0 auto 2rem;
+  line-height: 1.6;
+}
+
+.not-found-button {
+  color: #1890ff;
+  background-color: #021666;
+}
