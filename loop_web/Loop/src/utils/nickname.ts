@@ -1,13 +1,3 @@
-// src/utils/usernameGenerator.ts
-type UsernameStyle = 'default' | 'animal' | 'gamer' | 'professional' | 'emoji';
-
-interface UsernameOptions {
-    style?: UsernameStyle;
-    length?: number;
-    addNumbers?: boolean;
-    separator?: string;
-}
-
 const adjectives = [
     '快乐的', '聪明的', '勇敢的', '神秘的', '优雅的', '活泼的', '安静的', '热情的',
     '疯狂的', '温柔的', '机智的', '幽默的', '酷炫的', '无敌的', '超级的', '神秘的',
