@@ -23,6 +23,7 @@ $animation-duration: 0.5s;
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -55,7 +56,6 @@ $animation-duration: 0.5s;
 
 .not-found-description {
   font-size: 1.1rem;
-  color: lighten($text-color, 20%);
   max-width: 500px;
   margin: 0 auto 2rem;
   line-height: 1.6;
