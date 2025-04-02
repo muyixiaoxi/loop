@@ -1,0 +1,97 @@
+.main {
+  width: 100%;
+  height: 100vh;
+  background-color: #f0efef;
+  display: flex;
+
+  .main-left {
+    height: 100vh;
+    width: 6%;
+    background-color: #f9bc2f;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    .icon {
+      width: 50%;
+      height: 6%;
+      margin-top: 20px;
+      overflow: hidden;
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: fill; // 按比例缩放图片，填满容器，可能会裁剪部分图片
+        // object-fit: contain; // 按比例缩放图片，使图片完整显示在容器内
+      }
+
+    }
+
+    .avatar {
+      // 确保宽度和高度相等，这里使用固定像素值，你也可以根据需要调整
+      width: 40%;
+      height: 5%;
+      margin-top: 20px;
+      border-radius: 50%;
+      background-color: black;
+      overflow: hidden; // 隐藏超出圆形部分的图片
+
+      img {
+        width: 100%;
+        height: 100%;
+        // 使用 cover 让图片覆盖整个容器，可能会裁剪部分图片以适应圆形
+        object-fit: cover;
+      }
+    }
+
+    .choice-left {
+      width: 100%;
+      flex: 1;
+      margin-top: 100px;
+
+      .message {
+        width: 100%;
+        height: 10%;
+        font-size: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+      }
+
+      .people {
+        width: 100%;
+        height: 10%;
+        font-size: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .friendmessage {
+        width: 100%;
+        height: 10%;
+        font-size: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .setting {
+        width: 100%;
+        height: 10%;
+        font-size: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 300%;
+      }
+    }
+  }
+
+  .main-auto {
+    width: 23%;
+    height: 100vh;
+    background-color: #FFFFFF;
+  }
+}

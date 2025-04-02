@@ -1,7 +1,6 @@
 import { RouteObject } from "react-router-dom";
 import App from "../App";
 import Home from "@pages/Home";
-import Chat from "@pages/Chat";
 import Login from "@pages/Login";
 import NotFound from "@pages/NotFound";
 // 类型安全的配置
@@ -23,10 +22,7 @@ const routes: RouteObject[] = [
         path: "home",
         element: <Home />,
       },
-      {
-        path: "chat",
-        element: <Chat />,
-      },
+    
     ],
   },
 ];
