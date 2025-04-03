@@ -11,12 +11,14 @@ import (
 type server struct {
 	user   application.UserApp
 	friend application.FriendApp
+	im     application.ImApp
 }
 
-func NewServer(user application.UserApp, friend application.FriendApp) *server {
+func NewServer(user application.UserApp, friend application.FriendApp, im application.ImApp) *server {
 	return &server{
 		user:   user,
 		friend: friend,
+		im:     im,
 	}
 }
 

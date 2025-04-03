@@ -5,7 +5,7 @@ import (
 	"loop_server/infra/vars"
 )
 
-func (*server) wsHandler(c *gin.Context) {
+func (s *server) wsHandler(c *gin.Context) {
 	go vars.Ws.Handler(c)
-	vars.Ws.Run(c)
+	vars.Ws.Run(c, s.im.HandleMessage)
 }

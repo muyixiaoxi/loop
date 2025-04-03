@@ -9,7 +9,7 @@ type PrivateMessage struct {
 	Status     int    `json:"status"`
 }
 
-type MessageDTo struct {
+type Message struct {
 	Cmd  int         `json:"cmd"`
 	Data interface{} `json:"data"`
 }

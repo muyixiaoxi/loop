@@ -1,11 +1,10 @@
 package ws
 
 import (
-	"encoding/json"
+	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"log/slog"
-	"loop_server/infra/consts"
 	"loop_server/pkg/request"
 	"net/http"
 )
@@ -72,7 +71,7 @@ func (ws *Server) Handler(c *gin.Context) {
 	}
 }
 
-func (ws *Server) Run(c *gin.Context) {
+func (ws *Server) Run(c *gin.Context, do func(ctx context.Context, msgByte []byte) error) {
 	for {
 		select {
 		case client := <-ws.Register:
@@ -84,24 +83,7 @@ func (ws *Server) Run(c *gin.Context) {
 			slog.Debug("user %d disconnected", client.UserId)
 
 		case message := <-ws.Broadcast:
-			var msg Message
-			if err := json.Unmarshal(message, &msg); err != nil {
-				slog.Debug("message unmarshal err:", err)
-				continue
-			}
-			ws.MessageDispose(c, &msg)
+			do(c, message)
 		}
-	}
-}
-
-func (ws *Server) MessageDispose(c *gin.Context, msg *Message) {
-	msgByte, _ := json.Marshal(msg)
-	switch msg.Cmd {
-	case consts.WsMessageCmdHeartbeat:
-		if err := ws.Clients[request.GetCurrentUser(c)].Conn.WriteMessage(websocket.TextMessage, msgByte); err != nil {
-			slog.Error("write message err:", err)
-		}
-	case consts.WsMessageCmdPrivateMessage:
-
 	}
 }

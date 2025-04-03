@@ -25,7 +25,8 @@ func main() {
 
 	userApp := app_impl.NewUserAppImpl(userDomain, friendDomain)
 	friendApp := app_impl.NewFriendAppImpl(friendDomain)
+	imApp := app_impl.NewImAppImpl()
 
-	server := server.NewServer(userApp, friendApp)
+	server := server.NewServer(userApp, friendApp, imApp)
 	server.Init()
 }
