@@ -9,10 +9,10 @@ import (
 
 type User struct {
 	gorm.Model
-	Nickname string `gorm:"column:nickname;comment:昵称;type:varchar(16)"`
-	Password string `gorm:"column:password;comment:密码;type:varchar(64)"`
-	Phone    string `gorm:"column:phone;comment:电话;type:varchar(11);unique"`
-	Avatar   string `gorm:"column:avatar;comment:头像;type:varchar(256);"`
+	Nickname string `gorm:"comment:昵称;type:varchar(16);not null"`
+	Password string `gorm:"comment:密码;type:varchar(64);not null"`
+	Phone    string `gorm:"comment:电话;type:varchar(11);unique;not null"`
+	Avatar   string `gorm:"comment:头像;type:varchar(256);not null"`
 }
 
 func (*User) TableName() string {
@@ -29,9 +29,25 @@ func (u *User) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-func (u *User) ConvertDto() *dto.User {
+func (u *User) ConvertToDto() *dto.User {
 	return &dto.User{
-		Model:    u.Model,
+		ID:        u.ID,
+		CreatedAt: u.CreatedAt,
+		UpdatedAt: u.UpdatedAt,
+		Nickname:  u.Nickname,
+		Password:  u.Password,
+		Phone:     u.Phone,
+		Avatar:    u.Avatar,
+	}
+}
+
+func ConvertUserDtoToPo(u *dto.User) *User {
+	return &User{
+		Model: gorm.Model{
+			ID:        u.ID,
+			CreatedAt: u.CreatedAt,
+			UpdatedAt: u.UpdatedAt,
+		},
 		Nickname: u.Nickname,
 		Password: u.Password,
 		Phone:    u.Phone,
@@ -39,12 +55,10 @@ func (u *User) ConvertDto() *dto.User {
 	}
 }
 
-func ConvertUserDtoToPo(u *dto.User) *User {
-	return &User{
-		Model:    u.Model,
-		Nickname: u.Nickname,
-		Password: u.Password,
-		Phone:    u.Phone,
-		Avatar:   u.Avatar,
+func BatchConvertUserPoToDto(data []*User) []*dto.User {
+	list := make([]*dto.User, len(data))
+	for i, v := range data {
+		list[i] = v.ConvertToDto()
 	}
+	return list
 }

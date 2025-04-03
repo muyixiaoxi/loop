@@ -3,9 +3,9 @@ package server
 import (
 	"github.com/gin-gonic/gin"
 	_ "github.com/gin-gonic/gin"
+	"loop_server/infra/consts"
 	"loop_server/internal/model/dto"
 	"loop_server/internal/model/param"
-	"loop_server/pkg/enum"
 	"loop_server/pkg/response"
 	"strings"
 )
@@ -44,7 +44,7 @@ func (s *server) register(c *gin.Context) {
 	}
 
 	if err := s.user.Register(c, user); err != nil {
-		if strings.Contains(err.Error(), enum.Duplicate) {
+		if strings.Contains(err.Error(), consts.Duplicate) {
 			response.Fail(c, response.CodePhoneExist)
 		} else {
 			response.Fail(c, response.CodeServerBusy)
@@ -52,4 +52,21 @@ func (s *server) register(c *gin.Context) {
 		return
 	}
 	response.Success(c, nil)
+}
+
+func (s *server) queryUser(c *gin.Context) {
+	var p param.QueryUserRequest
+	if err := c.ShouldBind(&p); err != nil {
+		response.Fail(c, response.CodeInvalidParam)
+		return
+	}
+	user, err := s.user.QueryUser(c, &dto.QueryUserRequest{
+		Phone:  p.Phone,
+		UserId: p.UserId,
+	})
+	if err != nil {
+		response.Fail(c, response.CodeServerBusy)
+		return
+	}
+	response.Success(c, user)
 }

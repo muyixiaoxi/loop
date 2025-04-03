@@ -4,15 +4,18 @@ import (
 	"context"
 	"loop_server/internal/domain"
 	"loop_server/internal/model/dto"
+	"loop_server/pkg/request"
 )
 
 type userAppImpl struct {
-	userDomain domain.UserDomain
+	userDomain   domain.UserDomain
+	friendDomain domain.FriendDomain
 }
 
-func NewUserAppImpl(userDomain domain.UserDomain) *userAppImpl {
+func NewUserAppImpl(userDomain domain.UserDomain, friendDomain domain.FriendDomain) *userAppImpl {
 	return &userAppImpl{
-		userDomain: userDomain,
+		userDomain:   userDomain,
+		friendDomain: friendDomain,
 	}
 }
 
@@ -24,4 +27,20 @@ func (u *userAppImpl) Login(ctx context.Context, phone, password string) (*dto.U
 // Register 注册
 func (u *userAppImpl) Register(ctx context.Context, user *dto.User) error {
 	return u.userDomain.Register(ctx, user)
+}
+
+func (u *userAppImpl) QueryUser(ctx context.Context, param *dto.QueryUserRequest) (*dto.UserInfo, error) {
+	user, err := u.userDomain.QueryUser(ctx, request.GetCurrentUser(ctx), param)
+	if err != nil || user.ID == 0 {
+		return nil, err
+	}
+	isFriend, err := u.friendDomain.IsFriend(ctx, request.GetCurrentUser(ctx), user.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &dto.UserInfo{
+		Nickname: user.Nickname,
+		Avatar:   user.Avatar,
+		IsFriend: isFriend,
+	}, nil
 }

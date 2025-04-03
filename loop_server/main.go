@@ -18,9 +18,14 @@ func main() {
 	}
 
 	userRepo := repo_impl.NewUserRepoImpl(db)
-	userDomain := domain_impl.NewUserDomainImpl(userRepo)
-	userApp := app_impl.NewUserAppImpl(userDomain)
+	friendRepo := repo_impl.NewFriendRepoImpl(db)
 
-	server := server.NewServer(userApp)
+	userDomain := domain_impl.NewUserDomainImpl(userRepo)
+	friendDomain := domain_impl.NewFriendDomainImpl(friendRepo)
+
+	userApp := app_impl.NewUserAppImpl(userDomain, friendDomain)
+	friendApp := app_impl.NewFriendAppImpl(friendDomain)
+
+	server := server.NewServer(userApp, friendApp)
 	server.Init()
 }

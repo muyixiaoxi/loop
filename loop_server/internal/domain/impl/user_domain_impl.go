@@ -47,3 +47,18 @@ func (u *userDomainImpl) Login(ctx context.Context, phone, password string) (*dt
 func (u *userDomainImpl) Register(ctx context.Context, user *dto.User) error {
 	return u.userRepo.Create(ctx, user)
 }
+
+// QueryUser 查询用户信息
+func (u *userDomainImpl) QueryUser(ctx context.Context, userId uint, req *dto.QueryUserRequest) (*dto.User, error) {
+	var (
+		user *dto.User
+		err  error
+	)
+	if req.UserId != 0 {
+		user, err = u.userRepo.QueryById(ctx, req.UserId)
+	}
+	if req.Phone != "" {
+		user, err = u.userRepo.QueryByPhone(ctx, req.Phone)
+	}
+	return user, err
+}

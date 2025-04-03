@@ -24,6 +24,8 @@ func autoMigrate(db *gorm.DB) error {
 	// 指定需要迁移的模型
 	models := []interface{}{
 		&po.User{},
+		&po.FriendShip{},
+		&po.FriendRequest{},
 		// 如果有其他模型，继续添加
 		// &po.OtherModel{},
 	}
