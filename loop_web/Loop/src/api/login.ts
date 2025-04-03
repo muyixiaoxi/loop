@@ -21,7 +21,7 @@ export const LoginPost = (loginData: LoginParams) => {
 
 
 interface RegisterParams {
-  nnickame: string;
+  nickname: string;
   phone: number;
   password: string;
 }
