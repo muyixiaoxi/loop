@@ -13,7 +13,7 @@ const MessageComponent = () => {
             <Button className='add-button' type="primary" shape="circle" icon={<PlusOutlined />} danger />
           </div>
         </div>
-        <div className='list'>
+        <div className='list1'>
           123
         </div>
       </div>
