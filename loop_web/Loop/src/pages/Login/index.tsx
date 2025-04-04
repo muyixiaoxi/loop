@@ -27,6 +27,7 @@ const Login = () => {
       const result: any = await LoginPost(valueParams);
       if (result?.code === 1000) {
         localStorage.setItem("loopToken", result.data.token);
+        localStorage.setItem("userdata",JSON.stringify(result.data))
         navigate("/home");
         message.success("登录成功");
       } else {
