@@ -1,4 +1,13 @@
 import axios, { AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import { useNavigate } from "react-router-dom";
+import { message } from 'antd';
+
+let _navigate: ReturnType<typeof useNavigate>;
+
+// 设置导航的方法（需要在组件中调用）
+export const setHttpNavigate = (navigate: ReturnType<typeof useNavigate>) => {
+  _navigate = navigate;
+};
 
 // 创建 axios 实例
 const service = axios.create({
@@ -26,6 +35,22 @@ service.interceptors.request.use(
 // 响应拦截器
 service.interceptors.response.use(
   (response: AxiosResponse) => {
+    if (response.data.code === 1005) {
+      // 清除本地token
+      localStorage.removeItem('loopToken');
+
+      // 跳转到登录页（如果有设置导航）
+      if (_navigate) {
+        _navigate('/login', {
+          replace: true,
+          state: { from: window.location.pathname }
+        });
+      } else {
+        console.warn('导航未初始化，无法跳转登录页');
+      }
+      message.error('登录已过期，请重新登录');
+      return Promise.reject(new Error('登录已过期，请重新登录'));
+    }
     return response.data;
   },
   (error) => {

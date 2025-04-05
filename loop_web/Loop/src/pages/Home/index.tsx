@@ -1,7 +1,12 @@
 import "./index.scss";
 import image1 from "../../../public/logo-2.png";
 import { useState, useEffect } from "react";
-import { MessageOutlined, TeamOutlined, UserSwitchOutlined, SettingOutlined } from "@ant-design/icons";
+import {
+  MessageOutlined,
+  TeamOutlined,
+  UserSwitchOutlined,
+  SettingOutlined,
+} from "@ant-design/icons";
 import MessageComponent from "../Components/MessageComponent";
 import FriendGroupComponent from "../Components/FriendGroupComponent";
 import FriendNotificationComponent from "../Components/FriendNotificationComponent";
@@ -13,16 +18,17 @@ const Home = () => {
   const [showEditUser, setShowEditUser] = useState(false); // 控制 EditUser 组件的显示
   const [nowData, setNow] = useState({
     age: 0,
-    avatar: '',
+    avatar: "",
     gender: 0,
-    nickname: '',
-    signature: ''
+    nickname: "",
+    signature: "",
   });
 
-  useEffect(() => { 
-    const fetchUser = async () => { 
-      const userid = JSON.parse(localStorage.getItem("userdata")).id;
-      const result = await idsearch(userid);
+  useEffect(() => {
+    const fetchUser = async () => {
+      const userdata: string | any = localStorage.getItem("loop_userdata");
+      const userid = JSON.parse(userdata).id;
+      const result: any = await idsearch(userid);
       if (result && result.code === 1000) {
         setNow(result.data);
       }
@@ -30,11 +36,11 @@ const Home = () => {
     fetchUser();
   }, []);
 
-  const handleavatar = () => { 
+  const handleavatar = () => {
     setShowEditUser(!showEditUser);
   };
 
-  const handleIconClick = (index) => {
+  const handleIconClick = (index: number) => {
     setSelectedIconIndex(index);
   };
 
@@ -65,7 +71,10 @@ const Home = () => {
           <div
             className="message"
             style={{
-              borderLeft: selectedIconIndex === 0 ? "3px solid red" : "1px solid transparent",
+              borderLeft:
+                selectedIconIndex === 0
+                  ? "3px solid red"
+                  : "1px solid transparent",
               cursor: "pointer",
               paddingLeft: 0,
             }}
@@ -76,7 +85,10 @@ const Home = () => {
           <div
             className="people"
             style={{
-              borderLeft: selectedIconIndex === 1 ? "3px solid red" : "1px solid transparent",
+              borderLeft:
+                selectedIconIndex === 1
+                  ? "3px solid red"
+                  : "1px solid transparent",
               cursor: "pointer",
               paddingLeft: 0,
             }}
@@ -87,7 +99,10 @@ const Home = () => {
           <div
             className="friendmessage"
             style={{
-              borderLeft: selectedIconIndex === 2 ? "3px solid red" : "1px solid transparent",
+              borderLeft:
+                selectedIconIndex === 2
+                  ? "3px solid red"
+                  : "1px solid transparent",
               cursor: "pointer",
               paddingLeft: 0,
             }}
@@ -98,7 +113,10 @@ const Home = () => {
           <div
             className="setting"
             style={{
-              borderLeft: selectedIconIndex === 3 ? "3px solid red" : "1px solid transparent",
+              borderLeft:
+                selectedIconIndex === 3
+                  ? "3px solid red"
+                  : "1px solid transparent",
               cursor: "pointer",
               paddingLeft: 0,
             }}
@@ -108,12 +126,8 @@ const Home = () => {
           </div>
         </div>
       </div>
-      <div className="main-auto">
-        {getComponentByIndex()}
-      </div>
-      <div className="main-right">
-        {showEditUser ? <EditUser /> : null}
-      </div>
+      <div className="main-auto">{getComponentByIndex()}</div>
+      <div className="main-right">{showEditUser ? <EditUser /> : null}</div>
     </div>
   );
 };
