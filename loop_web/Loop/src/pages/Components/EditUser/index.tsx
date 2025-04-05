@@ -3,21 +3,10 @@ import { useState, useEffect } from "react";
 import { Form, Input, Select, InputNumber, Button, message } from "antd";
 import { idsearch } from "@/api/user";
 import { editUser } from "@/api/user";
-import OSS from "ali-oss";
 import image1 from "../../../../public/avatar.jpg";
+import { uploadToOSS } from "@/utils/oss";
 
 const EditUser = () => {
-  const [userData, setData] = useState({
-    age: 0,
-    avatar: "",
-    gender: 0,
-    is_friend: false,
-    nickname: "",
-    signature: "",
-  });
-  const [files, setFiles] = useState<FileItem[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState("");
   const [nowdata, setNow] = useState({
     age: 0,
     avatar: "",
@@ -26,22 +15,6 @@ const EditUser = () => {
     signature: "",
   });
   const [isDataLoaded, setIsDataLoaded] = useState(false); // 控制数据是否加载完成
-
-  // 定义类型
-  type FileItem = {
-    name: string;
-    url: string;
-  };
-
-  // OSS 配置常量
-  const OSS_CONFIG = {
-    accessKeyId: import.meta.env.VITE_OSS_ACCESS_KEY_ID,
-    accessKeySecret: import.meta.env.VITE_OSS_ACCESS_KEY_SECRET,
-    region: import.meta.env.VITE_OSS_REGION,
-    bucket: import.meta.env.VITE_OSS_BUCKET,
-    endpoint: import.meta.env.VITE_OSS_ENDPOINT,
-    secure: true, // 使用 HTTPS
-  };
 
   const fetchUser = async () => {
     const userdata: string | any = localStorage.getItem("loop_userdata");
@@ -57,31 +30,16 @@ const EditUser = () => {
     fetchUser();
   }, []);
 
-  // 初始化 OSS 客户端
-  const client = new OSS(OSS_CONFIG);
-
   const handleUpload = async (file: File) => {
     if (!file) return;
 
     try {
-      setIsUploading(true);
-      const fileName = `${Date.now()}_${file.name}`;
-      const result = await client.put(fileName, file);
-      const fileUrl = `https://${OSS_CONFIG.bucket}.${OSS_CONFIG.region}.aliyuncs.com/${result.name}`;
-
-      setFiles((prev) => [...prev, { name: file.name, url: fileUrl }]);
-      setPreviewUrl(fileUrl);
-
-      // 更新 userData 的 avatar 属性
-      setData((prevUserData) => ({
-        ...prevUserData,
-        avatar: fileUrl,
-      }));
+      const { url } = await uploadToOSS(file);
 
       // 使用最新的 avatar 值调用 editUser
       const updatedUserData = {
         ...nowdata,
-        avatar: fileUrl,
+        avatar: url,
       };
       const res: any = await editUser(updatedUserData);
 
@@ -95,8 +53,6 @@ const EditUser = () => {
     } catch (error) {
       console.error("文件上传失败:", error);
       message.error("文件上传失败");
-    } finally {
-      setIsUploading(false);
     }
   };
 
