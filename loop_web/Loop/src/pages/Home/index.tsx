@@ -30,8 +30,7 @@ const Home = observer(() => {
   return (
     <div className="main">
       <SideNavigation />
-      {/* <div className="main-auto">{getComponentByIndex()}</div> */}
-      {/* <div className="main-right">{showEditUser ? <EditUser /> : null}</div> */}
+
     </div>
   );
 });
