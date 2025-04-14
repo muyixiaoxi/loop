@@ -2,6 +2,7 @@
   "name": "loop",
   "private": true,
   "version": "0.0.0",
+  "proxy": "http://47.93.85.12:8080",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -17,6 +18,7 @@
     "base-64": "^1.0.0",
     "crypto-js": "^4.2.0",
     "mobx": "^6.13.7",
+    "mobx-persist-store": "^1.1.8",
     "mobx-react-lite": "^4.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

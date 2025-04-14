@@ -1,0 +1,46 @@
+.side-navigation {
+  height: 100vh;
+  width: 6%;
+  background-color: #fedc18;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  .icon {
+    width: 50%;
+    height: 6%;
+    margin-top: 20px;
+    overflow: hidden;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: fill; // 按比例缩放图片，填满容器，可能会裁剪部分图片
+      // object-fit: contain; // 按比例缩放图片，使图片完整显示在容器内
+    }
+  }
+  .avatar {
+    width: 40%;
+    height: 5%;
+    margin-top: 20px;
+    border-radius: 50%;
+    background-color: black;
+    overflow: hidden; // 隐藏超出圆形部分的图片
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+
+    img {
+      width: 100%;
+      height: 100%;
+      // 使用 cover 让图片覆盖整个容器，可能会裁剪部分图片以适应圆形
+      border-radius: 50%;
+      object-fit: cover;
+    }
+  }
+  .choice {
+    width: 100%;
+    flex: 1;
+    margin-top: 100px;
+  }
+}
