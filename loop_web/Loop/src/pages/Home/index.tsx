@@ -7,12 +7,17 @@ import FriendNotificationComponent from "../Components/FriendNotificationCompone
 import EditUser from "../Components/EditUser"; // 导入 EditUser 组件
 import { observer } from "mobx-react-lite";
 import userStore from "@/store/user";
+import globalStore from "@/store/global";
+import { Modal } from "antd";
+
 import SideNavigation from "@/components/SideNavigation";
 import FirendList from "@/components/FriendList";
 import MessageList from "@/components/MessageList/idnex";
 // observer 将组件变成响应式组件
 const Home = observer(() => {
   const { userInfo } = userStore; // 获取 userStore 中的方法
+  const { isShowUserAmend, setIsShowUserAmend } = globalStore;
+
   const [selectedIconIndex, setSelectedIconIndex] = useState(0);
 
   const getComponentByIndex = () => {
@@ -30,11 +35,18 @@ const Home = observer(() => {
 
   return (
     <div className="main">
-      <FirendList />
-      {/* <MessageList /> */}
-      {/* <SideNavigation /> */}
-      {/* <div className="main-auto">{getComponentByIndex()}</div> */}
-      {/* <div className="main-right">{showEditUser ? <EditUser /> : null}</div> */}
+      <SideNavigation />
+
+      {isShowUserAmend ? (
+        <Modal
+          open={isShowUserAmend}
+          onCancel={() => setIsShowUserAmend(!isShowUserAmend)}
+          footer={null}
+          title="用户信息"
+        >
+          <EditUser />
+        </Modal>
+      ) : null}
     </div>
   );
 });

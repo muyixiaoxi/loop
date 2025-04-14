@@ -96,8 +96,7 @@ const EditUser = observer(() => {
   };
 
   return (
-    <div className="main1">
-      <div className="title">修改个人信息</div>
+    <div className="edit-user-container">
       <div className="avatar1" onClick={triggerFileInput}>
         <img src={formData.avatar || image1} alt="avatar" />
         <div className="overlay">点击修改</div>
@@ -110,7 +109,6 @@ const EditUser = observer(() => {
           gender: formData.gender,
           age: formData.age,
         }}
-        className="ddd"
         size="large"
         style={{ width: "80%", height: "50%", marginLeft: "16%" }}
         onFinish={handleSubmit}
