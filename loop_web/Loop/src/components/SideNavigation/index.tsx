@@ -2,19 +2,20 @@ import "./index.scss";
 import { useState } from "react";
 import userStore from "@/store/user";
 import navigationStore from "@/store/navigation";
+import globalStore from "@/store/global";
 import { observer } from "mobx-react-lite";
 
-import icon1 from '../../../public/message.svg'
-import icon2 from '../../../public/message2.svg'
-import icon3 from '../../../public/address.svg'
-import icon4 from '../../../public/address2.svg'
-import icon5 from '../../../public/setting.svg'
-import icon6 from '../../../public/setting2.svg'
+import icon1 from "../../../public/message.svg";
+import icon2 from "../../../public/message2.svg";
+import icon3 from "../../../public/address.svg";
+import icon4 from "../../../public/address2.svg";
+import icon5 from "../../../public/setting.svg";
+import icon6 from "../../../public/setting2.svg";
 
 const SideNavigation = observer(() => {
   const { userInfo } = userStore;
   const { currentRoute, setCurrentRoute } = navigationStore;
-  const [showEditUser, setShowEditUser] = useState(false);
+  const { isShowUserAmend, setIsShowUserAmend } = globalStore;
 
   // 状态，用于控制每个图标的切换
   const [messageIcon, setMessageIcon] = useState(icon1);
@@ -23,7 +24,7 @@ const SideNavigation = observer(() => {
 
   // 处理图标点击事件
   const handleIconClick = (item: string) => {
-    setCurrentRoute(item)
+    setCurrentRoute(item);
     console.log(item);
 
     // 重置所有图标状态为初始状态
@@ -43,7 +44,10 @@ const SideNavigation = observer(() => {
 
   return (
     <div className="side-navigation">
-      <div className="avatar" onClick={() => setShowEditUser(!showEditUser)}>
+      <div
+        className="avatar"
+        onClick={() => setIsShowUserAmend(!isShowUserAmend)}
+      >
         <img src={userInfo.avatar} alt="" />
       </div>
       <div className="choice">

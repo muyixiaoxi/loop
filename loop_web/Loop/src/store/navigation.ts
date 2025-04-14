@@ -16,9 +16,9 @@ class NavigationStore {
     }).catch((e) => console.error("Persist failed:", e));
   }
 
-  setCurrentRoute(route: string) {
+  setCurrentRoute = (route: string) => {
     this.currentRoute = route;
-  }
+  };
 }
 
 const navigationStore = new NavigationStore();
