@@ -1,4 +1,4 @@
-import http from '../utils/request';
+import http from "../utils/request";
 
 // 定义用户类型
 interface User {
@@ -16,9 +16,8 @@ interface LoginParams {
 }
 
 export const LoginPost = (loginData: LoginParams) => {
-  return http.post<User>('/login', loginData);
+  return http.post<User>("/api/v1/login", loginData);
 };
-
 
 interface RegisterParams {
   nickname: string;
@@ -28,5 +27,5 @@ interface RegisterParams {
 
 // 注册接口
 export const RegisterPost = (registerData: RegisterParams) => {
-  return http.post<User>('/register', registerData);
-}
+  return http.post<User>("/api/v1/register", registerData);
+};

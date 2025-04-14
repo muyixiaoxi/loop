@@ -5,8 +5,10 @@ import { LoginPost, RegisterPost } from "@/api/login";
 import { message } from "@/utils/message";
 import { generateNickname } from "@/utils/nickname";
 import { useNavigate } from "react-router-dom";
+import userStore from "@/store/user";
 
 const Login = () => {
+  const { setUserInfo, setToken } = userStore;
   const [form] = Form.useForm();
   const [login, setLogin] = useState<boolean>(true);
   const navigate = useNavigate();
@@ -20,14 +22,14 @@ const Login = () => {
 
     if (login) {
       // 登录
-      const valueParams: any = {
+      const valueParams = {
         phone: value.phone,
         password: value.password,
       };
       const result: any = await LoginPost(valueParams);
       if (result?.code === 1000) {
-        localStorage.setItem("loopToken", result.data.token);
-        localStorage.setItem("userdata",JSON.stringify(result.data))
+        setToken(result.data.token);
+        setUserInfo(result.data.user);
         navigate("/home");
         message.success("登录成功");
       } else {
@@ -35,7 +37,7 @@ const Login = () => {
       }
     } else {
       // 注册
-      const valueParams: any = {
+      const valueParams = {
         phone: value.phone,
         password: value.password,
         nickname: generateNickname(),
