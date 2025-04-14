@@ -1,0 +1,46 @@
+{
+  "name": "loop",
+  "private": true,
+  "version": "0.0.0",
+  "proxy": "http://47.93.85.12:8080",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@ant-design/v5-patch-for-react-19": "^1.0.3",
+    "ali-oss": "^6.22.0",
+    "antd": "^5.24.5",
+    "axios": "^1.8.4",
+    "base-64": "^1.0.0",
+    "crypto-js": "^4.2.0",
+    "mobx": "^6.13.7",
+    "mobx-persist-store": "^1.1.8",
+    "mobx-react-lite": "^4.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.4.1",
+    "sass": "^1.86.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.21.0",
+    "@types/ali-oss": "^6.16.11",
+    "@types/axios": "^0.14.4",
+    "@types/base-64": "^1.0.2",
+    "@types/crypto-js": "^4.2.2",
+    "@types/node": "^22.13.14",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^9.21.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^15.15.0",
+    "typescript": "~5.7.2",
+    "typescript-eslint": "^8.24.1",
+    "vite": "^6.2.0"
+  }
+}

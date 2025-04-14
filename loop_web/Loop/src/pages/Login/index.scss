@@ -1,0 +1,74 @@
+// 基础变量
+$color-primary: #1890ff;
+$color-secondary: #f9bf2e;
+$color-text: #333;
+$color-border: #d9d9d9;
+
+.login {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+
+  &-container {
+    display: flex;
+    width: 100%;
+    max-width: 800px;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background: white;
+
+    @media (max-width: 768px) {
+      flex-direction: column;
+    }
+  }
+
+  .logo {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: $color-secondary;
+    padding: 2rem;
+
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+  }
+
+  .login-form {
+    flex: 1;
+    padding: 2rem;
+    max-width: 500px;
+    margin: 0 auto;
+
+    .form-subtitle {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: $color-text;
+    }
+
+    .ant-form-item {
+      margin-bottom: 0.5rem;
+
+      &-label {
+        padding-bottom: 0.25rem;
+      }
+    }
+
+    .btn {
+      width: 100%;
+      margin-top: 1rem;
+    }
+
+    .toggle-action {
+      display: block;
+      text-align: center;
+      margin-top: 1rem;
+      color: $color-primary;
+      cursor: pointer;
+    }
+  }
+}

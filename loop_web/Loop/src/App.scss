@@ -1,0 +1,35 @@
+// 基础色板
+$color-black: #000; // 纯黑 (用于重要文本)
+$color-gray-1: #333; // 正文 (90%黑)
+$color-gray-2: #666; // 次要文本 (60%黑)
+$color-gray-3: #999; // 说明内容 (40%黑)
+$color-gray-4: #d9d9d9; // 边框/分割线
+$color-gray-5: #f0f0f0; // 背景色
+
+// 功能色
+$color-error: #ff4d4f; // 错误色 (保持AntD危险色)
+$color-primary: #1890ff; // 主色 (保持AntD蓝色)
+
+.not-found {
+  // 正文层级
+  &-title {
+    color: $color-error; // 使用错误色突出404
+  }
+            
+  &-subtitle {
+    color: $color-gray-1; // 主标题用最深灰
+    font-weight: 500;
+  }
+
+  // 说明内容层级
+  &-description {
+    color: $color-gray-3; // 说明文字用中等灰
+    line-height: 1.6;
+  }
+
+  // 辅助信息 (如需)
+  &-helper {
+    color: $color-gray-2; // 次要说明用浅灰
+    font-size: 0.9rem;
+  }
+}
