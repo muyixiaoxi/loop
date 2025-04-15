@@ -1,9 +1,8 @@
 import "./index.scss";
 import { useState, useEffect } from "react";
 import { Form, Input, Select, InputNumber, Button, message } from "antd";
-// import { idsearch } from "@/api/user";
-import { editUser } from "@/api/user";
 import image1 from "../../../../public/avatar.jpg";
+import { editUser } from "@/api/user";
 import { uploadToOSS } from "@/utils/oss";
 import userStore from "@/store/user";
 import { observer } from "mobx-react-lite";
@@ -18,17 +17,29 @@ type UserType = {
   signature: string;
 };
 
+// 默认用户对象
+const defaultUser: UserType = {
+  id: 0,
+  age: 18,
+  avatar: image1,
+  gender: 0,
+  nickname: "新用户",
+  signature: "暂无个性签名",
+};
+
 // observer 装饰器将组件变为响应式组件
 const EditUser = observer(() => {
   const { userInfo, setUserInfo } = userStore; // 获取用户信息
 
   // 使用 useState 来管理表单数据
-  const [formData, setFormData] = useState<UserType>(userInfo);
+  const [formData, setFormData] = useState<UserType>(userInfo || defaultUser);
 
   // 当 userInfo 变化时更新 formData
   useEffect(() => {
-    // 监听 userInfo 的变化，并更新 formData
-    setFormData(userInfo);
+    // 如果 userInfo 存在，则更新 formData；否则保持默认值
+    if (userInfo) {
+      setFormData(userInfo);
+    }
   }, [userInfo]);
 
   const handleUpload = async (file: File) => {
@@ -98,22 +109,22 @@ const EditUser = observer(() => {
   return (
     <div className="edit-user-container">
       <div className="avatar1" onClick={triggerFileInput}>
-        <img src={formData.avatar || image1} alt="avatar" />
+        <img src={formData.avatar || image1} />
         <div className="overlay">点击修改</div>
       </div>
       <Form
         name="edit_user"
         initialValues={{
-          nickname: formData.nickname,
-          signature: formData.signature,
-          gender: formData.gender,
-          age: formData.age,
+          nickname: formData.nickname || "新用户",
+          signature: formData.signature || "暂无个性签名",
+          gender: formData.gender || 0,
+          age: formData.age || 18,
         }}
         size="large"
         style={{ width: "80%", height: "50%", marginLeft: "16%" }}
         onFinish={handleSubmit}
         labelAlign="left"
-        labelCol={{ span: 3 }}
+        labelCol={{ span: 7 }}
         wrapperCol={{ span: 14 }}
       >
         <Form.Item
@@ -159,7 +170,7 @@ const EditUser = observer(() => {
           <Button
             type="primary"
             htmlType="submit"
-            style={{ width: "200px", height: "50px" }}
+            className="submitbutton"
           >
             保存
           </Button>
