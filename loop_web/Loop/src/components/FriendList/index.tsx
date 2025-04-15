@@ -1,9 +1,36 @@
 import { useState } from "react";
-import { Drawer, Button } from "antd";
+import { Drawer, Button, Modal, Input } from "antd";
 import { LeftOutlined, PlusOutlined } from "@ant-design/icons";
+import { searchNewfriend } from "@/api/user";
 import "./index.scss";
+
 const FirendList = () => {
   const [open, setOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false); // 控制模态框的显示状态
+
+  // 查询好友申请
+  const handleSearch = async () => {
+    const res = await searchNewfriend();
+    if (res.code === 1000) {
+      console.log(res);
+    }
+  };
+
+  // 点击新的朋友
+  const handleNew = () => {
+    setOpen(true);
+    handleSearch();
+  };
+
+  // 点击加号
+  const handleAdd = () => {
+    setIsModalOpen(true); // 打开模态框
+  };
+
+  // 关闭模态框
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+  };
 
   const onClose = () => {
     setOpen(false);
@@ -25,10 +52,7 @@ const FirendList = () => {
           <li>
             <div
               className="friend-list-item"
-              onClick={() => {
-                console.log("点击了新朋友");
-                setOpen(true);
-              }}
+              onClick={handleNew}
             >
               <div className="friend-list-item-avatar">
                 <img
@@ -50,7 +74,6 @@ const FirendList = () => {
               <div className="friend-list-item-info">新朋友</div>
             </div>
           </li>
-
           <li>
             <div className="friend-list-item">
               <div className="friend-list-item-avatar">
@@ -80,7 +103,7 @@ const FirendList = () => {
           <div className="drawer-header">
             <LeftOutlined onClick={onClose} />
             <span>新朋友</span>
-            <PlusOutlined onClick={() => console.log("添加好友")} />
+            <PlusOutlined onClick={handleAdd} />
           </div>
         }
         width={300}
@@ -127,6 +150,17 @@ const FirendList = () => {
           ))}
         </div>
       </Drawer>
+      <Modal
+        title="添加新朋友"
+        open={isModalOpen}
+        onCancel={handleModalClose}
+        footer={null} // 隐藏底部按钮
+        closable={true}
+      >
+        <div className="Input" style={{ height: '500px' }}>
+          <Input placeholder="通过手机号查询好友"></Input>
+        </div>
+      </Modal>
     </div>
   );
 };
