@@ -7,12 +7,14 @@ import { getFriendList, searchNewfriend } from "@/api/friend";
 const FirendList = () => {
   const [open, setOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false); // 控制模态框的显示状态
-  const [friendList, setFriendList] = useState<any[]>([]);
+  const [friendList, setFriendList] = useState<any[]>([]); // 好友列表
+  const [newFriendList, setNewFriendList] = useState<any[]>([]); // 好友申请列表
 
   // 查询好友申请
   const handleSearch = async () => {
     const res: any = await searchNewfriend();
     if (res.code === 1000) {
+      setNewFriendList(res.data);
       console.log(res);
     }
   };
@@ -112,27 +114,21 @@ const FirendList = () => {
         getContainer={false}
       >
         <div className="request-list">
-          {[1, 2, 3, 4, 5, 11, 6, 7, 8, 9, 10].map((item) => (
-            <div className="request-item" key={item}>
-              <img
-                src="https://loopavatar.oss-cn-beijing.aliyuncs.com/1744681340372_新朋友.png"
-                alt=""
-                className="request-avatar"
-              />
+          {newFriendList.map((item: any) => (
+            <div className="request-item" key={item.id}>
+              <img src={item.avatar} alt="" className="request-avatar" />
               <div className="request-info">
-                <div className="username">用户{item}</div>
-                <div className="message">
-                  asdasadfsdfasdfsda你好，加个好友吧
-                </div>
+                <div className="username">{item.nickname}</div>
+                <div className="message">{item.message}</div>
               </div>
               <div className="action-buttons">
-                {true ? (
+                {item.status == 1 ? (
                   <Button className="accepted" disabled>
                     已接受
                   </Button>
                 ) : (
                   <Button
-                    className="accept"
+                    className="accept"   
                     onClick={(e) => {
                       e.stopPropagation();
                       console.log("接受好友请求", item);
