@@ -1,9 +1,8 @@
 import "./index.scss";
-import { useState } from "react";
+import { observer } from "mobx-react-lite";
 import userStore from "@/store/user";
 import navigationStore from "@/store/navigation";
 import globalStore from "@/store/global";
-import { observer } from "mobx-react-lite";
 
 import icon1 from "../../../public/message.svg";
 import icon2 from "../../../public/message2.svg";
@@ -17,29 +16,14 @@ const SideNavigation = observer(() => {
   const { currentRoute, setCurrentRoute } = navigationStore;
   const { isShowUserAmend, setIsShowUserAmend } = globalStore;
 
-  // 状态，用于控制每个图标的切换
-  const [messageIcon, setMessageIcon] = useState(icon1);
-  const [addressIcon, setAddressIcon] = useState(icon3);
-  const [settingIcon, setSettingIcon] = useState(icon5);
+  // 根据 currentRoute 动态设置图标状态
+  const messageIcon = currentRoute === "conversation" ? icon2 : icon1;
+  const addressIcon = currentRoute === "address" ? icon4 : icon3;
+  const settingIcon = currentRoute === "setting" ? icon6 : icon5;
 
   // 处理图标点击事件
   const handleIconClick = (item: string) => {
-    setCurrentRoute(item);
-    console.log(item);
-
-    // 重置所有图标状态为初始状态
-    setMessageIcon(icon1);
-    setAddressIcon(icon3);
-    setSettingIcon(icon5);
-
-    // 根据点击的图标切换对应的图标状态
-    if (item === "conversation") {
-      setMessageIcon(messageIcon === icon1 ? icon2 : icon1);
-    } else if (item === "address") {
-      setAddressIcon(addressIcon === icon3 ? icon4 : icon3);
-    } else if (item === "setting") {
-      setSettingIcon(settingIcon === icon5 ? icon6 : icon5);
-    }
+    setCurrentRoute(item); // 更新 currentRoute
   };
 
   return (
@@ -55,13 +39,13 @@ const SideNavigation = observer(() => {
           className="conversation"
           onClick={() => handleIconClick("conversation")}
         >
-          <img src={messageIcon} alt="" />
+          <img src={messageIcon} alt="Conversation" />
         </div>
         <div className="address" onClick={() => handleIconClick("address")}>
-          <img src={addressIcon} alt="" />
+          <img src={addressIcon} alt="Address" />
         </div>
         <div className="setting" onClick={() => handleIconClick("setting")}>
-          <img src={settingIcon} alt="" />
+          <img src={settingIcon} alt="Setting" />
         </div>
       </div>
     </div>
