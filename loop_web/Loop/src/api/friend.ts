@@ -6,11 +6,6 @@ interface addFriend {
   message: string; // 添加好友的消息
 }
 
-type FriendList = {
-  page_num: number;
-  page_size: number;
-};
-
 //查询好友申请
 export const searchNewfriend = () => {
   return http.get("/api/v1/user/friend/request/list");
@@ -22,8 +17,6 @@ export const postAddFriend = (addFriend: addFriend) => {
 };
 
 // 查询好友列表
-export const getFriendList = (getFriendList: FriendList) => {
-  return http.get(
-    `/api/v1/user/friend/list?page_num=${getFriendList.page_num}&page_size=${getFriendList.page_size}`
-  );
+export const getFriendList = () => {
+  return http.get("/api/v1/user/friend/list");
 };

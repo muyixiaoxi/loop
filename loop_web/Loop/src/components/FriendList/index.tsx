@@ -1,20 +1,37 @@
 import { useEffect, useState } from "react";
-import { Drawer, Button, Input } from "antd";
+import { Drawer, Button, Modal, Input } from "antd";
 import { LeftOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import "./index.scss";
-import { getFriendList } from "@/api/friend";
+import { getFriendList, searchNewfriend } from "@/api/friend";
 
-type FriendType = {
-  page_num: number;
-  page_size: number;
-};
 const FirendList = () => {
   const [open, setOpen] = useState(false);
-  const [friendPage, setFriendPage] = useState<FriendType>({
-    page_num: 1,
-    page_size: 10,
-  });
+  const [isModalOpen, setIsModalOpen] = useState(false); // 控制模态框的显示状态
   const [friendList, setFriendList] = useState<any[]>([]);
+
+  // 查询好友申请
+  const handleSearch = async () => {
+    const res: any = await searchNewfriend();
+    if (res.code === 1000) {
+      console.log(res);
+    }
+  };
+
+  // 点击新的朋友
+  const handleNew = () => {
+    setOpen(true);
+    handleSearch();
+  };
+
+  // 点击加号
+  const handleAdd = () => {
+    setIsModalOpen(true); // 打开模态框
+  };
+
+  // 关闭模态框
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+  };
 
   const onClose = () => {
     setOpen(false);
@@ -27,7 +44,7 @@ const FirendList = () => {
 
   // 获取好友列表
   const getFriendListData = async () => {
-    const res: any = await getFriendList(friendPage);
+    const res: any = await getFriendList();
     setFriendList(res.data);
 
     console.log(res);
@@ -52,8 +69,7 @@ const FirendList = () => {
           <div
             className="friend-list-item"
             onClick={() => {
-              console.log("点击了新朋友");
-              setOpen(true);
+              handleNew();
             }}
           >
             <div className="friend-list-item-avatar">
@@ -83,7 +99,7 @@ const FirendList = () => {
           <div className="drawer-header">
             <LeftOutlined onClick={onClose} />
             <span>新朋友</span>
-            <PlusOutlined onClick={() => console.log("添加好友")} />
+            <PlusOutlined onClick={handleAdd} />
           </div>
         }
         width={300}
@@ -130,6 +146,17 @@ const FirendList = () => {
           ))}
         </div>
       </Drawer>
+      <Modal
+        title="添加新朋友"
+        open={isModalOpen}
+        onCancel={handleModalClose}
+        footer={null} // 隐藏底部按钮
+        closable={true}
+      >
+        <div className="Input" style={{ height: "450px" }}>
+          <Input placeholder="通过手机号查询好友"></Input>
+        </div>
+      </Modal>
     </div>
   );
 };

@@ -2,11 +2,13 @@
   width: 300px;
   height: 100vh;
   overflow: hidden;
+
   .friend-list-title {
     font-size: 1.5rem;
     font-weight: 600;
     padding: 0 20px;
   }
+
   .friend-list-content {
     .friend-list-search {
       padding: 8px 16px;
@@ -60,6 +62,7 @@
             height: 100%;
           }
         }
+
         .friend-list-item-info {
           font-size: 14px;
           font-weight: 500;
@@ -71,9 +74,11 @@
       }
     }
   }
+
   .ant-drawer-header {
     padding: 0px;
   }
+
   .ant-drawer-body {
     padding: 12px;
     overflow: auto;
@@ -98,6 +103,7 @@
       }
     }
   }
+
   .drawer-header {
     display: flex;
     justify-content: space-between;
