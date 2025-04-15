@@ -1,7 +1,6 @@
 import "./index.scss";
 import { useState, useEffect } from "react";
 import { Form, Input, Select, InputNumber, Button, message } from "antd";
-import image1 from "../../../../public/avatar.jpg";
 import { editUser } from "@/api/user";
 import { uploadToOSS } from "@/utils/oss";
 import userStore from "@/store/user";
@@ -21,7 +20,7 @@ type UserType = {
 const defaultUser: UserType = {
   id: 0,
   age: 18,
-  avatar: image1,
+  avatar: "",
   gender: 0,
   nickname: "新用户",
   signature: "暂无个性签名",
@@ -109,7 +108,7 @@ const EditUser = observer(() => {
   return (
     <div className="edit-user-container">
       <div className="avatar1" onClick={triggerFileInput}>
-        <img src={formData.avatar || image1} />
+        <img src={formData.avatar} alt="" />
         <div className="overlay">点击修改</div>
       </div>
       <Form
@@ -167,11 +166,7 @@ const EditUser = observer(() => {
           <InputNumber min={1} max={100} placeholder="请输入年龄" />
         </Form.Item>
         <Form.Item wrapperCol={{ offset: 8, span: 16 }}>
-          <Button
-            type="primary"
-            htmlType="submit"
-            className="submitbutton"
-          >
+          <Button type="primary" htmlType="submit" className="submitbutton">
             保存
           </Button>
         </Form.Item>

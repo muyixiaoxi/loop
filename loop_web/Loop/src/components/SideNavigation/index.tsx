@@ -17,7 +17,7 @@ const SideNavigation = observer(() => {
 
   // 根据 currentRoute 动态设置图标状态
   const messageIcon = currentRoute === "conversation" ? icon2 : icon1;
-  const addressIcon = currentRoute === "address" ? icon4 : icon3;
+  const addressIcon = currentRoute === "friend" ? icon4 : icon3;
   const settingIcon = icon5; // setting 图标固定为 icon5，不参与切换
 
   // 处理图标点击事件
@@ -47,10 +47,10 @@ const SideNavigation = observer(() => {
         >
           <img src={messageIcon} alt="Conversation" />
         </div>
-        <div className="address" onClick={() => handleIconClick("address")}>
+        <div className="friend" onClick={() => handleIconClick("friend")}>
           <img src={addressIcon} alt="Address" />
         </div>
-        <div className="setting" onClick={() => handleIconClick("setting")}>
+        <div className="setting" onClick={() => console.log("设置")}>
           <img src={settingIcon} alt="Setting" />
         </div>
       </div>

@@ -11,21 +11,21 @@ import { error } from "console";
 const FirendList = () => {
   const { userInfo, setUserInfo } = userStore; // 获取用户信息
   const [open, setOpen] = useState(false);
-  const [addopen, setaddOpen] = useState(false);//添加好友
+  const [addopen, setaddOpen] = useState(false); //添加好友
   const [isModalOpen, setIsModalOpen] = useState(false); // 控制模态框的显示状态
-  const [searchInput, setSearchInput] = useState('');
+  const [searchInput, setSearchInput] = useState("");
   const [modalTimer, setModalTimer] = useState<NodeJS.Timeout | null>(null);
   const [searchResult, setSearchResult] = useState<any>(null);
-  const [searchStatus, setSearchStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [searchStatus, setSearchStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
   const [friendList, setFriendList] = useState<any[]>([]); // 好友列表
   const [newFriendList, setNewFriendList] = useState<any[]>([]); // 好友申请列表
-  const [addData,setaddData]=useState<any>({
-    friend_id:0,
-    message:`你好！我是${userInfo.nickname || '匿名用户'}`
+  const [addData, setaddData] = useState<any>({
+    friend_id: 0,
+    message: `你好！我是${userInfo.nickname || "匿名用户"}`,
   }); // 好友申请列表
-  const [applyMessage, setApplyMessage] = useState(''); // 抽屉中的输入框内容
-
-
+  const [applyMessage, setApplyMessage] = useState(""); // 抽屉中的输入框内容
 
   // 查询好友申请
   const handleSearch = async () => {
@@ -49,12 +49,12 @@ const FirendList = () => {
   //点击添加好友
   const handleAD = (id: number) => {
     // 更新 addData 中的 friend_id
-    setaddData(prevData => ({
+    setaddData((prevData) => ({
       ...prevData,
-      friend_id: id
+      friend_id: id,
     }));
     // 设置 applyMessage 为默认内容
-    const defaultMessage = `你好！我是${userInfo.nickname || '匿名用户'}`;
+    const defaultMessage = `你好！我是${userInfo.nickname || "匿名用户"}`;
     setApplyMessage(defaultMessage);
     setaddOpen(true);
   };
@@ -63,17 +63,19 @@ const FirendList = () => {
   const handleSendRequest = () => {
     const newAddData = {
       ...addData,
-      message: applyMessage
+      message: applyMessage,
     };
     setaddData(newAddData);
     // 可以在这里添加发送请求的逻辑
     setaddOpen(false); // 关闭抽屉
-    const res= postAddFriend(newAddData).then((response)=>{
-      console.log(response);
-    }).catch((error)=>{
-      console.log(error);
-    });
-    console.log(res); 
+    const res = postAddFriend(newAddData)
+      .then((response) => {
+        console.log(response);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+    console.log(res);
   };
   const onaddClose = () => {
     setaddOpen(false);
@@ -109,43 +111,45 @@ const FirendList = () => {
   const handleModalSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchInput(value);
-    
+
     // 清除之前的定时器
     if (modalTimer) {
       clearTimeout(modalTimer);
     }
-    
+
     // 设置新的定时器，1秒后执行搜索
-    setModalTimer(setTimeout(() => {
-      if (value.trim()) {
-        handleSearchUser(value);
-      }
-    }, 1000));
+    setModalTimer(
+      setTimeout(() => {
+        if (value.trim()) {
+          handleSearchUser(value);
+        }
+      }, 1000)
+    );
   };
 
   // 搜索用户
   const handleSearchUser = async (phone: string) => {
-    setSearchStatus('loading');
+    setSearchStatus("loading");
     try {
       const res = await searchUser(phone);
-      console.log('搜索结果:', res);
-      
+      console.log("搜索结果:", res);
+
       if (res.code === 1000) {
         if (res.data) {
           setSearchResult(res.data);
-          setSearchStatus('success');
+          setSearchStatus("success");
         } else {
           setSearchResult(null);
-          setSearchStatus('success');
+          setSearchStatus("success");
         }
       } else {
         setSearchResult(null);
-        setSearchStatus('error');
+        setSearchStatus("error");
       }
     } catch (error) {
-      console.error('搜索失败:', error);
+      console.error("搜索失败:", error);
       setSearchResult(null);
-      setSearchStatus('error');
+      setSearchStatus("error");
     }
   };
 
@@ -230,7 +234,7 @@ const FirendList = () => {
                   </Button>
                 ) : (
                   <Button
-                    className="accept"   
+                    className="accept"
                     onClick={(e) => {
                       e.stopPropagation();
                       console.log("接受好友请求", item);
@@ -250,54 +254,84 @@ const FirendList = () => {
         onCancel={handleModalClose}
         footer={null}
         closable={true}
-        style={{overflow:'hidden'}}
+        style={{ overflow: "hidden" }}
       >
         <div className="Input">
-          <Input 
+          <Input
             placeholder="通过手机号查询好友"
             value={searchInput}
             onChange={handleModalSearch}
           />
           <div className="main">
             {!searchInput.trim() ? (
-              <div className="search-tip" style={{ 
-                textAlign: 'center',
-                color: '#999',
-                padding: '20px 0',
-                margin:'30% auto' 
-              }}>
+              <div
+                className="search-tip"
+                style={{
+                  textAlign: "center",
+                  color: "#999",
+                  padding: "20px 0",
+                  margin: "30% auto",
+                }}
+              >
                 请输入手机号以搜索
               </div>
             ) : (
               <>
-                {searchStatus === 'loading' && <div style={{ textAlign: 'center', padding: '20px 0',margin:'30% auto' }}>搜索中...</div>}
-                {searchStatus === 'success' && searchResult && (
+                {searchStatus === "loading" && (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "20px 0",
+                      margin: "30% auto",
+                    }}
+                  >
+                    搜索中...
+                  </div>
+                )}
+                {searchStatus === "success" && searchResult && (
                   <div className="search-result">
                     <div className="user-info">
                       <div className="avatar">
                         <img src={searchResult.avatar} alt="用户头像" />
-                        </div>
+                      </div>
                       <div className="nickname">
                         <div className="realname">{searchResult.nickname}</div>
-                        <div className="signature">{searchResult.signature}</div>
+                        <div className="signature">
+                          <span>{searchResult.signature}</span>
+                        </div>
                       </div>
                     </div>
-                    <Button 
-                      type="primary" 
-                      className="addbt" 
+                    <Button
+                      type="primary"
+                      className="addbt"
                       onClick={() => handleAD(searchResult.id)}
                     >
                       添加好友
                     </Button>
                   </div>
                 )}
-                {searchStatus === 'success' && !searchResult && (
-                  <div className="no-result" style={{ textAlign: 'center', padding: '20px 0',margin:'30% auto' }}>
+                {searchStatus === "success" && !searchResult && (
+                  <div
+                    className="no-result"
+                    style={{
+                      textAlign: "center",
+                      padding: "20px 0",
+                      margin: "30% auto",
+                    }}
+                  >
                     暂无该用户
                   </div>
                 )}
-                {searchStatus === 'error' && (
-                  <div className="error-message" style={{ textAlign: 'center', padding: '20px 0', color: '#ff4d4f',margin:'30% auto'  }}>
+                {searchStatus === "error" && (
+                  <div
+                    className="error-message"
+                    style={{
+                      textAlign: "center",
+                      padding: "20px 0",
+                      color: "#ff4d4f",
+                      margin: "30% auto",
+                    }}
+                  >
                     搜索出错，请稍后再试
                   </div>
                 )}
@@ -305,40 +339,40 @@ const FirendList = () => {
             )}
           </div>
         </div>
-      {/* 将Drawer移动到Modal内部 */}
-      <Drawer 
-        title="填写申请信息"
-        placement="right"
-        width={300}
-        open={addopen}
-        onClose={onaddClose}
-        getContainer={false}
-        style={{ 
-          position: 'absolute',
-          right: 0, // 从Modal的右边框开始
-          top: 0,
-          height: '100%'
-        }}
-        bodyStyle={{ padding: 16 }}
-      >
-        <Input.TextArea
-          rows={4}
-          value={applyMessage} // 绑定输入内容
-          onChange={(e) => setApplyMessage(e.target.value)} // 处理输入变化
-          placeholder={`你好！我是${userInfo.nickname || '匿名用户'}`} 
-          maxLength={100}
-          showCount
-        />
-        <div style={{ marginTop: 16, textAlign: 'right' }}>
-          <Button onClick={onaddClose} style={{ marginRight: 8 }}>
-            取消
-          </Button>
-          <Button type="primary" onClick={handleSendRequest}>
-            发送
-          </Button>
-        </div>
-      </Drawer>
-    </Modal>
+        {/* 将Drawer移动到Modal内部 */}
+        <Drawer
+          title="填写申请信息"
+          placement="right"
+          width={300}
+          open={addopen}
+          onClose={onaddClose}
+          getContainer={false}
+          style={{
+            position: "absolute",
+            right: 0, // 从Modal的右边框开始
+            top: 0,
+            height: "100%",
+          }}
+          bodyStyle={{ padding: 16 }}
+        >
+          <Input.TextArea
+            rows={4}
+            value={applyMessage} // 绑定输入内容
+            onChange={(e) => setApplyMessage(e.target.value)} // 处理输入变化
+            placeholder={`你好！我是${userInfo.nickname || "匿名用户"}`}
+            maxLength={100}
+            showCount
+          />
+          <div style={{ marginTop: 16, textAlign: "right" }}>
+            <Button onClick={onaddClose} style={{ marginRight: 8 }}>
+              取消
+            </Button>
+            <Button type="primary" onClick={handleSendRequest}>
+              发送
+            </Button>
+          </div>
+        </Drawer>
+      </Modal>
     </div>
   );
 };

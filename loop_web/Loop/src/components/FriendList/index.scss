@@ -172,14 +172,14 @@
     }
   }
 }
-.Input{
+.Input {
   height: 450px;
   display: flex;
   flex-direction: column;
-  .main{
-    background-color: #FFFFFF;
+  .main {
+    background-color: #ffffff;
     font-size: 30px;
-    .search-result{
+    .search-result {
       width: 100%;
       height: 100px;
       margin-top: 20px;
@@ -187,34 +187,34 @@
       padding: 5px;
       background-color: #f8f8f8;
       display: flex;
-      .addbt{
+      .addbt {
         margin: 40px auto;
       }
-      .user-info{
+      .user-info {
         width: 70%;
         height: 100%;
         display: flex;
         align-items: center;
-        .avatar{
+        .avatar {
           width: 50px; // 改为固定宽度
           height: 50px; // 改为固定高度
           min-width: 50px; // 添加最小宽度防止挤压
           border-radius: 50%;
           overflow: hidden;
           background-color: #e46342;
-          img{
+          img {
             width: 100%;
             height: 100%;
             object-fit: cover;
           }
         }
-        .nickname{
+        .nickname {
           width: calc(100% - 60px); // 减去头像宽度和padding
           padding-left: 10px;
           display: flex;
           flex-direction: column;
           overflow: hidden; // 添加overflow
-          
+
           .realname {
             width: 100%;
             font-size: 20px;
@@ -222,18 +222,17 @@
             overflow: hidden;
             text-overflow: ellipsis;
           }
-          
+
           .signature {
             width: 100%;
             font-size: 14px;
             color: #9b9b9b;
             overflow: hidden;
             text-overflow: ellipsis;
-            display: -webkit-box;
-            -webkit-line-clamp: 1; // 严格限制1行
-            -webkit-box-orient: vertical;
-            line-height: 1.5; // 设置合适的行高
-            max-height: 21px; // 14px * 1.5
+            word-break: break-word; // 允许单词内换行
+            white-space: nowrap; // 强制单行显示
+            overflow: hidden;
+            text-overflow: ellipsis;
           }
         }
       }
