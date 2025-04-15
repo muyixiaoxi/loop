@@ -37,6 +37,10 @@ const Home = observer(() => {
     <div className="main">
       <SideNavigation />
 
+      <div>
+        <FirendList />
+      </div>
+
       {isShowUserAmend ? (
         <Modal
           open={isShowUserAmend}
