@@ -1,16 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Drawer, Button, Modal, Input } from "antd";
-import { LeftOutlined, PlusOutlined } from "@ant-design/icons";
-import { searchNewfriend } from "@/api/user";
+import { LeftOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import "./index.scss";
+import { getFriendList, searchNewfriend } from "@/api/friend";
 
 const FirendList = () => {
   const [open, setOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false); // 控制模态框的显示状态
+  const [friendList, setFriendList] = useState<any[]>([]);
 
   // 查询好友申请
   const handleSearch = async () => {
-    const res = await searchNewfriend();
+    const res: any = await searchNewfriend();
     if (res.code === 1000) {
       console.log(res);
     }
@@ -41,62 +42,57 @@ const FirendList = () => {
     overflow: "hidden",
   };
 
+  // 获取好友列表
+  const getFriendListData = async () => {
+    const res: any = await getFriendList();
+    setFriendList(res.data);
+
+    console.log(res);
+  };
+
+  useEffect(() => {
+    getFriendListData();
+  }, []);
+
   return (
     <div className="friend-list" style={containerStyle}>
       <div className="friend-list-title">通讯录</div>
       <div className="friend-list-content">
         <div className="friend-list-search">
-          <input type="text" placeholder="搜索" />
+          <Input
+            placeholder="搜索好友"
+            prefix={<SearchOutlined className="search-icon" />}
+            allowClear
+          />
         </div>
-        <ul className="friend-list-ul">
-          <li>
-            <div
-              className="friend-list-item"
-              onClick={handleNew}
-            >
-              <div className="friend-list-item-avatar">
-                <img
-                  src="https://loopavatar.oss-cn-beijing.aliyuncs.com/1744681340372_新朋友.png"
-                  alt="头像"
-                />
-              </div>
-              <div className="friend-list-item-info">新朋友</div>
+        <div className="friend-list-ul">
+          <div
+            className="friend-list-item"
+            onClick={() => {
+              handleNew();
+            }}
+          >
+            <div className="friend-list-item-avatar">
+              <img
+                src="https://loopavatar.oss-cn-beijing.aliyuncs.com/1744681340372_新朋友.png"
+                alt="头像"
+              />
             </div>
-          </li>
-          <li>
-            <div className="friend-list-item">
-              <div className="friend-list-item-avatar">
-                <img
-                  src="https://loopavatar.oss-cn-beijing.aliyuncs.com/1744681340372_新朋友.png"
-                  alt="头像"
-                />
-              </div>
-              <div className="friend-list-item-info">新朋友</div>
-            </div>
-          </li>
-          <li>
-            <div className="friend-list-item">
-              <div className="friend-list-item-avatar">
-                <img
-                  src="https://loopavatar.oss-cn-beijing.aliyuncs.com/1744681340372_新朋友.png"
-                  alt="头像"
-                />
-              </div>
-              <div className="friend-list-item-info">新朋友</div>
-            </div>
-          </li>
-          <li>
-            <div className="friend-list-item">
-              <div className="friend-list-item-avatar">
-                <img
-                  src="https://loopavatar.oss-cn-beijing.aliyuncs.com/1744681340372_新朋友.png"
-                  alt="头像"
-                />
-              </div>
-              <div className="friend-list-item-info">新朋友</div>
-            </div>
-          </li>
-        </ul>
+            <div className="friend-list-item-info">新朋友</div>
+          </div>
+          <ul className="friend-ul">
+            {friendList.map((item: any) => (
+              <li key={item.id}>
+                <div className="friend-list-item">
+                  <div className="friend-list-item-avatar">
+                    <img src={item.avatar} alt="头像" />
+                  </div>
+                  <div className="friend-list-item-info">{item.nickname}</div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
       <Drawer
         title={
@@ -157,7 +153,7 @@ const FirendList = () => {
         footer={null} // 隐藏底部按钮
         closable={true}
       >
-        <div className="Input" style={{ height: '500px' }}>
+        <div className="Input" style={{ height: "450px" }}>
           <Input placeholder="通过手机号查询好友"></Input>
         </div>
       </Modal>
