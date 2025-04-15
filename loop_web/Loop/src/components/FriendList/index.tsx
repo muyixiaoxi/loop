@@ -2,11 +2,16 @@ import { useEffect, useState } from "react";
 import { Drawer, Button, Modal, Input } from "antd";
 import { LeftOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import "./index.scss";
-import { getFriendList, searchNewfriend } from "@/api/friend";
+import { getFriendList, postAddFriend, searchNewfriend } from "@/api/friend";
 import { searchUser } from "@/api/user";
+// import { postAddFriend } from "@/api/friend";
+import userStore from "@/store/user";
+import { error } from "console";
 
 const FirendList = () => {
+  const { userInfo, setUserInfo } = userStore; // 获取用户信息
   const [open, setOpen] = useState(false);
+  const [addopen, setaddOpen] = useState(false);//添加好友
   const [isModalOpen, setIsModalOpen] = useState(false); // 控制模态框的显示状态
   const [searchInput, setSearchInput] = useState('');
   const [modalTimer, setModalTimer] = useState<NodeJS.Timeout | null>(null);
@@ -14,6 +19,13 @@ const FirendList = () => {
   const [searchStatus, setSearchStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [friendList, setFriendList] = useState<any[]>([]); // 好友列表
   const [newFriendList, setNewFriendList] = useState<any[]>([]); // 好友申请列表
+  const [addData,setaddData]=useState<any>({
+    friend_id:0,
+    message:`你好！我是${userInfo.nickname || '匿名用户'}`
+  }); // 好友申请列表
+  const [applyMessage, setApplyMessage] = useState(''); // 抽屉中的输入框内容
+
+
 
   // 查询好友申请
   const handleSearch = async () => {
@@ -33,6 +45,38 @@ const FirendList = () => {
   // 点击加号
   const handleAdd = () => {
     setIsModalOpen(true); // 打开模态框
+  };
+  //点击添加好友
+  const handleAD = (id: number) => {
+    // 更新 addData 中的 friend_id
+    setaddData(prevData => ({
+      ...prevData,
+      friend_id: id
+    }));
+    // 设置 applyMessage 为默认内容
+    const defaultMessage = `你好！我是${userInfo.nickname || '匿名用户'}`;
+    setApplyMessage(defaultMessage);
+    setaddOpen(true);
+  };
+
+  // 发送好友申请，更新 addData 的 message 属性
+  const handleSendRequest = () => {
+    const newAddData = {
+      ...addData,
+      message: applyMessage
+    };
+    setaddData(newAddData);
+    // 可以在这里添加发送请求的逻辑
+    setaddOpen(false); // 关闭抽屉
+    const res= postAddFriend(newAddData).then((response)=>{
+      console.log(response);
+    }).catch((error)=>{
+      console.log(error);
+    });
+    console.log(res); 
+  };
+  const onaddClose = () => {
+    setaddOpen(false);
   };
 
   // 关闭模态框
@@ -206,6 +250,7 @@ const FirendList = () => {
         onCancel={handleModalClose}
         footer={null}
         closable={true}
+        style={{overflow:'hidden'}}
       >
         <div className="Input">
           <Input 
@@ -237,7 +282,13 @@ const FirendList = () => {
                         <div className="signature">{searchResult.signature}</div>
                       </div>
                     </div>
-                    <Button type="primary" className="addbt">添加好友</Button>
+                    <Button 
+                      type="primary" 
+                      className="addbt" 
+                      onClick={() => handleAD(searchResult.id)}
+                    >
+                      添加好友
+                    </Button>
                   </div>
                 )}
                 {searchStatus === 'success' && !searchResult && (
@@ -254,7 +305,40 @@ const FirendList = () => {
             )}
           </div>
         </div>
-      </Modal>
+      {/* 将Drawer移动到Modal内部 */}
+      <Drawer 
+        title="填写申请信息"
+        placement="right"
+        width={300}
+        open={addopen}
+        onClose={onaddClose}
+        getContainer={false}
+        style={{ 
+          position: 'absolute',
+          right: 0, // 从Modal的右边框开始
+          top: 0,
+          height: '100%'
+        }}
+        bodyStyle={{ padding: 16 }}
+      >
+        <Input.TextArea
+          rows={4}
+          value={applyMessage} // 绑定输入内容
+          onChange={(e) => setApplyMessage(e.target.value)} // 处理输入变化
+          placeholder={`你好！我是${userInfo.nickname || '匿名用户'}`} 
+          maxLength={100}
+          showCount
+        />
+        <div style={{ marginTop: 16, textAlign: 'right' }}>
+          <Button onClick={onaddClose} style={{ marginRight: 8 }}>
+            取消
+          </Button>
+          <Button type="primary" onClick={handleSendRequest}>
+            发送
+          </Button>
+        </div>
+      </Drawer>
+    </Modal>
     </div>
   );
 };
