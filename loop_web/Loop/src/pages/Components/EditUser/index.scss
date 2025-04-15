@@ -5,6 +5,7 @@
   align-items: center;
   padding: 20px; // 添加内边距，使内容不紧贴边缘
   box-sizing: border-box; // 确保内边距不会影响整体宽度
+  height: 50%;
 
   .title {
     width: 95%;
@@ -18,10 +19,11 @@
   }
 
   .avatar1 {
-    width: 15%;
-    height: 22%;
+    width: 20%;
+    height: 90px;
     margin-top: 20px;
-    border-radius: 50%;
+    border-radius: 60%;
+    background-color: black;
     overflow: hidden; // 隐藏超出圆形部分的图片
     position: relative;
     display: inline-block;
@@ -58,5 +60,12 @@
   .formtitle {
     font-size: 24px;
     margin-top: 30px;
+  }
+
+  .submitbutton {
+    width: 300px;
+    height: 50px;
+    margin-left: -110px;
+    margin-top: 20px;
   }
 }

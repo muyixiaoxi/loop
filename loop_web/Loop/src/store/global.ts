@@ -13,7 +13,7 @@ class GlobalStore {
     });
 
     makePersistable(this, {
-      name: "loopUserStore",
+      name: "loopGlobalStore",
       properties: ["isShowUserAmend"],
       storage: window.localStorage,
     }).catch((e) => console.error("Persist failed:", e));
