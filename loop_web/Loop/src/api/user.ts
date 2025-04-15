@@ -22,11 +22,6 @@ interface edit {
   signature: string;
 }
 
-interface addFriend {
-  friend_id: number; // 好友id
-  message: string; // 添加好友的消息
-}
-
 //手机查
 export const searchUser = (searchData: searchParams) => {
   return http.get<User>(`/api/v1/user/query?phone=${searchData}`);
@@ -35,16 +30,8 @@ export const searchUser = (searchData: searchParams) => {
 export const idsearch = (searchData: searchParams) => {
   return http.get<User>(`/api/v1/user/query?user_id=${searchData}`);
 };
-//查询好友申请
-export const searchNewfriend = () => {
-  return http.get<User>("/api/v1/user/friend/request/list");
-};
+
 //修改用户信息
 export const editUser = (searchData: edit) => {
   return http.post<User>("/api/v1/user/update_info", searchData);
-};
-
-//添加好友
-export const postAddFriend = (searchData: addFriend) => {
-  return http.post<User>("/api/v1/user/friend/add", searchData);
 };

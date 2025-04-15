@@ -1,9 +1,20 @@
-import { useState } from "react";
-import { Drawer, Button } from "antd";
-import { LeftOutlined, PlusOutlined } from "@ant-design/icons";
+import { useEffect, useState } from "react";
+import { Drawer, Button, Input } from "antd";
+import { LeftOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import "./index.scss";
+import { getFriendList } from "@/api/friend";
+
+type FriendType = {
+  page_num: number;
+  page_size: number;
+};
 const FirendList = () => {
   const [open, setOpen] = useState(false);
+  const [friendPage, setFriendPage] = useState<FriendType>({
+    page_num: 1,
+    page_size: 10,
+  });
+  const [friendList, setFriendList] = useState<any[]>([]);
 
   const onClose = () => {
     setOpen(false);
@@ -14,66 +25,58 @@ const FirendList = () => {
     overflow: "hidden",
   };
 
+  // 获取好友列表
+  const getFriendListData = async () => {
+    const res: any = await getFriendList(friendPage);
+    setFriendList(res.data);
+
+    console.log(res);
+  };
+
+  useEffect(() => {
+    getFriendListData();
+  }, []);
+
   return (
     <div className="friend-list" style={containerStyle}>
       <div className="friend-list-title">通讯录</div>
       <div className="friend-list-content">
         <div className="friend-list-search">
-          <input type="text" placeholder="搜索" />
+          <Input
+            placeholder="搜索好友"
+            prefix={<SearchOutlined className="search-icon" />}
+            allowClear
+          />
         </div>
-        <ul className="friend-list-ul">
-          <li>
-            <div
-              className="friend-list-item"
-              onClick={() => {
-                console.log("点击了新朋友");
-                setOpen(true);
-              }}
-            >
-              <div className="friend-list-item-avatar">
-                <img
-                  src="https://loopavatar.oss-cn-beijing.aliyuncs.com/1744681340372_新朋友.png"
-                  alt="头像"
-                />
-              </div>
-              <div className="friend-list-item-info">新朋友</div>
+        <div className="friend-list-ul">
+          <div
+            className="friend-list-item"
+            onClick={() => {
+              console.log("点击了新朋友");
+              setOpen(true);
+            }}
+          >
+            <div className="friend-list-item-avatar">
+              <img
+                src="https://loopavatar.oss-cn-beijing.aliyuncs.com/1744681340372_新朋友.png"
+                alt="头像"
+              />
             </div>
-          </li>
-          <li>
-            <div className="friend-list-item">
-              <div className="friend-list-item-avatar">
-                <img
-                  src="https://loopavatar.oss-cn-beijing.aliyuncs.com/1744681340372_新朋友.png"
-                  alt="头像"
-                />
-              </div>
-              <div className="friend-list-item-info">新朋友</div>
-            </div>
-          </li>
-
-          <li>
-            <div className="friend-list-item">
-              <div className="friend-list-item-avatar">
-                <img
-                  src="https://loopavatar.oss-cn-beijing.aliyuncs.com/1744681340372_新朋友.png"
-                  alt="头像"
-                />
-              </div>
-              <div className="friend-list-item-info">新朋友</div>
-            </div>
-          </li>
-          <li>
-            <div className="friend-list-item">
-              <div className="friend-list-item-avatar">
-                <img
-                  src="https://loopavatar.oss-cn-beijing.aliyuncs.com/1744681340372_新朋友.png"
-                  alt="头像"
-                />
-              </div>
-              <div className="friend-list-item-info">新朋友</div>
-            </div>
-          </li>
-        </ul>
+            <div className="friend-list-item-info">新朋友</div>
+          </div>
+          <ul className="friend-ul">
+            {friendList.map((item: any) => (
+              <li key={item.id}>
+                <div className="friend-list-item">
+                  <div className="friend-list-item-avatar">
+                    <img src={item.avatar} alt="头像" />
+                  </div>
+                  <div className="friend-list-item-info">{item.nickname}</div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
       <Drawer
         title={

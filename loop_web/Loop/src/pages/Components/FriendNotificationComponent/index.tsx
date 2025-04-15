@@ -2,7 +2,8 @@ import "./index.scss";
 import { Input, Button } from "antd";
 import { SearchOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import { useState, useEffect } from "react";
-import { searchUser, postAddFriend } from "@/api/user";
+import { searchUser } from "@/api/user";
+import { postAddFriend } from "@/api/friend";
 
 type searchType = {
   id: number;
