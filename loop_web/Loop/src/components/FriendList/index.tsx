@@ -276,19 +276,31 @@ const FirendList = () => {
                     <div className="user-info">
                       <div className="avatar">
                         <img src={searchResult.avatar} alt="用户头像" />
-                        </div>
+                      </div>
                       <div className="nickname">
                         <div className="realname">{searchResult.nickname}</div>
                         <div className="signature">{searchResult.signature}</div>
                       </div>
                     </div>
-                    <Button 
-                      type="primary" 
-                      className="addbt" 
-                      onClick={() => handleAD(searchResult.id)}
-                    >
-                      添加好友
-                    </Button>
+                    {/* 根据 searchResult.is_friend 判断渲染按钮 */}
+                    {searchResult.is_friend ? (
+                      <Button 
+                        type="primary" 
+                        className="addbt" 
+                        // 这里可以添加发消息的逻辑
+                        onClick={() => console.log('发消息给', searchResult.id)} 
+                      >
+                        发消息
+                      </Button>
+                    ) : (
+                      <Button 
+                        type="primary" 
+                        className="addbt" 
+                        onClick={() => handleAD(searchResult.id)}
+                      >
+                        添加好友
+                      </Button>
+                    )}
                   </div>
                 )}
                 {searchStatus === 'success' && !searchResult && (
@@ -305,40 +317,40 @@ const FirendList = () => {
             )}
           </div>
         </div>
-      {/* 将Drawer移动到Modal内部 */}
-      <Drawer 
-        title="填写申请信息"
-        placement="right"
-        width={300}
-        open={addopen}
-        onClose={onaddClose}
-        getContainer={false}
-        style={{ 
-          position: 'absolute',
-          right: 0, // 从Modal的右边框开始
-          top: 0,
-          height: '100%'
-        }}
-        bodyStyle={{ padding: 16 }}
-      >
-        <Input.TextArea
-          rows={4}
-          value={applyMessage} // 绑定输入内容
-          onChange={(e) => setApplyMessage(e.target.value)} // 处理输入变化
-          placeholder={`你好！我是${userInfo.nickname || '匿名用户'}`} 
-          maxLength={100}
-          showCount
-        />
-        <div style={{ marginTop: 16, textAlign: 'right' }}>
-          <Button onClick={onaddClose} style={{ marginRight: 8 }}>
-            取消
-          </Button>
-          <Button type="primary" onClick={handleSendRequest}>
-            发送
-          </Button>
-        </div>
-      </Drawer>
-    </Modal>
+        {/* 将Drawer移动到Modal内部 */}
+        <Drawer 
+          title="填写申请信息"
+          placement="right"
+          width={300}
+          open={addopen}
+          onClose={onaddClose}
+          getContainer={false}
+          style={{ 
+            position: 'absolute',
+            right: 0, // 从Modal的右边框开始
+            top: 0,
+            height: '100%'
+          }}
+          bodyStyle={{ padding: 16 }}
+        >
+          <Input.TextArea
+            rows={4}
+            value={applyMessage} // 绑定输入内容
+            onChange={(e) => setApplyMessage(e.target.value)} // 处理输入变化
+            placeholder={`你好！我是${userInfo.nickname || '匿名用户'}`} 
+            maxLength={100}
+            showCount
+          />
+          <div style={{ marginTop: 16, textAlign: 'right' }}>
+            <Button onClick={onaddClose} style={{ marginRight: 8 }}>
+              取消
+            </Button>
+            <Button type="primary" onClick={handleSendRequest}>
+              发送
+            </Button>
+          </div>
+        </Drawer>
+      </Modal>
     </div>
   );
 };
