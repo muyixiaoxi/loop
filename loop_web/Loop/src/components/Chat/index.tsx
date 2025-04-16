@@ -1,7 +1,18 @@
 import "./index.scss";
 import { observer } from "mobx-react-lite";
+import { useState } from "react";
+import { Input } from "antd";
 
 const Chat = observer(() => {
+  const { TextArea } = Input;
+  const [inputValue, setInputValue] = useState("");
+
+  // 发送消息
+  const handleSendMessage = () => {
+    // 在这里处理发送消息的逻辑，例如发送到服务器或WebSocket服务器
+    console.log("发送消息:", inputValue);
+    setInputValue(""); // 清空输入框
+  };
   return (
     <div className="chat-container">
       <div className="chat-header">
@@ -15,6 +26,7 @@ const Chat = observer(() => {
           <div className="firend-name">宝子</div>
         </div>
         <div className="chat-header-right">
+          {/* 视频 */}
           <div className="more-video">
             <svg
               fill="#E46342"
@@ -27,6 +39,7 @@ const Chat = observer(() => {
             </svg>
           </div>
           <div className="more-mask">
+            {/* 更多 */}
             <svg
               fill="#E46342"
               height="28px"
@@ -44,7 +57,32 @@ const Chat = observer(() => {
         </div>
       </div>
       <div className="chat-center"></div>
-      <div className="chat-input"></div>
+      <div className="chat-input">
+        <div className="chat-input-textarea">
+          <TextArea
+            placeholder="按 Ctrl + Enter 换行，按 Enter 发送"
+            rows={4}
+            className="textarea"
+            style={{
+              lineHeight: "1.1",
+              scrollbarWidth: "thin",
+              scrollbarColor: "rgba(0, 0, 0, 0.2) transparent",
+            }}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.ctrlKey) {
+                e.preventDefault(); // 阻止默认换行行为
+                // 这里添加发送消息的逻辑
+                handleSendMessage();
+              }
+              if (e.key === "Enter" && e.ctrlKey) {
+                // 允许换行
+                setInputValue((prev) => prev + "\n");
+              }
+            }}
+          />
+        </div>
+      </div>
     </div>
   );
 });
