@@ -9,11 +9,6 @@ interface User {
   password: string;
 }
 
-// 查询用户
-interface searchParams {
-  phone: string;
-  user_id: number;
-}
 interface edit {
   age: number;
   avatar: string;
@@ -23,11 +18,11 @@ interface edit {
 }
 
 //手机查
-export const searchUser = (searchData: searchParams) => {
+export const searchUser = (searchData: string) => {
   return http.get<User>(`/api/v1/user/query?phone=${searchData}`);
 };
 //id查
-export const idsearch = (searchData: searchParams) => {
+export const idsearch = (searchData: number) => {
   return http.get<User>(`/api/v1/user/query?user_id=${searchData}`);
 };
 
