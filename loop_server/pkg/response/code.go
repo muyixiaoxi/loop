@@ -9,6 +9,7 @@ const (
 	CodeInvalidParam
 	CodePhoneOrPasswordError
 	CodeInvalidToken
+	CodeOldPasswordError
 )
 
 var codeMsgMap = map[ResCode]string{
@@ -18,6 +19,7 @@ var codeMsgMap = map[ResCode]string{
 	CodeInvalidParam:         "无效的参数",
 	CodePhoneOrPasswordError: "手机号或密码错误",
 	CodeInvalidToken:         "无效的token",
+	CodeOldPasswordError:     "原始密码错误",
 }
 
 func (c ResCode) Msg() string {

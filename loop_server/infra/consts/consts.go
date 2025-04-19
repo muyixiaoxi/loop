@@ -16,7 +16,9 @@ const (
 )
 
 const (
-	WsMessageCmdHeartbeat      = 0
-	WsMessageCmdPrivateMessage = 1
-	WsMessageCmdGroupMessage   = 2
+	WsMessageCmdHeartbeat      = 0   // 心跳
+	WsMessageCmdPrivateMessage = 1   // 私聊
+	WsMessageCmdGroupMessage   = 2   // 群聊
+	WsMessageCmdOnlineAck      = 3   // 在线应答
+	WsMessageCmdRemind         = 100 //提醒
 )

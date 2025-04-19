@@ -4,6 +4,7 @@ import (
 	"context"
 	"loop_server/internal/domain"
 	"loop_server/internal/model/dto"
+	"loop_server/pkg/bcrypt"
 	"loop_server/pkg/request"
 )
 
@@ -30,8 +31,8 @@ func (u *userAppImpl) Register(ctx context.Context, user *dto.User) error {
 }
 
 func (u *userAppImpl) QueryUser(ctx context.Context, param *dto.QueryUserRequest) (*dto.UserInfo, error) {
-	user, err := u.userDomain.QueryUser(ctx, request.GetCurrentUser(ctx), param)
-	if err != nil || user.ID == 0 {
+	user, err := u.userDomain.QueryUser(ctx, param)
+	if err != nil || user == nil || user.ID == 0 {
 		return nil, err
 	}
 	isFriend, err := u.friendDomain.IsFriend(ctx, request.GetCurrentUser(ctx), user.ID)
@@ -39,8 +40,40 @@ func (u *userAppImpl) QueryUser(ctx context.Context, param *dto.QueryUserRequest
 		return nil, err
 	}
 	return &dto.UserInfo{
-		Nickname: user.Nickname,
-		Avatar:   user.Avatar,
-		IsFriend: isFriend,
+		Id:        user.ID,
+		Nickname:  user.Nickname,
+		Avatar:    user.Avatar,
+		IsFriend:  isFriend,
+		Signature: user.Signature,
+		Gender:    user.Gender,
+		Age:       user.Age,
 	}, nil
+}
+
+func (u *userAppImpl) UpdateUserInfo(ctx context.Context, user *dto.User) (*dto.User, error) {
+	err := u.userDomain.UpdateUser(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	user, err = u.userDomain.QueryUser(ctx, &dto.QueryUserRequest{UserId: user.ID})
+	if err != nil {
+		return nil, err
+	}
+	user.Password = ""
+	return user, err
+}
+
+func (u *userAppImpl) UpdateUserPassword(ctx context.Context, old string, new string) (bool, error) {
+	user, err := u.userDomain.QueryUser(ctx, &dto.QueryUserRequest{UserId: request.GetCurrentUser(ctx)})
+	if err != nil {
+		return false, err
+	}
+	if !bcrypt.ComparePassword(user.Password, old) {
+		return false, nil
+	}
+	err = u.userDomain.UpdateUserPassword(ctx, user.ID, new)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }

@@ -3,7 +3,6 @@ package impl
 import (
 	"context"
 	"loop_server/internal/model/dto"
-	"loop_server/internal/model/param"
 	"loop_server/internal/repository"
 	"loop_server/pkg/request"
 )
@@ -31,8 +30,8 @@ func (u *friendDomainImpl) GetFriendRequestList(ctx context.Context) ([]*dto.Fri
 	return u.friendRepo.GetFriendRequestListByRequesterIdOrRecipientId(ctx, request.GetCurrentUser(ctx))
 }
 
-func (u *friendDomainImpl) GetFriendList(ctx context.Context, page *param.Page) ([]*dto.User, error) {
-	return u.friendRepo.GetFriendListByUserId(ctx, request.GetCurrentUser(ctx), page)
+func (u *friendDomainImpl) GetFriendList(ctx context.Context) ([]*dto.User, error) {
+	return u.friendRepo.GetFriendListByUserId(ctx, request.GetCurrentUser(ctx))
 }
 
 func (u *friendDomainImpl) IsFriend(ctx context.Context, userId, friendId uint) (bool, error) {

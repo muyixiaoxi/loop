@@ -8,6 +8,7 @@ import (
 	domain_impl "loop_server/internal/domain/impl"
 	repo_impl "loop_server/internal/repository/impl"
 	"loop_server/internal/server"
+	server_impl "loop_server/internal/server/impl"
 )
 
 func main() {
@@ -22,11 +23,16 @@ func main() {
 
 	userDomain := domain_impl.NewUserDomainImpl(userRepo)
 	friendDomain := domain_impl.NewFriendDomainImpl(friendRepo)
+	imDomain := domain_impl.NewImDomainImpl()
 
 	userApp := app_impl.NewUserAppImpl(userDomain, friendDomain)
-	friendApp := app_impl.NewFriendAppImpl(friendDomain)
-	imApp := app_impl.NewImAppImpl()
+	friendApp := app_impl.NewFriendAppImpl(friendDomain, userDomain)
+	imApp := app_impl.NewImAppImpl(imDomain)
 
-	server := server.NewServer(userApp, friendApp, imApp)
+	userServer := server_impl.NewUserServerImpl(userApp)
+	friendServer := server_impl.NewFriendServerImpl(friendApp)
+	imServer := server_impl.NewImServerImpl(imApp)
+
+	server := server.NewServer(userServer, friendServer, imServer)
 	server.Init()
 }

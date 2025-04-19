@@ -6,6 +6,6 @@ type Page struct {
 }
 
 func (p *Page) Init() {
-	p.PageSize = min(10, p.PageSize)
-	p.PageNum = min(1, p.PageNum)
+	p.PageSize = max(10, p.PageSize)
+	p.PageNum = max(1, p.PageNum)
 }

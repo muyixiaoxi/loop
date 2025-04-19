@@ -8,7 +8,7 @@ import (
 func GenerateFromPassword(password string) (string, error) {
 	pwd, err := bcrypt2.GenerateFromPassword([]byte(password), bcrypt2.DefaultCost)
 	if err != nil {
-		slog.Error("model/po/user.go BeforeCreate err:", err)
+		slog.Error("model/po/user_server_impl.go BeforeCreate err:", err)
 		return "", err
 	}
 	return string(pwd), nil
@@ -17,7 +17,7 @@ func GenerateFromPassword(password string) (string, error) {
 func ComparePassword(old string, new string) bool {
 	err := bcrypt2.CompareHashAndPassword([]byte(old), []byte(new))
 	if err != nil {
-		slog.Error("model/po/user.go ComparePassword err:", err)
+		slog.Error("model/po/user_server_impl.go ComparePassword err:", err)
 	}
 	return err == nil
 }

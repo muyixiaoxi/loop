@@ -4,17 +4,16 @@ import (
 	"github.com/gin-gonic/gin"
 	"loop_server/infra/middleware"
 	"loop_server/infra/vars"
-	"loop_server/internal/application"
 	"strconv"
 )
 
 type server struct {
-	user   application.UserApp
-	friend application.FriendApp
-	im     application.ImApp
+	user   UserServer
+	friend FriendServer
+	im     ImServer
 }
 
-func NewServer(user application.UserApp, friend application.FriendApp, im application.ImApp) *server {
+func NewServer(user UserServer, friend FriendServer, im ImServer) *server {
 	return &server{
 		user:   user,
 		friend: friend,
@@ -27,18 +26,30 @@ func (s *server) Init() {
 	router.Use(middleware.Cors())
 
 	r := router.Group("/api/v1")
-
-	r.POST("/register", s.register)
-	r.POST("/login", s.login)
+	{
+		r.POST("/register", s.user.Register)
+		r.POST("/login", s.user.Login)
+	}
 
 	user := r.Group("/user")
-	user.Use(middleware.JWTAuthMiddleware())
-	user.GET("/query", s.queryUser)
-	user.POST("/friend/add", s.addFriend)
-	user.POST("/friend/dispose", s.disposeFriendRequest)
-	user.GET("/friend/request/list", s.getFriendRequestList)
-	user.GET("/friend/list", s.getFriendList)
+	{
+		user.Use(middleware.JWTAuthMiddleware())
+		user.GET("/query", s.user.QueryUser)
+		user.POST("/update_info", s.user.UpdateUserInfo)
+		user.POST("/update_password", s.user.UpdateUserPassword)
+	}
 
-	user.GET("/im", s.wsHandler)
+	friend := user.Group("/friend")
+	{
+		friend.POST("/add", s.friend.AddFriend)
+		friend.POST("/dispose", s.friend.DisposeFriendRequest)
+		friend.GET("/request/list", s.friend.GetFriendRequestList)
+		friend.GET("/list", s.friend.GetFriendList)
+	}
+	im := r
+	{
+		im.Use(middleware.JWTAuthMiddleware())
+		r.GET("/im", s.im.WsHandler)
+	}
 	router.Run(":" + strconv.Itoa(vars.App.Port))
 }

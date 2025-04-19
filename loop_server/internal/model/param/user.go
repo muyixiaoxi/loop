@@ -17,17 +17,20 @@ type LoginResponse struct {
 	Nickname string `json:"nickname"`
 }
 
-type AddFriendRequest struct {
-	FriendId uint   `json:"friend_id" binding:"required"`
-	Message  string `json:"message"`
-}
-
 type QueryUserRequest struct {
 	Phone  string `form:"phone"`
 	UserId uint   `form:"user_id"`
 }
 
-type DisposeFriendRequest struct {
-	RequesterId uint `json:"requester_id" binding:"required"`
-	Status      int  `json:"status" binding:"required"` // 1-同意，2-拒绝
+type UpdateUserInfoRequest struct {
+	Avatar    string `json:"avatar" binding:"required"`
+	Nickname  string `json:"nickname" binding:"required"`
+	Signature string `json:"signature"`
+	Gender    *int   `json:"gender" binding:"required"`
+	Age       *int   `json:"age" binding:"required"`
+}
+
+type UpdateUserPasswordRequest struct {
+	OldPassword string `json:"old_password" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required"`
 }

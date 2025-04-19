@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"loop_server/infra/consts"
 	"loop_server/internal/model/dto"
-	"loop_server/internal/model/param"
 	"loop_server/internal/model/po"
 )
 
@@ -93,10 +92,9 @@ func (u *friendRepoImpl) GetFriendRequestListByRequesterIdOrRecipientId(ctx cont
 	return po.BatchConvertFriendRequestPoToDto(data), nil
 }
 
-func (u *friendRepoImpl) GetFriendListByUserId(ctx context.Context, userId uint, page *param.Page) ([]*dto.User, error) {
+func (u *friendRepoImpl) GetFriendListByUserId(ctx context.Context, userId uint) ([]*dto.User, error) {
 	var data []*po.User
-	err := u.db.Joins("join friend_ship on user.id = friend_ship.friend_id").Where("user_id = ?", userId).
-		Offset((page.PageNum - 1) * page.PageSize).Limit(page.PageSize).
+	err := u.db.Select("user.id", "nickname", "avatar", "signature", "gender", "age").Joins("join friend_ship on user.id = friend_ship.friend_id").Where("user_id = ?", userId).
 		Find(&data).Error
 	if err != nil {
 		slog.Error("internal/repository/impl/user_repo_impl.go GetFriendListByUserId error", err)
