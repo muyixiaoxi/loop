@@ -1,8 +1,18 @@
 // 定义 WebSocket 消息类型
 interface WebSocketMessage<T = unknown> {
-  type: string; // 消息类型
+  cmd: number; // 消息类型,  0-心跳，1-私聊，2-群聊，3-在线应答
   data: T; // 消息内容（泛型）
 }
+/**
+ * data:{
+        "seq_id":"",//唯一标识
+        "sender_id":0,//发送者id
+        "receiver_id":0,//接收者id
+        "content":"",//消息内容
+        "type":0,//消息类型：0-文字，1-图片，2-文件，3-语音，4-视频
+        "send_time":""发送时间
+    }
+ */
 
 // WebSocket 配置项接口
 interface WebSocketOptions {
@@ -30,10 +40,10 @@ class WebSocketClient<T = unknown> {
   // 默认配置
   private readonly defaultOptions: Required<WebSocketOptions> = {
     url: "",
-    onOpen: () => {},
-    onClose: () => {},
-    onError: () => {},
-    onMessage: () => {},
+    onOpen: () => { },
+    onClose: () => { },
+    onError: () => { },
+    onMessage: () => { },
     reconnectInterval: 1000,
     reconnectAttempts: Number.MAX_VALUE,
     heartbeatInterval: 5000,
@@ -66,7 +76,8 @@ class WebSocketClient<T = unknown> {
         ) {
           this.heartbeatTimer = window.setInterval(() => {
             if (this.socket?.readyState === WebSocket.OPEN) {
-              this.socket.send(JSON.stringify({ type: "heartbeat" }));
+              // 发送心跳包
+              this.socket.send(JSON.stringify({ cmd: 0 }));
             }
           }, this.options.heartbeatInterval);
         }
@@ -96,13 +107,15 @@ class WebSocketClient<T = unknown> {
         this.options.onError?.(event);
       };
 
+      // 连接成功后接收消息
       this.socket.onmessage = (event) => {
         try {
           const message: WebSocketMessage<T> = JSON.parse(event.data);
-          console.log("收到 WebSocket 消息:", message);
+          // console.log("收到 WebSocket 消息:", message);
 
           // 忽略心跳消息
-          if (message.type === "heartbeat") return;
+          if (message.cmd === 0) return;
+          console.log(message, "心跳包外的数据");
 
           this.lastMessage = message;
           this.options.onMessage?.(message);

@@ -17,6 +17,7 @@
     "axios": "^1.8.4",
     "base-64": "^1.0.0",
     "crypto-js": "^4.2.0",
+    "dexie": "^4.0.11",
     "mobx": "^6.13.7",
     "mobx-persist-store": "^1.1.8",
     "mobx-react-lite": "^4.1.0",
