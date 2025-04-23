@@ -19,7 +19,6 @@ const Login = () => {
       message.error("请先阅读并同意服务协议和隐私保护指引");
       return;
     }
-
     if (login) {
       // 登录
       const valueParams = {
@@ -53,6 +52,10 @@ const Login = () => {
       }
     }
   };
+    //切换账号
+    const handleChange=()=>{
+      navigate('/change')
+    }
   return (
     <div className="login">
       <div className="login-container">
@@ -134,6 +137,7 @@ const Login = () => {
 
             <Form.Item>
               <a onClick={() => setLogin(!login)}>还没有账号? 去注册</a>
+              <a style={{float:'right'}} onClick={handleChange}>切换账号</a>
             </Form.Item>
           </Form>
         </div>
