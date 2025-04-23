@@ -20,3 +20,8 @@ export const postAddFriend = (addFriend: addFriend) => {
 export const getFriendList = () => {
   return http.get("/api/v1/user/friend/list");
 };
+
+// 处理好友申请
+export const postHandleFriend = (data: any) => {
+  return http.post("/api/v1/user/friend/dispose", data)
+}

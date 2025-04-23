@@ -1,15 +1,23 @@
 import { useEffect, useState } from "react";
+import { observer } from "mobx-react-lite";
 import { Drawer, Button, Modal, Input } from "antd";
 import { LeftOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import "./index.scss";
-import { getFriendList, postAddFriend, searchNewfriend } from "@/api/friend";
+import {
+  getFriendList,
+  postAddFriend,
+  searchNewfriend,
+  postHandleFriend,
+} from "@/api/friend";
 import { searchUser } from "@/api/user";
-// import { postAddFriend } from "@/api/friend";
 import userStore from "@/store/user";
-import { error } from "console";
+import ChatStore from "@/store/chat";
+import { getChatDB } from "@/utils/chat-db";
 
-const FirendList = () => {
-  const { userInfo, setUserInfo } = userStore; // 获取用户信息
+const FirendList = observer(() => {
+  const { userInfo } = userStore; // 获取用户信息
+  const db = getChatDB(userInfo.id); // 获取数据库
+  const { setCurrentFriendData, setCurrentMessages } = ChatStore;
   const [open, setOpen] = useState(false);
   const [addopen, setaddOpen] = useState(false); //添加好友
   const [isModalOpen, setIsModalOpen] = useState(false); // 控制模态框的显示状态
@@ -27,8 +35,11 @@ const FirendList = () => {
   }); // 好友申请列表
   const [applyMessage, setApplyMessage] = useState(""); // 抽屉中的输入框内容
 
-  // 查询好友申请
-  const handleSearch = async () => {
+  // 点击新的朋友
+  const handleNew = async () => {
+    setOpen(true);
+
+    // 查询好友申请
     const res: any = await searchNewfriend();
     if (res.code === 1000) {
       setNewFriendList(res.data);
@@ -36,20 +47,10 @@ const FirendList = () => {
     }
   };
 
-  // 点击新的朋友
-  const handleNew = () => {
-    setOpen(true);
-    handleSearch();
-  };
-
-  // 点击加号
-  const handleAdd = () => {
-    setIsModalOpen(true); // 打开模态框
-  };
   //点击添加好友
   const handleAD = (id: number) => {
     // 更新 addData 中的 friend_id
-    setaddData((prevData) => ({
+    setaddData((prevData: any) => ({
       ...prevData,
       friend_id: id,
     }));
@@ -81,15 +82,11 @@ const FirendList = () => {
     setaddOpen(false);
   };
 
-  // 关闭模态框
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-  };
-
   const onClose = () => {
-    setOpen(false);
+    setOpen(false); // 关闭抽屉
   };
 
+  // 设置抽屉的样式
   const containerStyle: React.CSSProperties = {
     position: "relative",
     overflow: "hidden",
@@ -102,10 +99,6 @@ const FirendList = () => {
 
     console.log(res);
   };
-
-  useEffect(() => {
-    getFriendListData();
-  }, []);
 
   // 处理Modal中的搜索输入变化
   const handleModalSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -155,12 +148,30 @@ const FirendList = () => {
 
   // 组件卸载时清除定时器
   useEffect(() => {
+    getFriendListData();
+
     return () => {
       if (modalTimer) {
         clearTimeout(modalTimer);
       }
     };
   }, [modalTimer]);
+
+  // 处理好友申请
+  const handleApply = async (friendId: number, status: number) => {
+    const data = {
+      requester_id: friendId,
+      status: status,
+    };
+    postHandleFriend(data);
+  };
+
+  // 点击获取新的会话好友数据
+  const handleNewConversation = async (data: any) => {
+    setCurrentFriendData(data); // 设置当前好友数据
+    const res: any = await db.getConversation(userInfo.id, data.id); // 获取会话数据
+    setCurrentMessages(res?.messages); // 设置当前消息
+  };
 
   return (
     <div className="friend-list" style={containerStyle}>
@@ -191,7 +202,10 @@ const FirendList = () => {
           <ul className="friend-ul">
             {friendList.map((item: any) => (
               <li key={item.id}>
-                <div className="friend-list-item">
+                <div
+                  className="friend-list-item"
+                  onClick={() => handleNewConversation(item)}
+                >
                   <div className="friend-list-item-avatar">
                     <img src={item.avatar} alt="头像" />
                   </div>
@@ -207,7 +221,7 @@ const FirendList = () => {
           <div className="drawer-header">
             <LeftOutlined onClick={onClose} />
             <span>新朋友</span>
-            <PlusOutlined onClick={handleAdd} />
+            <PlusOutlined onClick={() => setIsModalOpen(true)} />
           </div>
         }
         width={300}
@@ -237,7 +251,7 @@ const FirendList = () => {
                     className="accept"
                     onClick={(e) => {
                       e.stopPropagation();
-                      console.log("接受好友请求", item);
+                      handleApply(item.requester_id, 1);
                     }}
                   >
                     确认
@@ -251,7 +265,7 @@ const FirendList = () => {
       <Modal
         title="添加新朋友"
         open={isModalOpen}
-        onCancel={handleModalClose}
+        onCancel={() => setIsModalOpen(false)}
         footer={null}
         closable={true}
         style={{ overflow: "hidden" }}
@@ -387,6 +401,6 @@ const FirendList = () => {
       </Modal>
     </div>
   );
-};
+});
 
 export default FirendList;

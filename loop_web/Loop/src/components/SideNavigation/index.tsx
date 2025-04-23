@@ -1,7 +1,6 @@
 import "./index.scss";
 import { observer } from "mobx-react-lite";
 import userStore from "@/store/user";
-import navigationStore from "@/store/navigation";
 import globalStore from "@/store/global";
 import icon1 from "../../../public/message.svg";
 import icon2 from "../../../public/message2.svg";
@@ -13,8 +12,8 @@ import { useNavigate } from "react-router-dom";
 
 const SideNavigation = observer(() => {
   const { userInfo } = userStore;
-  const { currentRoute, setCurrentRoute } = navigationStore;
-  const { isShowUserAmend, setIsShowUserAmend } = globalStore;
+  const { isShowUserAmend, setIsShowUserAmend, currentRoute, setCurrentRoute } =
+    globalStore;
   const navigate = useNavigate();
 
   const messageIcon = currentRoute === "conversation" ? icon2 : icon1;
@@ -22,11 +21,7 @@ const SideNavigation = observer(() => {
   const settingIcon = icon5;
 
   const handleIconClick = (item: string) => {
-    if (item === "setting") {
-      console.log("Setting clicked");
-    } else {
-      setCurrentRoute(item);
-    }
+    setCurrentRoute(item);
   };
 
   const logoutContent = (
@@ -67,7 +62,7 @@ const SideNavigation = observer(() => {
         </div>
         <div>
           <Popover placement="right" content={logoutContent}>
-            <div className="setting" onClick={() => console.log("设置")}>
+            <div className="setting">
               <img src={settingIcon} alt="Setting" />
             </div>
           </Popover>

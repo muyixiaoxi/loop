@@ -1,30 +1,34 @@
-import React from "react";
+import { useEffect, useState } from "react";
 import "./index.scss";
 import MessageItem from "@/components/MessageItem";
+import { getChatDB } from "@/utils/chat-db";
+import userStore from "@/store/user";
 
 const MessageList = () => {
-  const item = [
-    {
-      avatar:
-        "https://web.botgate.cn/api/v1/users/f83c9d5efde54b23955b0cb70c4d6d2a/avatar?v=",
-      name: "二狗还得哈啥可啊手动阀是大家·卡萨丁",
-      desc: "这是二狗的简介阿斯顿发放的啊手动阀第三方杀手大噶山豆根阿斯顿发生",
-    },
-    {
-      avatar:
-        "https://web.botgate.cn/api/v1/users/f83c9d5efde54b23955b0cb70c4d6d2a/avatar?v=",
-      name: "二狗还得哈啥可啊手动阀是大家·卡萨丁",
-      desc: "这是二狗的简介阿斯顿发放的啊手动阀第三方杀手大噶山豆根阿斯顿发生",
-    },
-  ];
+  const { userInfo } = userStore;
+  const db = getChatDB(userInfo.id); // 获取数据库对象
+
+  const [chatList, setChatList] = useState<any[]>([]); // 聊天列表
+
+  const handleMessageList = async () => {
+    const list = await db.getUserConversations(userInfo.id); // 获取聊天列表
+    setChatList(list); // 更新聊天列表状态
+    console.log(list, "聊天列表"); // 打印聊天列表
+  };
+  useEffect(() => {
+    handleMessageList();
+  }, []);
+
   return (
     <div className="message-list">
-      {item.map((item, index) => (
+      {chatList.map((item: any) => (
         <MessageItem
-          key={index}
-          avatar={item.avatar}
-          name={item.name}
-          desc={item.desc}
+          key={item.targetId}
+          friendId={item.targetId}
+          avatar={item.headImage}
+          name={item.showName}
+          lastContent={item.lastContent}
+          lastSendTime={item.lastSendTime}
         />
       ))}
     </div>
