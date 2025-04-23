@@ -22,7 +22,7 @@ export const searchUser = (searchData: string) => {
   return http.get<User>(`/api/v1/user/query?phone=${searchData}`);
 };
 //id查
-export const idsearch = (searchData: number) => {
+export const idsearch = (searchData: number | string) => {
   return http.get<User>(`/api/v1/user/query?user_id=${searchData}`);
 };
 

@@ -1,7 +1,7 @@
 import "./index.scss";
 import { observer } from "mobx-react-lite";
 import { useState, useContext, useRef, useEffect } from "react";
-import { Input } from "antd";
+import { Input, Drawer, Switch } from "antd";
 import { WebSocketContext } from "@/pages/Home";
 import chatStore from "@/store/chat";
 import userStore from "@/store/user";
@@ -21,7 +21,8 @@ const Chat = observer(() => {
 
   const { TextArea } = Input; // 使用TextArea组件
   const [inputValue, setInputValue] = useState(""); // 输入框的值
-
+  const [openDrawer, setOpenDrawer] = useState(false); // 是否打开抽屉
+  const [topSwitch, setTopSwitch] = useState<boolean>(false); //置顶开关
   /**
    * 发送消息
    */
@@ -109,7 +110,7 @@ const Chat = observer(() => {
               <path d="M9 9.5a4 4 0 00-4 4v9a4 4 0 004 4h10a4 4 0 004-4v-9a4 4 0 00-4-4H9zm16.829 12.032l3.723 1.861A1 1 0 0031 22.5v-9a1 1 0 00-1.448-.894l-3.723 1.861A1.5 1.5 0 0025 15.81v4.38a1.5 1.5 0 00.829 1.342z"></path>
             </svg>
           </div>
-          <div className="more-mask">
+          <div className="more-mask" onClick={() => setOpenDrawer(true)}>
             {/* 更多 */}
             <svg
               fill="#E46342"
@@ -187,6 +188,27 @@ const Chat = observer(() => {
           />
         </div>
       </div>
+
+      <Drawer
+        title="聊天信息"
+        placement="right"
+        maskStyle={{ background: "transparent" }}
+        onClose={() => setOpenDrawer(false)}
+        open={openDrawer}
+        style={{ position: "absolute" }}
+        maskClosable={true}
+      >
+        <div className="chat-drawer">
+          <div className="chat-drawer-img">
+            <img src={currentFriendAvatar} alt="头像" />
+          </div>
+          <div className="chat-drawer-name">{currentFriendName}</div>
+          <div className="chat-drawer-istop">
+            <div className="chat-drawer-istop-text">聊天置顶</div>
+            <Switch value={topSwitch} onChange={() => console.log("切换")} />
+          </div>
+        </div>
+      </Drawer>
     </div>
   );
 });
