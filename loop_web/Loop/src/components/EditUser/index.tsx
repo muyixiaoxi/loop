@@ -17,41 +17,29 @@ type UserType = {
 
 // observer 装饰器将组件变为响应式组件
 const EditUser = observer(() => {
-  const { userInfo, setUserInfo } = userStore; // 获取用户信息
+  const { userInfo, setUserInfo } = userStore;
 
   // 使用 useState 来管理表单数据
   const [formData, setFormData] = useState<UserType>(userInfo);
 
   // 当 userInfo 变化时更新 formData
   useEffect(() => {
-    // 如果 userInfo 存在，则更新 formData；否则保持默认值
     setFormData(userInfo);
   }, [userInfo]);
 
   const handleUpload = async (file: File) => {
-    // 上传图片到OSS
     if (!file) return;
 
     try {
       // 上传图片到OSS
       const { url } = await uploadToOSS(file);
-      const { age, nickname, signature } = formData as any;
-
-      // 更新表单数据中的头像字段
-      const updatedUserData = {
-        age,
-        nickname,
-        signature,
-        gender: userInfo.gender,
-        avatar: url,
-      };
-      const res: any = await editUser(updatedUserData);
-      if (res && res.code === 1000) {
-        setUserInfo(res.data); // 更新 store 中的用户信息
-        message.success("头像修改成功");
-      } else {
-        message.error("头像修改失败");
-      }
+      
+      // 只更新本地状态，不调用接口
+      setFormData(prev => ({
+        ...prev,
+        avatar: url
+      }));
+      message.success("头像上传成功，请点击保存以更新信息");
     } catch (error) {
       console.error("文件上传失败:", error);
       message.error("文件上传失败");
@@ -79,23 +67,26 @@ const EditUser = observer(() => {
   };
 
   const handleSubmit = async (values: any) => {
-    const { avatar } = formData as any;
-
-    // 处理表单提交事件
+    // 使用最新的 formData 中的 avatar
     const updatedUserData = {
-      avatar: avatar,
+      avatar: formData.avatar,
       nickname: values.nickname,
       signature: values.signature,
       gender: values.gender,
       age: values.age,
     };
 
-    const res: any = await editUser(updatedUserData); // 调用 API 更新用户信息
-    if (res && res.code === 1000) {
-      setUserInfo(res.data); // 更新 store 中的用户信息
-      message.success("个人信息修改成功");
-    } else {
-      message.error("个人信息修改失败");
+    try {
+      const res: any = await editUser(updatedUserData);
+      if (res && res.code === 1000) {
+        setUserInfo(res.data);
+        message.success("个人信息修改成功");
+      } else {
+        message.error("个人信息修改失败");
+      }
+    } catch (error) {
+      console.error("更新用户信息失败:", error);
+      message.error("更新用户信息失败");
     }
   };
 

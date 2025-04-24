@@ -6,9 +6,10 @@ import { LeftOutlined } from '@ant-design/icons';
 import { LoginPost } from "@/api/login";
 import { useNavigate } from "react-router-dom";
 import userStore from "@/store/user";
+import saveUserToHistory from "../../utils/userHistory"; // 导入保存历史用户的函数
 
 const Change = () => {
-  const [checked, setChecked] = useState(false);
+  const [checked, setChecked] = useState(true);
   const [messageApi, contextHolder] = message.useMessage();
   const [showAccountManage, setShowAccountManage] = useState(false);
   const historyUsers = JSON.parse(localStorage.getItem('hisuser') || '[]');
@@ -28,7 +29,11 @@ const Change = () => {
   const handleopen = () => {
     setShowAccountManage(!showAccountManage);
   };
-
+  //添加账号
+  const handlejump = () => {
+    const navigate = useNavigate();
+    navigate('/login')
+  }
   const handleSelectAccount = (user: any) => {
     setCurrentUser({
       avatar: user.avatar || image1,
@@ -65,6 +70,14 @@ const Change = () => {
       if (result?.code === 1000) {
         setToken(result.data.token);
         setUserInfo(result.data.user);
+        // 保存账号信息到历史记录
+        saveUserToHistory({
+          phone: selectedUser.phone,
+          password: selectedUser.password, // 注意：实际项目中不建议存储明文密码
+          avatar: result.data.user.avatar,
+          nickname: result.data.user.nickname,
+          timestamp: new Date().getTime()
+        });
         navigate("/home");
         messageApi.success("登录成功");
       } else {
@@ -77,7 +90,7 @@ const Change = () => {
   };
 
   return (
-    <div className="main">
+    <div className="zhanghao">
       {contextHolder}
       <div className={`content-container ${showAccountManage ? 'show-account' : 'show-profile'}`}>
         {/* 账号管理内容 */}
@@ -113,6 +126,12 @@ const Change = () => {
                 onClick={handleopen}
               >
                 账号管理
+              </span>
+              <span 
+                style={{color:'#1677ff',cursor: 'pointer'}} 
+                onClick={handlejump}
+              >
+               添加账号
               </span>
             </div>
           </div>
