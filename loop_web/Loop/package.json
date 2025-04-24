@@ -26,6 +26,7 @@
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.4.1",
     "sass": "^1.86.0",
+    "segmentit": "^2.0.3",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
