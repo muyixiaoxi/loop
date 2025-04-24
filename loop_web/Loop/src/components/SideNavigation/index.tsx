@@ -32,7 +32,7 @@ const SideNavigation = observer(() => {
           localStorage.removeItem("userdata");
           localStorage.removeItem("loopUserStore");
           // 使用 replace 选项重定向到登录页面
-          navigate("/login", { replace: true });
+          navigate("/change", { replace: true });
         }}
       >
         退出登录
