@@ -6,9 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "build": "vite build --emptyOutDir",
+    "preview": "vite preview --host"
   },
   "dependencies": {
     "@ant-design/v5-patch-for-react-19": "^1.0.3",
@@ -26,7 +26,8 @@
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.4.1",
     "sass": "^1.86.0",
-    "segmentit": "^2.0.3"
+    "segmentit": "^2.0.3",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
@@ -38,6 +39,7 @@
     "@types/pinyin": "^2.10.2",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
+    "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "eslint": "^9.21.0",
     "eslint-plugin-react-hooks": "^5.1.0",

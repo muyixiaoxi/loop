@@ -1,5 +1,6 @@
 import "./index.scss";
 import { observer } from "mobx-react-lite";
+import { v4 as uuidv4 } from "uuid";
 import { useState, useContext, useRef, useEffect } from "react";
 import { Input, Drawer, Switch } from "antd";
 import { WebSocketContext } from "@/pages/Home";
@@ -27,18 +28,23 @@ const Chat = observer(() => {
    * 发送消息
    */
   const handleSendMessage = async () => {
+    const messageId = uuidv4(); // 生成唯一的消息ID
     // 在这里处理发送消息的逻辑，例如发送到服务器或WebSocket服务器
-    const message: any = {
+    const message = {
       cmd: 1,
       data: {
-        seq_id: String(Date.now()),
+        seq_id: messageId,
         sender_id: userInfo.id,
         receiver_id: currentFriendId, // 这里可以根据需要设置接收者ID,
         content: inputValue,
         send_time: Date.now(),
         type: 0,
+        sender_nickname: userInfo.nickname,
+        sender_avatar: userInfo.avatar,
       },
     };
+
+    console.log(currentFriendName, currentFriendAvatar, "---");
 
     // 先添加到本地存储（乐观更新）
     await db.upsertConversation(userInfo.id, {
@@ -50,13 +56,15 @@ const Chat = observer(() => {
       unreadCount: 0,
       messages: [
         {
-          id: Date.now(),
+          id: messageId,
           targetId: currentFriendId,
           type: "USER",
           sendId: userInfo.id,
           content: inputValue,
           sendTime: Date.now(),
-          status: "read",
+          sender_nickname: userInfo.nickname,
+          sender_avatar: userInfo.avatar,
+          status: "sending",
         },
       ],
     });
@@ -192,7 +200,9 @@ const Chat = observer(() => {
       <Drawer
         title="聊天信息"
         placement="right"
-        maskStyle={{ background: "transparent" }}
+        styles={{
+          mask: { background: "transparent" },
+        }}
         onClose={() => setOpenDrawer(false)}
         open={openDrawer}
         style={{ position: "absolute" }}
@@ -205,7 +215,10 @@ const Chat = observer(() => {
           <div className="chat-drawer-name">{currentFriendName}</div>
           <div className="chat-drawer-istop">
             <div className="chat-drawer-istop-text">聊天置顶</div>
-            <Switch value={topSwitch} onChange={() => console.log("切换")} />
+            <Switch
+              value={topSwitch}
+              onChange={() => setTopSwitch(!topSwitch)}
+            />
           </div>
         </div>
       </Drawer>

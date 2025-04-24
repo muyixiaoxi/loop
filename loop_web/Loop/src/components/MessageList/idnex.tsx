@@ -4,7 +4,7 @@ import MessageItem from "@/components/MessageItem";
 import { getChatDB } from "@/utils/chat-db";
 import userStore from "@/store/user";
 import { Input } from "antd";
-import { LeftOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
+import { SearchOutlined } from "@ant-design/icons";
 
 const MessageList = () => {
   const { userInfo } = userStore;
@@ -23,7 +23,6 @@ const MessageList = () => {
 
   return (
     <div className="message-list">
-
       <div className="message-list-content">
         <div className="message-list-search">
           <Input
