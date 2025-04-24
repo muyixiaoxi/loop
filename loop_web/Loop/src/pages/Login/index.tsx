@@ -6,35 +6,13 @@ import { message } from "@/utils/message";
 import { generateNickname } from "@/utils/nickname";
 import { useNavigate } from "react-router-dom";
 import userStore from "@/store/user";
+import saveUserToHistory from "../../utils/userHistory"; // 导入保存历史用户的函数
 
 const Login = () => {
   const { setUserInfo, setToken } = userStore;
   const [form] = Form.useForm();
   const [login, setLogin] = useState<boolean>(true);
   const navigate = useNavigate();
-
-  const saveUserToHistory = (userData: any) => {
-    const historyUsers = JSON.parse(localStorage.getItem('hisuser') || '[]');
-    
-    // 检查是否已存在相同账号
-    const existingIndex = historyUsers.findIndex(
-      (user: any) => user.phone === userData.phone
-    );
-    
-    if (existingIndex >= 0) {
-      // 移除已有账号
-      historyUsers.splice(existingIndex, 1);
-    }
-    
-    // 将新账号添加到数组开头
-    historyUsers.unshift(userData);
-    
-    // 限制历史记录数量（最多保存10个）
-    const maxHistory = 10;
-    const trimmedHistory = historyUsers.slice(0, maxHistory);
-    
-    localStorage.setItem('hisuser', JSON.stringify(trimmedHistory));
-  };
 
   const onFinish = async (value: any) => {
     console.log(value);
