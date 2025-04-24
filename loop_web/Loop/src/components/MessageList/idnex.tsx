@@ -3,6 +3,8 @@ import "./index.scss";
 import MessageItem from "@/components/MessageItem";
 import { getChatDB } from "@/utils/chat-db";
 import userStore from "@/store/user";
+import { Input } from "antd";
+import { LeftOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 
 const MessageList = () => {
   const { userInfo } = userStore;
@@ -21,16 +23,28 @@ const MessageList = () => {
 
   return (
     <div className="message-list">
-      {chatList.map((item: any) => (
-        <MessageItem
-          key={item.targetId}
-          friendId={item.targetId}
-          avatar={item.headImage}
-          name={item.showName}
-          lastContent={item.lastContent}
-          lastSendTime={item.lastSendTime}
-        />
-      ))}
+
+      <div className="message-list-content">
+        <div className="message-list-search">
+          <Input
+            placeholder="搜索好友"
+            prefix={<SearchOutlined className="search-icon" />}
+            allowClear
+          />
+        </div>
+        <div className="message-list-item">
+          {chatList.map((item: any) => (
+            <MessageItem
+              key={item.targetId}
+              friendId={item.targetId}
+              avatar={item.headImage}
+              name={item.showName}
+              lastContent={item.lastContent}
+              lastSendTime={item.lastSendTime}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 };

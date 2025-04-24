@@ -8,7 +8,6 @@ import { observer } from "mobx-react-lite";
 
 // 定义用户类型
 type UserType = {
-  id: number;
   age: number;
   avatar: string;
   gender: number;
@@ -16,29 +15,17 @@ type UserType = {
   signature: string;
 };
 
-// 默认用户对象
-const defaultUser: UserType = {
-  id: 0,
-  age: 18,
-  avatar: "",
-  gender: 0,
-  nickname: "新用户",
-  signature: "暂无个性签名",
-};
-
 // observer 装饰器将组件变为响应式组件
 const EditUser = observer(() => {
   const { userInfo, setUserInfo } = userStore; // 获取用户信息
 
   // 使用 useState 来管理表单数据
-  const [formData, setFormData] = useState<UserType>(userInfo || defaultUser);
+  const [formData, setFormData] = useState<UserType>(userInfo);
 
   // 当 userInfo 变化时更新 formData
   useEffect(() => {
     // 如果 userInfo 存在，则更新 formData；否则保持默认值
-    if (userInfo) {
-      setFormData(userInfo);
-    }
+    setFormData(userInfo);
   }, [userInfo]);
 
   const handleUpload = async (file: File) => {
@@ -48,10 +35,14 @@ const EditUser = observer(() => {
     try {
       // 上传图片到OSS
       const { url } = await uploadToOSS(file);
+      const { age, nickname, signature } = formData as any;
 
       // 更新表单数据中的头像字段
       const updatedUserData = {
-        ...formData,
+        age,
+        nickname,
+        signature,
+        gender: userInfo.gender,
         avatar: url,
       };
       const res: any = await editUser(updatedUserData);
@@ -88,14 +79,17 @@ const EditUser = observer(() => {
   };
 
   const handleSubmit = async (values: any) => {
+    const { avatar } = formData as any;
+
     // 处理表单提交事件
     const updatedUserData = {
-      ...formData,
+      avatar: avatar,
       nickname: values.nickname,
       signature: values.signature,
       gender: values.gender,
       age: values.age,
     };
+
     const res: any = await editUser(updatedUserData); // 调用 API 更新用户信息
     if (res && res.code === 1000) {
       setUserInfo(res.data); // 更新 store 中的用户信息
@@ -108,16 +102,16 @@ const EditUser = observer(() => {
   return (
     <div className="edit-user-container">
       <div className="avatar1" onClick={triggerFileInput}>
-        <img src={formData.avatar} alt="" />
+        <img src={formData?.avatar} alt="" />
         <div className="overlay">点击修改</div>
       </div>
       <Form
         name="edit_user"
         initialValues={{
-          nickname: formData.nickname || "新用户",
-          signature: formData.signature || "暂无个性签名",
-          gender: formData.gender || 0,
-          age: formData.age || 18,
+          nickname: formData?.nickname,
+          signature: formData?.signature,
+          gender: formData?.gender || 0,
+          age: formData?.age || 18,
         }}
         size="large"
         style={{ width: "80%", height: "50%", marginLeft: "16%" }}
