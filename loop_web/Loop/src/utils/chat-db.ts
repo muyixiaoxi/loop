@@ -10,7 +10,7 @@ export interface ChatMessage {
   sendAvatar?: string; // 图片URL (可选)
   content: string; // 消息内容
   sendTime: number; // 发送时间戳
-  status?: "sending" | "sent" | "failed" | "read"; // 消息状态
+  status?: "success" | "sending" | "failed"; // 消息状态
   messageType?: number; // 消息类型(0:文本 1:图片等)
 }
 
@@ -42,7 +42,10 @@ class ChatDB extends Dexie {
   }
 
   // 添加或更新会话（自动关联用户ID）
-  upsertConversation = async (userId: number, conversation: Conversation | any) => {
+  upsertConversation = async (
+    userId: number,
+    conversation: Conversation | any
+  ) => {
     // 确保targetId是数字类型
     const targetId = Number(conversation.targetId);
     const key: [number, number] = [userId, targetId];
@@ -53,19 +56,23 @@ class ChatDB extends Dexie {
     const mergedMessages = [
       ...(existing?.messages || []),
       ...(conversation.messages || []),
-    ].filter((msg, index, self) =>
-      self.findIndex(m =>
-        m.id === msg.id ||
-        (m.sendTime === msg.sendTime && m.sendId === msg.sendId)
-      ) === index
-    ).sort((a, b) => a.sendTime - b.sendTime);
+    ]
+      .filter(
+        (msg, index, self) =>
+          self.findIndex(
+            (m) =>
+              m.id === msg.id ||
+              (m.sendTime === msg.sendTime && m.sendId === msg.sendId)
+          ) === index
+      )
+      .sort((a, b) => a.sendTime - b.sendTime);
 
     // 更新会话数据
     return this.conversations.put({
       ...(existing || {}), // 保留已有数据
-      ...conversation,    // 合并新数据
+      ...conversation, // 合并新数据
       userId,
-      targetId,         // 确保是数字类型
+      targetId, // 确保是数字类型
       messages: mergedMessages,
       lastSendTime: Date.now(),
     });

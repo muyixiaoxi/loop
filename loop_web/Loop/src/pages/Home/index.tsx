@@ -45,9 +45,12 @@ const Home = observer(() => {
         console.log("收到消息:", message);
         // const { cmd, data, receiver_id } = message;
         console.log("currentFriendId", currentFriendId);
-
-        // 存储新消息
-        handleNewStorage(message.data);
+        if (message.cmd === 1) {
+          // 存储新消息
+          handleNewStorage(message.data);
+        } else if (message.cmd === 3) {
+          console.log("收到消息:", message);
+        }
       },
     });
 
@@ -70,6 +73,8 @@ const Home = observer(() => {
     await db.upsertConversation(item.receiver_id, {
       targetId: item.sender_id,
       type: "USER",
+      showName: item.sender_nickname,
+      headImage: item.sender_avatar,
       lastContent: item.content,
       unreadCount: 0,
       messages: [
@@ -80,7 +85,9 @@ const Home = observer(() => {
           sendId: item.sender_id,
           content: item.content,
           sendTime: item.send_time,
-          status: "read",
+          sender_nickname: item.sender_nickname,
+          sender_avatar: item.sender_avatar,
+          status: "success",
         },
       ],
     });
