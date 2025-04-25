@@ -10,7 +10,7 @@ import { getChatDB } from "@/utils/chat-db";
 
 const Chat = observer(() => {
   const { userInfo } = userStore;
-  const { sendMessage } = useContext(WebSocketContext); // 使用WebSocket上下文
+  const { sendMessageWithTimeout } = useContext(WebSocketContext); // 使用WebSocket上下文
   const {
     currentFriendId,
     currentFriendName,
@@ -44,8 +44,6 @@ const Chat = observer(() => {
       },
     };
 
-    console.log(currentFriendName, currentFriendAvatar, "---");
-
     // 先添加到本地存储（乐观更新）
     await db.upsertConversation(userInfo.id, {
       targetId: currentFriendId,
@@ -71,8 +69,58 @@ const Chat = observer(() => {
 
     handleNewConversation();
     // 发送消息到服务器
-    sendMessage(message);
+    sendMessageWithTimeout(message);
     setInputValue(""); // 清空输入框
+  };
+
+  // 重新发送
+  const handleResendMessage = async (failedMessage: any) => {
+    const message = {
+      cmd: 1,
+      data: {
+        seq_id: uuidv4(), // 生成新的消息ID
+        sender_id: userInfo.id,
+        receiver_id: failedMessage.targetId,
+        content: failedMessage.content,
+        send_time: Date.now(),
+        type: 0,
+        sender_nickname: userInfo.nickname,
+        sender_avatar: userInfo.avatar,
+      },
+    };
+
+    // 更新本地存储状态为发送中
+    await db.upsertConversation(userInfo.id, {
+      targetId: failedMessage.targetId,
+      type: "USER",
+      showName: currentFriendName,
+      headImage: currentFriendAvatar,
+      lastContent: failedMessage.content,
+      unreadCount: 0,
+      messages: [
+        {
+          id: message.data.seq_id,
+          targetId: failedMessage.targetId,
+          type: "USER",
+          sendId: userInfo.id,
+          content: failedMessage.content,
+          sendTime: Date.now(),
+          sender_nickname: userInfo.nickname,
+          sender_avatar: userInfo.avatar,
+          status: "sending",
+        },
+      ],
+    });
+
+    // 更新聊天记录
+    const res: any = await db.getConversation(
+      userInfo.id,
+      Number(currentFriendId)
+    );
+    setCurrentMessages(res?.messages);
+
+    // 重新发送消息
+    sendMessageWithTimeout(message); // 重新发送消息
   };
 
   // 获取当前好友聊天记录
@@ -154,6 +202,24 @@ const Chat = observer(() => {
               />
             )}
             <div className="message-content">
+              {/* 添加状态指示器 */}
+              {message.sendId === userInfo.id && (
+                <div className="message-status">
+                  {message.status === "sending" && (
+                    <div className="status-sending">
+                      <div className="loading-circle"></div>
+                    </div>
+                  )}
+                  {message.status === "failed" && (
+                    <div
+                      className="status-failed"
+                      onClick={() => handleResendMessage(message)}
+                    >
+                      <div className="exclamation-mark">!</div>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="message-text">{message.content}</div>
             </div>
             {/* 信息是自己发的，展示自身头像 */}
