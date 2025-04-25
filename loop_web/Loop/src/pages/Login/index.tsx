@@ -30,16 +30,16 @@ const Login = () => {
       if (result?.code === 1000) {
         setToken(result.data.token);
         setUserInfo(result.data.user);
-        
+
         // 保存账号信息到历史记录
         saveUserToHistory({
           phone: value.phone,
           password: value.password, // 注意：实际项目中不建议存储明文密码
           avatar: result.data.user.avatar,
           nickname: result.data.user.nickname,
-          timestamp: new Date().getTime()
+          timestamp: new Date().getTime(),
         });
-        
+
         navigate("/home");
         message.success("登录成功");
       } else {
@@ -62,13 +62,13 @@ const Login = () => {
       }
     }
   };
-    //切换账号
-    const handleChange=()=>{
-      navigate('/change')
-    }
+  //切换账号
+  const handleChange = () => {
+    navigate("/change");
+  };
   // 检查是否有历史账号
   const hasHistoryUsers = () => {
-    const historyUsers = localStorage.getItem('hisuser');
+    const historyUsers = localStorage.getItem("hisuser");
     return historyUsers && JSON.parse(historyUsers).length > 0;
   };
 
@@ -152,9 +152,13 @@ const Login = () => {
             </Button>
 
             <Form.Item>
-              <a onClick={() => setLogin(!login)}>还没有账号? 去注册</a>
+              <a onClick={() => setLogin(!login)}>
+                {login ? "还没有账号? 去注册" : "已有账号? 去登录"}
+              </a>
               {hasHistoryUsers() && (
-                <a style={{float:'right'}} onClick={handleChange}>切换账号</a>
+                <a style={{ float: "right" }} onClick={handleChange}>
+                  历史账号
+                </a>
               )}
             </Form.Item>
           </Form>

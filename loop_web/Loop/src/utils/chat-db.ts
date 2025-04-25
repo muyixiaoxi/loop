@@ -78,28 +78,6 @@ class ChatDB extends Dexie {
     });
   };
 
-  // 新增：单独添加消息到会话
-  addMessageToConversation = async (
-    userId: number,
-    targetId: number,
-    message: ChatMessage
-  ) => {
-    const key: [number, number] = [userId, targetId];
-    const conversation = await this.conversations.get(key);
-
-    if (conversation) {
-      const updatedMessages = [...(conversation.messages || []), message].sort(
-        (a, b) => a.sendTime - b.sendTime
-      );
-
-      return this.conversations.update(key, {
-        messages: updatedMessages,
-        lastContent: message.content,
-        lastSendTime: message.sendTime,
-      });
-    }
-    return false;
-  };
 
   // 获取用户所有会话
   getUserConversations = async (userId: number) => {

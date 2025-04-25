@@ -1,5 +1,7 @@
 import "./index.scss";
 import { observer } from "mobx-react-lite";
+import { WebSocketContext } from "@/pages/Home";
+import { useContext } from "react";
 import userStore from "@/store/user";
 import globalStore from "@/store/global";
 import icon1 from "../../../public/message.svg";
@@ -20,6 +22,8 @@ const SideNavigation = observer(() => {
   const addressIcon = currentRoute === "friend" ? icon4 : icon3;
   const settingIcon = icon5;
 
+  const { disconnect } = useContext(WebSocketContext); // 获取WebSocket断开方法
+
   const handleIconClick = (item: string) => {
     setCurrentRoute(item);
   };
@@ -31,6 +35,8 @@ const SideNavigation = observer(() => {
           // 清除本地存储
           localStorage.removeItem("userdata");
           localStorage.removeItem("loopUserStore");
+          // 断开WebSocket连接
+          disconnect?.();
           // 使用 replace 选项重定向到登录页面
           navigate("/change", { replace: true });
         }}
