@@ -15,11 +15,11 @@ import { getChatDB } from "@/utils/chat-db";
 
 // 创建WebSocket上下文
 export const WebSocketContext = createContext<{
-  sendMessage: (message: any) => void;
-  onMessage?: (message: any) => void;
+  sendMessageWithTimeout?: (message: any) => void;
+  disconnect?: () => void;
 }>({
-  sendMessage: () => {},
-  onMessage: () => {},
+  sendMessageWithTimeout: () => {},
+  disconnect: () => {},
 });
 
 // observer 将组件变成响应式组件
@@ -32,6 +32,15 @@ const Home = observer(() => {
   const [wsClient, setWsClient] = useState<WebSocketClient | null>(null); // WebSocket 客户端
   // 使用ref保存currentFriendId的引用
   const currentFriendIdRef = useRef<string | number>(currentFriendId); // 监听currentFriendId的变化
+  // 在Home组件中添加状态管理
+  const [pendingMessages, setPendingMessages] = useState<
+    Record<string, NodeJS.Timeout>
+  >({});
+  // 重试发送消息定时器
+  const retryTimersRef = useRef<
+    Record<string, { timer: NodeJS.Timeout; count: number }>
+  >({});
+
   // 保持ref与state同步
   useEffect(() => {
     currentFriendIdRef.current = currentFriendId;
@@ -42,14 +51,41 @@ const Home = observer(() => {
     const client = new WebSocketClient<string>({
       url: `ws://47.93.85.12:8080/api/v1/im?token=${token}`,
       onMessage: (message: any) => {
-        console.log("收到消息:", message);
-        // const { cmd, data, receiver_id } = message;
-        console.log("currentFriendId", currentFriendId);
-        if (message.cmd === 1) {
-          // 存储新消息
-          handleNewStorage(message.data);
-        } else if (message.cmd === 3) {
-          console.log("收到消息:", message);
+        const { cmd, data } = message;
+        if (cmd === 1) {
+          // 私聊消息
+          handleNewStorage(data);
+
+          // 发送ack包
+          const ack = {
+            cmd: 3,
+            data: {
+              seq_id: data.seq_id,
+              sender_id: data.receiver_id,
+              receiver_id: data.sender_id,
+            },
+          } as any;
+
+          client.sendMessage(ack);
+
+          // 返回接受成功的ack包
+        } else if (cmd === 2) {
+          // 群聊消息
+          handleNewStorage(data);
+        } else if (cmd === 3) {
+          // // 发送的信息接受成功
+          setPendingMessages((prev) => {
+            if (prev[data.seq_id]) {
+              // 清除对应消息的超时计时器
+              clearTimeout(prev[data.seq_id]);
+              const newState = { ...prev };
+              delete newState[data.seq_id];
+              return newState;
+            }
+            return prev;
+          });
+          // 更新消息状态为成功;
+          handleUpdateMessageStatus(data, "success");
         }
       },
     });
@@ -66,10 +102,92 @@ const Home = observer(() => {
     };
   }, [token]);
 
+  // 添加发送消息方法
+  const sendMessageWithTimeout = async (message: any) => {
+    if (!wsClient) return;
+
+    const messageId = message.data.seq_id;
+    const maxRetries = 5;
+    const retryInterval = 2000;
+
+    // 清除已有定时器
+    if (retryTimersRef.current[messageId]) {
+      clearTimeout(retryTimersRef.current[messageId].timer);
+      delete retryTimersRef.current[messageId];
+    }
+
+    // 初始发送
+    wsClient.sendMessage(message);
+
+    // 设置重试逻辑
+    retryTimersRef.current[messageId] = {
+      timer: setInterval(() => {
+        const current = retryTimersRef.current[messageId];
+        if (current.count < maxRetries) {
+          current.count++;
+          wsClient.sendMessage(message);
+        } else {
+          clearInterval(current.timer);
+          delete retryTimersRef.current[messageId];
+          handleUpdateMessageStatus(
+            {
+              ...message.data,
+              receiver_id: message.data.sender_id,
+              sender_id: message.data.receiver_id,
+            },
+            "failed"
+          );
+        }
+      }, retryInterval),
+      count: 0,
+    };
+
+    // 设置总超时
+    setPendingMessages((prev) => ({
+      ...prev,
+      [messageId]: setTimeout(() => {
+        if (retryTimersRef.current[messageId]) {
+          clearInterval(retryTimersRef.current[messageId].timer);
+          delete retryTimersRef.current[messageId];
+        }
+
+        // 更换发送者和接收者，正确更是聊天数据
+        handleUpdateMessageStatus(
+          {
+            ...message.data,
+            receiver_id: message.data.sender_id,
+            sender_id: message.data.receiver_id,
+          },
+          "failed"
+        );
+      }, 10000),
+    }));
+  };
+
+  // 更新聊天信息状态
+  const handleUpdateMessageStatus = async (data: any, status: string) => {
+    await db.conversations
+      .where("[userId+targetId]")
+      .equals([data.receiver_id, data.sender_id])
+      .modify((conversation: any) => {
+        const messageIndex = conversation.messages?.findIndex(
+          (msg: any) => msg.id === data.seq_id
+        );
+        if (messageIndex !== undefined && messageIndex !== -1) {
+          conversation.messages[messageIndex].status = status;
+        }
+      });
+
+    // 更新聊天记录
+    const res: any = await db.getConversation(data.receiver_id, data.sender_id); // 获取会话数据
+
+    // 设置当前消息
+    setCurrentMessages(res?.messages);
+  };
+
   // 处理新消息,添加本地存储
   const handleNewStorage = async (item: any) => {
     // 先添加到本地存储（乐观更新）
-    console.log(item, "item");
     await db.upsertConversation(item.receiver_id, {
       targetId: item.sender_id,
       type: "USER",
@@ -102,13 +220,11 @@ const Home = observer(() => {
     currentId?: number | string
   ) => {
     if (currentId && friendId === currentId) {
-      console.log("当前聊天对象不变");
       // 如果当前聊天对象不是新对象，则更新会话数据
       const res: any = await db.getConversation(userInfo.id, Number(currentId)); // 获取会话数据
       // 设置当前消息
       setCurrentMessages(res?.messages);
     } else {
-      console.log("当前聊天对象变化");
       // 如果不是当前聊天对象，更新会话列表
       const conversationsList: any = await db.getUserConversations(userInfo.id); // 获取会话数据
       // 更新会话列表
@@ -116,10 +232,24 @@ const Home = observer(() => {
     }
   };
 
+  // 添加组件卸载时的清理
+  useEffect(() => {
+    return () => {
+      // 清理所有定时器
+      Object.values(pendingMessages).forEach((timeout) =>
+        clearTimeout(timeout)
+      );
+      Object.values(retryTimersRef.current).forEach(({ timer }) =>
+        clearInterval(timer)
+      );
+    };
+  }, []);
+
   return (
     <WebSocketContext.Provider
       value={{
-        sendMessage: (message) => wsClient?.sendMessage(message),
+        sendMessageWithTimeout,
+        disconnect: () => wsClient?.disconnect(),
       }}
     >
       <div className="main-layout">
