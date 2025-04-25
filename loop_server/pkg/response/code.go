@@ -10,6 +10,9 @@ const (
 	CodePhoneOrPasswordError
 	CodeInvalidToken
 	CodeOldPasswordError
+	CodePartUserNotExist
+	CodeGroupUserExist
+	CodeNoPermission
 )
 
 var codeMsgMap = map[ResCode]string{
@@ -20,6 +23,9 @@ var codeMsgMap = map[ResCode]string{
 	CodePhoneOrPasswordError: "手机号或密码错误",
 	CodeInvalidToken:         "无效的token",
 	CodeOldPasswordError:     "原始密码错误",
+	CodePartUserNotExist:     "部分用户不存在",
+	CodeGroupUserExist:       "群组成员已存在",
+	CodeNoPermission:         "没有权限",
 }
 
 func (c ResCode) Msg() string {

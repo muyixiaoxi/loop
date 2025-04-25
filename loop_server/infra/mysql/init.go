@@ -26,6 +26,8 @@ func autoMigrate(db *gorm.DB) error {
 		&po.User{},
 		&po.FriendShip{},
 		&po.FriendRequest{},
+		&po.Group{},
+		&po.GroupShip{},
 		// 如果有其他模型，继续添加
 		// &po.OtherModel{},
 	}

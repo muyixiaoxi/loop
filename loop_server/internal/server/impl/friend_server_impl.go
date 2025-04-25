@@ -63,3 +63,17 @@ func (f *friendServerImpl) AddFriend(c *gin.Context) {
 	}
 	response.Success(c, nil)
 }
+
+func (f *friendServerImpl) DeleteFriend(c *gin.Context) {
+	var p param.DeleteFriendRequest
+	if err := c.ShouldBind(&p); err != nil {
+		response.Fail(c, response.CodeInvalidParam)
+		return
+	}
+	err := f.friend.DeleteFriend(c, p.FriendId)
+	if err != nil {
+		response.Fail(c, response.CodeServerBusy)
+		return
+	}
+	response.Success(c, nil)
+}

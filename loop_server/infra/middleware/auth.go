@@ -39,7 +39,6 @@ func JWTAuthMiddleware() func(c *gin.Context) {
 		}
 
 		if err := SetToken(c, tokenString); err != nil {
-			response.Fail(c, response.CodeInvalidToken)
 			c.Abort()
 			return
 		}

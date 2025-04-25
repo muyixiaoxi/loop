@@ -10,18 +10,20 @@ import (
 type server struct {
 	user   UserServer
 	friend FriendServer
+	group  GroupServer
 	im     ImServer
 }
 
-func NewServer(user UserServer, friend FriendServer, im ImServer) *server {
+func NewServer(user UserServer, friend FriendServer, group GroupServer, im ImServer) *server {
 	return &server{
 		user:   user,
 		friend: friend,
+		group:  group,
 		im:     im,
 	}
 }
 
-func (s *server) Init() {
+func (s *server) InitRouter() {
 	router := gin.Default()
 	router.Use(middleware.Cors())
 
@@ -42,10 +44,20 @@ func (s *server) Init() {
 	friend := user.Group("/friend")
 	{
 		friend.POST("/add", s.friend.AddFriend)
+		friend.POST("/delete", s.friend.DeleteFriend)
 		friend.POST("/dispose", s.friend.DisposeFriendRequest)
 		friend.GET("/request/list", s.friend.GetFriendRequestList)
 		friend.GET("/list", s.friend.GetFriendList)
 	}
+
+	group := user.Group("/group")
+	{
+		group.POST("/add", s.group.CreateGroup)
+		group.POST("/member/add", s.group.AddMember)
+		group.POST("/member/delete", s.group.DeleteMember)
+		group.POST("/admin/add", s.group.AddAdmin)
+	}
+
 	im := r
 	{
 		im.Use(middleware.JWTAuthMiddleware())

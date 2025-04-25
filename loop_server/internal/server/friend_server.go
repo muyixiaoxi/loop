@@ -7,4 +7,5 @@ type FriendServer interface {
 	GetFriendRequestList(c *gin.Context)
 	GetFriendList(c *gin.Context)
 	AddFriend(c *gin.Context)
+	DeleteFriend(c *gin.Context)
 }

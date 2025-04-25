@@ -22,6 +22,10 @@ func (u *friendDomainImpl) AddFriend(ctx context.Context, req *dto.FriendRequest
 	return u.friendRepo.SaveOrUpdateFriendRequest(ctx, req)
 }
 
+func (u *friendDomainImpl) DeleteFriend(ctx context.Context, userId, friendId uint) error {
+	return u.friendRepo.DeleteFriend(ctx, userId, friendId)
+}
+
 func (u *friendDomainImpl) UpdateFriendRequest(ctx context.Context, request *dto.FriendRequest) error {
 	return u.friendRepo.UpdateFriendRequest(ctx, request)
 }

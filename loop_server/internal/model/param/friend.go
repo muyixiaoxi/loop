@@ -9,3 +9,7 @@ type AddFriendRequest struct {
 	FriendId uint   `json:"friend_id" binding:"required"`
 	Message  string `json:"message"`
 }
+
+type DeleteFriendRequest struct {
+	FriendId uint `json:"friend_id" binding:"required"`
+}

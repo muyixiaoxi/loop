@@ -18,7 +18,6 @@ func NewFriendAppImpl(friendDomain domain.FriendDomain, userDomain domain.UserDo
 
 // AddFriend 添加好友
 func (u *friendAppImpl) AddFriend(ctx context.Context, friendId uint, message string) error {
-
 	req := &dto.FriendRequest{
 		RequesterId: request.GetCurrentUser(ctx),
 		RecipientId: friendId,
@@ -26,6 +25,10 @@ func (u *friendAppImpl) AddFriend(ctx context.Context, friendId uint, message st
 		Message:     message,
 	}
 	return u.friendDomain.AddFriend(ctx, req)
+}
+
+func (u *friendAppImpl) DeleteFriend(ctx context.Context, friendId uint) error {
+	return u.friendDomain.DeleteFriend(ctx, request.GetCurrentUser(ctx), friendId)
 }
 
 func (u *friendAppImpl) DisposeFriendRequest(ctx context.Context, requesterId uint, status int) error {

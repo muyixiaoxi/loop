@@ -74,9 +74,25 @@ func (i *imDomainImpl) HandleOfflinePrivateMessage(ctx context.Context, pMsg *dt
 	}
 
 	vars.Redis.ZAdd(ctx, redis.GetUserChatKey(pMsg.ReceiverId), &redis2.Z{
-		Score:  float64(pMsg.SendTime.Unix()),
+		Score:  float64(pMsg.SendTime),
 		Member: msgByte,
 	})
 
+	return nil
+}
+
+func (i *imDomainImpl) HandleAck(ctx context.Context, ack *dto.Ack) error {
+	ackByte, err := json.Marshal(ack)
+	if err != nil {
+		slog.Error("imDomainImpl json.Marshal(pMsg) err:", err)
+		return err
+	}
+	msg := &dto.Message{Cmd: consts.WsMessageCmdAck, Data: ackByte}
+	msgByte, _ := json.Marshal(msg)
+	err = vars.Ws.Get(ack.ReceiverId).Conn.WriteMessage(websocket.TextMessage, msgByte)
+	if err != nil {
+		slog.Error("internal/domain/impl/im_domain_impl.go HandleOnlinePrivateMessage write message err:", err)
+		return err
+	}
 	return nil
 }

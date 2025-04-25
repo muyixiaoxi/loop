@@ -35,7 +35,7 @@ func (u *friendRepoImpl) UpdateFriendRequest(ctx context.Context, req *dto.Frien
 	data := po.ConvertFriendRequestDtoToPo(req)
 	if req.Status == consts.FriendRequestStatusAgree {
 		tx := u.db.Begin()
-		err := tx.Where("requester_id = ? and recipient_id = ?", req.RequesterId, req.RecipientId).Updates(data).Error
+		err := tx.Where("requester_id = ? and recipient_id = ? and status = 0", req.RequesterId, req.RecipientId).Updates(data).Error
 		if err != nil {
 			slog.Error("internal/repository/impl/user_repo_impl.go UpdateFriendRequest error", err)
 			tx.Rollback()
@@ -56,7 +56,7 @@ func (u *friendRepoImpl) UpdateFriendRequest(ctx context.Context, req *dto.Frien
 		return nil
 	}
 
-	err := u.db.Where("requester_id = ? and recipient_id = ?", req.RequesterId, req.RecipientId).Updates(data).Error
+	err := u.db.Where("requester_id = ? and recipient_id = ? and status = 0", req.RequesterId, req.RecipientId).Updates(data).Error
 	if err != nil {
 		slog.Error("internal/repository/impl/user_repo_impl.go UpdateFriendRequest error", err)
 	}
@@ -111,4 +111,12 @@ func (u *friendRepoImpl) IsFriend(ctx context.Context, userId uint, friendId uin
 		return false, err
 	}
 	return len(data) > 0, nil
+}
+
+func (u *friendRepoImpl) DeleteFriend(ctx context.Context, userId uint, friendId uint) error {
+	err := u.db.WithContext(ctx).Where("user_id = ? AND friend_id = ?", userId, friendId).Delete(&po.FriendShip{}).Error
+	if err != nil {
+		slog.Error("internal/repository/impl/friend_repo_impl.go DeleteFriend error", err)
+	}
+	return err
 }
