@@ -2,9 +2,9 @@ import "./index.scss";
 import { useState, useEffect } from "react";
 import { Form, Input, Select, InputNumber, Button, message } from "antd";
 import { editUser } from "@/api/user";
-import { uploadToOSS } from "@/utils/oss";
 import userStore from "@/store/user";
 import { observer } from "mobx-react-lite";
+import { useOSSUpload } from '../../utils/useOSSUpload';
 
 // 定义用户类型
 type UserType = {
@@ -18,48 +18,31 @@ type UserType = {
 // observer 装饰器将组件变为响应式组件
 const EditUser = observer(() => {
   const { userInfo, setUserInfo } = userStore;
-
-  // 使用 useState 来管理表单数据
   const [formData, setFormData] = useState<UserType>(userInfo);
+  const { avatarUrl, handleUpload } = useOSSUpload();
 
   // 当 userInfo 变化时更新 formData
   useEffect(() => {
     setFormData(userInfo);
   }, [userInfo]);
 
-  const handleUpload = async (file: File) => {
-    if (!file) return;
-
-    try {
-      // 上传图片到OSS
-      const { url } = await uploadToOSS(file);
-      
-      // 只更新本地状态，不调用接口
-      setFormData(prev => ({
-        ...prev,
-        avatar: url
-      }));
-      message.success("头像上传成功，请点击保存以更新信息");
-    } catch (error) {
-      console.error("文件上传失败:", error);
-      message.error("文件上传失败");
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // 处理文件选择事件
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      handleUpload(file);
+      const url = await handleUpload(file);
+      if (url) {
+        setFormData(prev => ({
+          ...prev,
+          avatar: url
+        }));
+      }
     }
     e.target.value = "";
   };
 
-  // 触发文件输入框的点击事件，以打开文件选择对话框
   const triggerFileInput = () => {
     const input = document.createElement("input");
     input.type = "file";
-    // 设置文件选择对话框的过滤条件，只允许选择图片文件
     input.accept = "image/*";
     input.onchange = (e: Event) =>
       handleFileChange(e as unknown as React.ChangeEvent<HTMLInputElement>);
@@ -67,9 +50,8 @@ const EditUser = observer(() => {
   };
 
   const handleSubmit = async (values: any) => {
-    // 使用最新的 formData 中的 avatar
     const updatedUserData = {
-      avatar: formData.avatar,
+      avatar: avatarUrl || formData.avatar,
       nickname: values.nickname,
       signature: values.signature,
       gender: values.gender,
@@ -93,7 +75,7 @@ const EditUser = observer(() => {
   return (
     <div className="edit-user-container">
       <div className="avatar1" onClick={triggerFileInput}>
-        <img src={formData?.avatar} alt="" />
+        <img src={avatarUrl || formData?.avatar} alt="" />
         <div className="overlay">点击修改</div>
       </div>
       <Form

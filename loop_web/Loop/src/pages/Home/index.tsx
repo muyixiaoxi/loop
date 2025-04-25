@@ -7,7 +7,7 @@ import SideNavigation from "@/components/SideNavigation";
 import FirendList from "@/components/FriendList";
 import EditUser from "@/components/EditUser"; // 导入 EditUser 组件
 import Chat from "@/components/Chat"; // 导入 Chat 组件
-import MessageList from "@/components/MessageList/idnex";
+import MessageList from "@/components/MessageList/index";
 import WebSocketClient from "@/utils/websocket";
 import userStore from "@/store/user";
 import chatStore from "@/store/chat";
