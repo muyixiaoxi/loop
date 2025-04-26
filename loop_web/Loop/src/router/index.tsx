@@ -13,7 +13,7 @@ const routes: RouteObject[] = [
     children: [
       {
         index: true,
-        element: <Home />,
+        element: <Login />,
       },
       {
         path: "login",
@@ -27,7 +27,6 @@ const routes: RouteObject[] = [
         path: "change",
         element: <Change />,
       },
-    
     ],
   },
 ];

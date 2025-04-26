@@ -73,17 +73,28 @@ const Home = observer(() => {
   
           // 群聊不需要发送ack包，可根据实际需求调整
         } else if (cmd === 3) {
+<<<<<<< HEAD
           // 发送的信息接受成功
+=======
+          // // 发送的信息接受成功
+          const messageId = data.seq_id;
+          // 清除所有相关定时器
+          if (retryTimersRef.current[messageId]) {
+            clearInterval(retryTimersRef.current[messageId].timer);
+            delete retryTimersRef.current[messageId];
+          }
+
+>>>>>>> a8ecc30321a5dbd1e1db5a46a17e1e298fb4606d
           setPendingMessages((prev) => {
-            if (prev[data.seq_id]) {
-              // 清除对应消息的超时计时器
-              clearTimeout(prev[data.seq_id]);
+            if (prev[messageId]) {
+              clearTimeout(prev[messageId]);
               const newState = { ...prev };
-              delete newState[data.seq_id];
+              delete newState[messageId];
               return newState;
             }
             return prev;
           });
+
           // 更新消息状态为成功;
           handleUpdateMessageStatus(data, "success");
         }
@@ -123,20 +134,36 @@ const Home = observer(() => {
     retryTimersRef.current[messageId] = {
       timer: setInterval(() => {
         const current = retryTimersRef.current[messageId];
+
+        if (!current) return; // 防止空指针错误
+
         if (current.count < maxRetries) {
           current.count++;
           wsClient.sendMessage(message);
         } else {
-          clearInterval(current.timer);
-          delete retryTimersRef.current[messageId];
-          handleUpdateMessageStatus(
-            {
-              ...message.data,
-              receiver_id: message.data.sender_id,
-              sender_id: message.data.receiver_id,
-            },
-            "failed"
-          );
+          // 只在没有收到ACK时才标记为失败
+          if (retryTimersRef.current[messageId]) {
+            clearInterval(retryTimersRef.current[messageId].timer);
+            delete retryTimersRef.current[messageId];
+
+            // 检查pendingMessages是否还存在，避免重复设置失败状态
+            setPendingMessages((prev) => {
+              if (prev[messageId]) {
+                handleUpdateMessageStatus(
+                  {
+                    ...message.data,
+                    receiver_id: message.data.sender_id,
+                    sender_id: message.data.receiver_id,
+                  },
+                  "failed"
+                );
+                const newState = { ...prev };
+                delete newState[messageId];
+                return newState;
+              }
+              return prev;
+            });
+          }
         }
       }, retryInterval),
       count: 0,
@@ -151,15 +178,24 @@ const Home = observer(() => {
           delete retryTimersRef.current[messageId];
         }
 
-        // 更换发送者和接收者，正确更是聊天数据
-        handleUpdateMessageStatus(
-          {
-            ...message.data,
-            receiver_id: message.data.sender_id,
-            sender_id: message.data.receiver_id,
-          },
-          "failed"
-        );
+        // 检查pendingMessages是否还存在，避免重复设置失败状态
+        setPendingMessages((current) => {
+          if (current[messageId]) {
+            // 更换发送者和接收者，正确更是聊天数据
+            handleUpdateMessageStatus(
+              {
+                ...message.data,
+                receiver_id: message.data.sender_id,
+                sender_id: message.data.receiver_id,
+              },
+              "failed"
+            );
+            const newState = { ...current };
+            delete newState[messageId];
+            return newState;
+          }
+          return current;
+        });
       }, 10000),
     }));
   };
