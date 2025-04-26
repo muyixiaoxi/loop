@@ -30,7 +30,7 @@ func main() {
 	userApp := app_impl.NewUserAppImpl(userDomain, friendDomain)
 	friendApp := app_impl.NewFriendAppImpl(friendDomain, userDomain)
 	groupApp := app_impl.NewGroupAppImpl(groupDomain, userDomain)
-	imApp := app_impl.NewImAppImpl(imDomain)
+	imApp := app_impl.NewImAppImpl(imDomain, groupDomain)
 
 	userServer := server_impl.NewUserServerImpl(userApp)
 	friendServer := server_impl.NewFriendServerImpl(friendApp)

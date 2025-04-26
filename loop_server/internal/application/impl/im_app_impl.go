@@ -13,11 +13,12 @@ import (
 )
 
 type imAppImpl struct {
-	imDomain domain.ImDomain
+	imDomain    domain.ImDomain
+	groupDomain domain.GroupDomain
 }
 
-func NewImAppImpl(imDomain domain.ImDomain) *imAppImpl {
-	return &imAppImpl{imDomain: imDomain}
+func NewImAppImpl(imDomain domain.ImDomain, groupDomain domain.GroupDomain) *imAppImpl {
+	return &imAppImpl{imDomain: imDomain, groupDomain: groupDomain}
 }
 
 func (i *imAppImpl) HandleMessage(ctx context.Context, curUserId uint, msgByte []byte) error {
@@ -34,9 +35,32 @@ func (i *imAppImpl) HandleMessage(ctx context.Context, curUserId uint, msgByte [
 	case consts.WsMessageCmdAck:
 		return i.handlerAck(ctx, msg)
 	case consts.WsMessageCmdGroupMessage:
-
+		return i.handlerGroupMessage(ctx, msg)
 	}
 	return nil
+}
+
+func (i *imAppImpl) handlerGroupMessage(ctx context.Context, msg *dto.Message) error {
+	gMsg := &dto.GroupMessage{}
+	json.Unmarshal(msg.Data, gMsg)
+	if gMsg.SeqId == "" || gMsg.ReceiverId == 0 {
+		return nil
+	}
+	// 获取群用户id
+	userIds, err := i.groupDomain.GetGroupUserId(ctx, gMsg.ReceiverId)
+	if err != nil {
+		return err
+	}
+	if err := i.imDomain.HandleGroupMessage(ctx, gMsg, userIds); err != nil {
+		return err
+	}
+
+	return i.imDomain.HandleAck(ctx, &dto.Ack{
+		SeqId:      gMsg.SeqId,
+		SenderId:   gMsg.ReceiverId,
+		ReceiverId: gMsg.SenderId,
+		IsGroup:    consts.AckGroupMessage,
+	})
 }
 
 func (i *imAppImpl) handleHeartbeat(ctx context.Context, curUserId uint, msgByte []byte) error {
@@ -104,4 +128,8 @@ func (i *imAppImpl) handlerAck(ctx context.Context, msg *dto.Message) error {
 		return err
 	}
 	return i.imDomain.HandleAck(ctx, ack)
+}
+
+func (i *imAppImpl) GetOfflineMessage(ctx context.Context, userId uint) ([]*dto.Message, error) {
+	return i.imDomain.GetOfflineMessage(ctx, userId)
 }

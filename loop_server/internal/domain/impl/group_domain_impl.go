@@ -56,3 +56,7 @@ func (g *groupDomainImpl) AddAdmin(ctx context.Context, groupId, userId uint) er
 func (g *groupDomainImpl) GetGroupShip(ctx context.Context, groupId, userId uint) (*dto.GroupShip, error) {
 	return g.group.GetGroupShip(ctx, groupId, userId)
 }
+
+func (g *groupDomainImpl) GetGroupUserId(ctx context.Context, groupId uint) ([]uint, error) {
+	return g.group.GetGroupUserId(ctx, groupId)
+}

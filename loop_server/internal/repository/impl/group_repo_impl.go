@@ -118,3 +118,13 @@ func (g *groupRepoImpl) AddAdmin(ctx context.Context, groupId, userId uint) erro
 	}
 	return nil
 }
+
+func (g *groupRepoImpl) GetGroupUserId(ctx context.Context, groupId uint) ([]uint, error) {
+	var userId []uint
+	err := g.db.WithContext(ctx).Model(&po.GroupShip{}).Where("group_id = ?", groupId).Select("user_id").Find(&userId).Error
+	if err != nil {
+		slog.Error("internal/repository/impl/group_repo_impl.go GetGroupUserId err:", err)
+		return nil, err
+	}
+	return userId, nil
+}

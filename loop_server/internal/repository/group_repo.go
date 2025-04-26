@@ -13,4 +13,5 @@ type GroupRepo interface {
 	DeleteMember(ctx context.Context, groupId uint, userId uint) error
 	GetGroupShip(ctx context.Context, groupId, userId uint) (*dto.GroupShip, error)
 	AddAdmin(ctx context.Context, groupId, userId uint) error
+	GetGroupUserId(ctx context.Context, groupId uint) ([]uint, error)
 }

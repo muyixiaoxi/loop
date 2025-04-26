@@ -57,3 +57,7 @@ func (i *imServerImpl) messageListener(c *gin.Context, client *ws.Client) {
 		i.im.HandleMessage(c, client.UserId, msgByte)
 	}
 }
+
+func (i *imServerImpl) GetOfflineMessage(c *gin.Context) {
+	// todo err := i.im.GetOfflineMessage(c)
+}

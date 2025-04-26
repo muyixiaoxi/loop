@@ -11,4 +11,6 @@ type ImDomain interface {
 	HandleOnlinePrivateMessage(ctx context.Context, pMsg *dto.PrivateMessage) error
 	HandleOfflinePrivateMessage(ctx context.Context, pMsg *dto.PrivateMessage) error
 	HandleAck(ctx context.Context, ack *dto.Ack) error
+	HandleGroupMessage(ctx context.Context, pMsg *dto.GroupMessage, userIds []uint) error
+	GetOfflineMessage(ctx context.Context, userId uint) ([]*dto.Message, error)
 }

@@ -13,4 +13,5 @@ type GroupDomain interface {
 	AddMember(ctx context.Context, ships []*dto.GroupShip) error
 	AddAdmin(ctx context.Context, groupId, userId uint) error
 	GetGroupShip(ctx context.Context, groupId, userId uint) (*dto.GroupShip, error)
+	GetGroupUserId(ctx context.Context, groupId uint) ([]uint, error)
 }

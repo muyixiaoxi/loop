@@ -96,3 +96,59 @@ func (i *imDomainImpl) HandleAck(ctx context.Context, ack *dto.Ack) error {
 	}
 	return nil
 }
+
+func (i *imDomainImpl) HandleGroupMessage(ctx context.Context, pMsg *dto.GroupMessage, userIds []uint) error {
+	pMsgByte, err := json.Marshal(pMsg)
+	if err != nil {
+		slog.Error("internal/domain/impl/im_domain_impl.go json.Marshal(pMsg) err:", err)
+		return err
+	}
+
+	msg := &dto.Message{
+		Cmd:  consts.WsMessageCmdGroupMessage,
+		Data: pMsgByte,
+	}
+	msgByte, err := json.Marshal(msg)
+	if err != nil {
+		slog.Error("internal/domain/impl/im_domain_impl.go json.Marshal(msg) err:", err)
+		return err
+	}
+
+	offlineUserIds := make([]uint, 0)
+	// 在线转发
+	for _, userId := range userIds {
+		if userId == pMsg.SenderId {
+			continue
+		}
+		if vars.Ws.Get(userId) != nil {
+			err = vars.Ws.Get(userId).Conn.WriteMessage(websocket.TextMessage, msgByte)
+			if err != nil {
+				slog.Error("internal/domain/impl/im_domain_impl.go HandleOnlinePrivateMessage write message err:", err)
+				offlineUserIds = append(offlineUserIds, userId)
+			}
+		}
+	}
+	// 离线存储
+	for _, id := range offlineUserIds {
+		vars.Redis.ZAdd(ctx, redis.GetUserChatKey(id), &redis2.Z{
+			Score:  float64(pMsg.SendTime),
+			Member: msgByte,
+		})
+	}
+	return nil
+}
+
+func (i *imDomainImpl) GetOfflineMessage(ctx context.Context, userId uint) ([]*dto.Message, error) {
+	members, err := vars.Redis.ZRange(ctx, redis.GetUserChatKey(userId), 0, -1).Result()
+	if err != nil {
+		slog.Error("internal/domain/impl/im_domain_impl.go GetOfflineMessage redis zrange err:", err)
+		return nil, err
+	}
+	messages := make([]*dto.Message, 0, len(members))
+	for _, member := range members {
+		message := &dto.Message{}
+		json.Unmarshal([]byte(member), message)
+		messages = append(messages, message)
+	}
+	return messages, nil
+}
