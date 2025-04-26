@@ -73,9 +73,6 @@ const Home = observer(() => {
   
           // 群聊不需要发送ack包，可根据实际需求调整
         } else if (cmd === 3) {
-<<<<<<< HEAD
-          // 发送的信息接受成功
-=======
           // // 发送的信息接受成功
           const messageId = data.seq_id;
           // 清除所有相关定时器
@@ -84,7 +81,6 @@ const Home = observer(() => {
             delete retryTimersRef.current[messageId];
           }
 
->>>>>>> a8ecc30321a5dbd1e1db5a46a17e1e298fb4606d
           setPendingMessages((prev) => {
             if (prev[messageId]) {
               clearTimeout(prev[messageId]);
