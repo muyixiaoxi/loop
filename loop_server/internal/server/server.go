@@ -55,6 +55,8 @@ func (s *server) InitRouter() {
 	{
 		group.POST("/add", s.group.CreateGroup)
 		group.POST("/delete", s.group.DeleteGroup)
+		group.GET("", s.group.GetGroupList)
+
 		group.POST("/member/add", s.group.AddMember)
 		group.POST("/member/delete", s.group.DeleteMember)
 		group.POST("/admin/add", s.group.AddAdmin)

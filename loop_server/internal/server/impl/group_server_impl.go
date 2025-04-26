@@ -59,7 +59,7 @@ func (g *groupServerImpl) DeleteGroup(c *gin.Context) {
 	response.Success(c, nil)
 }
 
-func (g *groupServerImpl) GetGroup(c *gin.Context) {
+func (g *groupServerImpl) GetGroupList(c *gin.Context) {
 	data, err := g.group.GetGroupList(c)
 	if err != nil {
 		response.Fail(c, response.CodeServerBusy)
