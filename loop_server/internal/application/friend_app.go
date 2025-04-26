@@ -11,4 +11,5 @@ type FriendApp interface {
 	DisposeFriendRequest(ctx context.Context, requesterId uint, status int) error
 	GetFriendRequest(ctx context.Context) ([]*dto.FriendRequestListNode, error)
 	GetFriendList(ctx context.Context) ([]*dto.User, error)
+	FriendListStatistics(ctx context.Context) (*dto.FriendListStatistics, error)
 }

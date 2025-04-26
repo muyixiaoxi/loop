@@ -12,4 +12,5 @@ type FriendDomain interface {
 	GetFriendRequestList(ctx context.Context) ([]*dto.FriendRequest, error)
 	GetFriendList(ctx context.Context) ([]*dto.User, error)
 	IsFriend(ctx context.Context, userId, fiends uint) (bool, error)
+	FriendRequestStatistics(ctx context.Context, userId uint) (*dto.FriendListStatistics, error)
 }

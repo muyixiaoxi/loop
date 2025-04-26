@@ -7,6 +7,7 @@ import (
 
 type GroupDomain interface {
 	CreateGroup(ctx context.Context, dto *dto.CreateGroupRequest) (*dto.Group, error)
+	DeleteGroup(ctx context.Context, groupId uint) error
 	GetGroupList(ctx context.Context, userId uint) ([]*dto.Group, error)
 	GetGroupById(ctx context.Context, groupId uint) (*dto.Group, error)
 	DeleteMember(ctx context.Context, groupId, userId uint) error

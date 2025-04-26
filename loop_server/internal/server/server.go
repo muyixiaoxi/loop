@@ -46,13 +46,15 @@ func (s *server) InitRouter() {
 		friend.POST("/add", s.friend.AddFriend)
 		friend.POST("/delete", s.friend.DeleteFriend)
 		friend.POST("/dispose", s.friend.DisposeFriendRequest)
-		friend.GET("/request/list", s.friend.GetFriendRequestList)
 		friend.GET("/list", s.friend.GetFriendList)
+		friend.GET("/request/list", s.friend.GetFriendRequestList)
+		friend.GET("/request/statistics", s.friend.FriendListStatistics)
 	}
 
 	group := user.Group("/group")
 	{
 		group.POST("/add", s.group.CreateGroup)
+		group.POST("/delete", s.group.DeleteGroup)
 		group.POST("/member/add", s.group.AddMember)
 		group.POST("/member/delete", s.group.DeleteMember)
 		group.POST("/admin/add", s.group.AddAdmin)

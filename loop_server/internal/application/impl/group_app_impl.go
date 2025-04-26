@@ -28,6 +28,17 @@ func (g *groupAppImpl) CreateGroup(ctx context.Context, group *dto.CreateGroupRe
 	return g.group.CreateGroup(ctx, group)
 }
 
+func (g *groupAppImpl) DeleteGroup(ctx context.Context, groupId uint) error {
+	group, err := g.group.GetGroupById(ctx, groupId)
+	if err != nil {
+		return err
+	}
+	if group.OwnerId != request.GetCurrentUser(ctx) {
+		return consts.ErrNoPermission
+	}
+	return g.group.DeleteGroup(ctx, groupId)
+}
+
 func (g *groupAppImpl) GetGroupList(ctx context.Context) ([]*dto.Group, error) {
 	return g.group.GetGroupList(ctx, request.GetCurrentUser(ctx))
 }

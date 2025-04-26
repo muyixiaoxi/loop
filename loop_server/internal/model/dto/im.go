@@ -24,6 +24,8 @@ type GroupMessage struct {
 	SendTime       int64  `json:"send_time"`       // 发送时间戳
 	SenderNickname string `json:"sender_nickname"` // 发送者昵称
 	SenderAvatar   string `json:"sender_avatar"`   // 发送者头像
+	GroupName      string `json:"group_name"`      // 群名称
+	GroupAvatar    string `json:"group_avatar"`    // 群头像
 }
 
 type Ack struct {

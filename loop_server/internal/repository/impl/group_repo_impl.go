@@ -57,6 +57,24 @@ func (g *groupRepoImpl) CreateGroup(ctx context.Context, dto *dto.Group, userIds
 	return group.ConvertDto(), err
 }
 
+func (g *groupRepoImpl) DeleteGroup(ctx context.Context, groupId uint) error {
+	tx := g.db.WithContext(ctx).Begin()
+	err := tx.Where("id = ?", groupId).Delete(&po.Group{}).Error
+	if err != nil {
+		slog.Error("internal/repository/impl/group_repo_impl.go DeleteGroup err:", err)
+		tx.Rollback()
+		return err
+	}
+	err = tx.Where("group_id = ?", groupId).Delete(&po.GroupShip{}).Error
+	if err != nil {
+		slog.Error("internal/repository/impl/group_repo_impl.go DeleteGroup err:", err)
+		tx.Rollback()
+		return err
+	}
+	tx.Commit()
+	return nil
+}
+
 func (g *groupRepoImpl) GetGroupList(ctx context.Context, userId uint) ([]*dto.Group, error) {
 	var group []*po.Group
 	err := g.db.WithContext(ctx).Model(&po.GroupShip{}).Where("user_id = ?", userId).Find(&group).Error

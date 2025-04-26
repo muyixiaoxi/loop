@@ -46,6 +46,14 @@ func (i *imAppImpl) handlerGroupMessage(ctx context.Context, msg *dto.Message) e
 	if gMsg.SeqId == "" || gMsg.ReceiverId == 0 {
 		return nil
 	}
+	// 群信息
+	group, err := i.groupDomain.GetGroupById(ctx, gMsg.ReceiverId)
+	if err != nil {
+		return err
+	}
+	gMsg.GroupName = group.Name
+	gMsg.GroupAvatar = group.Avatar
+
 	// 获取群用户id
 	userIds, err := i.groupDomain.GetGroupUserId(ctx, gMsg.ReceiverId)
 	if err != nil {

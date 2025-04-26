@@ -7,6 +7,7 @@ import (
 
 type GroupRepo interface {
 	CreateGroup(ctx context.Context, dto *dto.Group, userIds []uint) (*dto.Group, error)
+	DeleteGroup(ctx context.Context, groupId uint) error
 	GetGroupList(ctx context.Context, userId uint) ([]*dto.Group, error)
 	GetGroup(ctx context.Context, groupId uint) (*dto.Group, error)
 	AddMember(ctx context.Context, ship []*dto.GroupShip) error

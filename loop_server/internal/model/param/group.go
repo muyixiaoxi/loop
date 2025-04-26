@@ -14,3 +14,7 @@ type AddAdmin struct {
 	GroupId uint `json:"group_id"`
 	UserId  uint `json:"user_id"`
 }
+
+type DeleteGroup struct {
+	GroupId uint `json:"group_id"`
+}

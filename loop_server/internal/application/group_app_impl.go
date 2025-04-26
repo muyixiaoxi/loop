@@ -7,6 +7,7 @@ import (
 
 type GroupApp interface {
 	CreateGroup(ctx context.Context, group *dto.CreateGroupRequest) (*dto.Group, error)
+	DeleteGroup(ctx context.Context, groupId uint) error
 	GetGroupList(ctx context.Context) ([]*dto.Group, error)
 	AddMember(ctx context.Context, groupId uint, userIds []uint) error
 	DeleteMember(c context.Context, groupId uint, userId uint) error

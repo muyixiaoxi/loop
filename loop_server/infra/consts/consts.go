@@ -7,8 +7,9 @@ const (
 )
 
 const (
-	FriendRequestStatusAgree  = 1
-	FriendRequestStatusRefuse = 2
+	FriendRequestStatusUntreated = 0 // 待处理
+	FriendRequestStatusAgree     = 1
+	FriendRequestStatusRefuse    = 2
 )
 
 const (

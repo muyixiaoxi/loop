@@ -120,3 +120,13 @@ func (u *friendRepoImpl) DeleteFriend(ctx context.Context, userId uint, friendId
 	}
 	return err
 }
+
+func (u *friendRepoImpl) FriendRequestStatistics(ctx context.Context, userId uint) (*dto.FriendListStatistics, error) {
+	var data *dto.FriendListStatistics
+	err := u.db.Model(&po.FriendRequest{}).Select("count(*) as untreated_count").Where("recipient_id = ? and status = ?", userId, consts.FriendRequestStatusUntreated).Scan(&data).Error
+	if err != nil {
+		slog.Error("internal/repository/impl/friend_repo_impl.go FriendRequestStatistics error", err)
+		return nil, err
+	}
+	return data, nil
+}

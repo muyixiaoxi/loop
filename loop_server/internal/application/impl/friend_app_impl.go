@@ -94,3 +94,7 @@ func (u *friendAppImpl) convertGetFriendRequest(ctx context.Context, requests []
 func (u *friendAppImpl) GetFriendList(ctx context.Context) ([]*dto.User, error) {
 	return u.friendDomain.GetFriendList(ctx)
 }
+
+func (u *friendAppImpl) FriendListStatistics(ctx context.Context) (*dto.FriendListStatistics, error) {
+	return u.friendDomain.FriendRequestStatistics(ctx, request.GetCurrentUser(ctx))
+}

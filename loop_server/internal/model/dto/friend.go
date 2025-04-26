@@ -28,3 +28,7 @@ type FriendRequestListNode struct {
 	Nickname    string `json:"name"`         // 昵称
 	Avatar      string `json:"avatar"`       // 头像
 }
+
+type FriendListStatistics struct {
+	UntreatedCount int `json:"untreated_count"`
+}

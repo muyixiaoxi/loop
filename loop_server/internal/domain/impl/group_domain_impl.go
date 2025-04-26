@@ -26,6 +26,10 @@ func (g *groupDomainImpl) CreateGroup(ctx context.Context, req *dto.CreateGroupR
 	return g.group.CreateGroup(ctx, group, req.UserIds)
 }
 
+func (g *groupDomainImpl) DeleteGroup(ctx context.Context, groupId uint) error {
+	return g.group.DeleteGroup(ctx, groupId)
+}
+
 func (g *groupDomainImpl) GetGroupList(ctx context.Context, userId uint) ([]*dto.Group, error) {
 	return g.group.GetGroupList(ctx, userId)
 }

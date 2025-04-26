@@ -40,6 +40,25 @@ func (g *groupServerImpl) CreateGroup(c *gin.Context) {
 	return
 }
 
+func (g *groupServerImpl) DeleteGroup(c *gin.Context) {
+	p := &param.DeleteGroup{}
+	if err := c.ShouldBind(p); err != nil {
+		slog.Error("groupServerImpl.DeleteGroup c.ShouldBind(&param) err:", err)
+		response.Fail(c, response.CodeInvalidParam)
+		return
+	}
+	err := g.group.DeleteGroup(c, p.GroupId)
+	if err != nil {
+		if errors.Is(err, consts.ErrNoPermission) {
+			response.Fail(c, response.CodeNoPermission)
+			return
+		}
+		response.Fail(c, response.CodeServerBusy)
+		return
+	}
+	response.Success(c, nil)
+}
+
 func (g *groupServerImpl) GetGroup(c *gin.Context) {
 	data, err := g.group.GetGroupList(c)
 	if err != nil {

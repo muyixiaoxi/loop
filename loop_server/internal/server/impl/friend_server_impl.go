@@ -77,3 +77,12 @@ func (f *friendServerImpl) DeleteFriend(c *gin.Context) {
 	}
 	response.Success(c, nil)
 }
+
+func (f *friendServerImpl) FriendListStatistics(c *gin.Context) {
+	data, err := f.friend.FriendListStatistics(c)
+	if err != nil {
+		response.Fail(c, response.CodeServerBusy)
+		return
+	}
+	response.Success(c, data)
+}
