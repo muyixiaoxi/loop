@@ -8,6 +8,8 @@ class ChatStore {
 
   // 可观察数据
   currentMessages = []; // 当前会话消息列表
+  // 聊天列表数据
+  currentChatList = [];
 
   constructor() {
     makeObservable(this, {
@@ -15,8 +17,10 @@ class ChatStore {
       currentFriendName: observable,
       currentFriendAvatar: observable,
       currentMessages: observable,
+      currentChatList: observable,
       setCurrentMessages: action,
       setCurrentFriendData: action,
+      setCurrentChatList: action,
     });
   }
 
@@ -35,6 +39,11 @@ class ChatStore {
   // 当前会话好友聊天记录
   setCurrentMessages = (messages: []) => {
     this.currentMessages = messages;
+  };
+
+  // 聊天列表数据
+  setCurrentChatList = (data: []) => {
+    this.currentChatList = data;
   };
 }
 
