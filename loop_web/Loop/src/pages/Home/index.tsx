@@ -25,8 +25,7 @@ export const WebSocketContext = createContext<{
 // observer 将组件变成响应式组件
 const Home = observer(() => {
   const { token, userInfo } = userStore; // 获取用户信息
-  const { currentFriendId, setCurrentFriendData, setCurrentMessages } =
-    chatStore; // 获取发送消息的函数
+  const { currentFriendId, setCurrentChatList, setCurrentMessages } = chatStore; // 获取发送消息的函数
   const db = getChatDB(userInfo.id); // 连接数据库
   const { isShowUserAmend, setIsShowUserAmend, currentRoute } = globalStore;
   const [wsClient, setWsClient] = useState<WebSocketClient | null>(null); // WebSocket 客户端
@@ -219,6 +218,20 @@ const Home = observer(() => {
 
   // 处理新消息,添加本地存储
   const handleNewStorage = async (item: any) => {
+    // 检查是否是当前聊天对象
+    const isCurrentFriend = item.sender_id === currentFriendIdRef.current;
+
+    // 先获取当前会话的未读数量
+    const existingConversation = await db.conversations
+      .where("[userId+targetId]")
+      .equals([item.receiver_id, item.sender_id])
+      .first();
+
+    // 计算新的未读数量
+    const newUnreadCount = isCurrentFriend
+      ? 0
+      : (existingConversation?.unreadCount || 0) + 1;
+
     // 先添加到本地存储（乐观更新）
     await db.upsertConversation(item.receiver_id, {
       targetId: item.sender_id,
@@ -226,7 +239,7 @@ const Home = observer(() => {
       showName: item.sender_nickname,
       headImage: item.sender_avatar,
       lastContent: item.content,
-      unreadCount: 0,
+      unreadCount: newUnreadCount, // 使用计算后的未读数量
       messages: [
         {
           id: item.seq_id,
@@ -253,17 +266,16 @@ const Home = observer(() => {
   ) => {
     console.log("handleNewConversation", friendId, currentId);
     if (currentId && friendId === currentId) {
-      console.log("当前聊天对象是当前聊天对象");
-      // 如果当前聊天对象不是新对象，则更新会话数据
+      // 如果当前聊天对象是新对象，则更新会话数据
       const res: any = await db.getConversation(userInfo.id, Number(currentId)); // 获取会话数据
       // 设置当前消息
       setCurrentMessages(res?.messages);
     } else {
-      console.log("当前聊天对象不是当前聊天对象");
       // 如果不是当前聊天对象，更新会话列表
       const conversationsList: any = await db.getUserConversations(userInfo.id); // 获取会话数据
+      console.log("conversationsList", conversationsList);
       // 更新会话列表
-      setCurrentFriendData(conversationsList);
+      setCurrentChatList(conversationsList);
     }
   };
 

@@ -17,11 +17,14 @@ import { createGroup } from "@/api/group";
 import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
 import { getFriendList } from "@/api/friend";
 import { useOSSUpload } from "../../utils/useOSSUpload"; // 引入 OSS 上传 Hook
+import { observer } from "mobx-react-lite";
+import chatStore from "@/store/chat";
 
-const MessageList = () => {
+const MessageList = observer(() => {
   const { userInfo } = userStore;
+  const { currentChatList } = chatStore;
   const db = getChatDB(userInfo.id);
-  const [chatList, setChatList] = useState<any[]>([]);
+  const [chatList, setChatList] = useState<any[]>(currentChatList);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [form] = Form.useForm();
   const { avatarUrl, handleUpload } = useOSSUpload(); // 使用 OSS 上传 Hook
@@ -47,6 +50,11 @@ const MessageList = () => {
       message.error("获取好友列表失败，请重试");
     }
   };
+
+  useEffect(() => {
+    // 监听聊天列表变化，更新本地状态
+    setChatList(currentChatList);
+  }, [currentChatList]); // 确保依赖项包含 setCurrentChatList 和 chatList，以避免无限循环
 
   useEffect(() => {
     handleMessageList();
@@ -177,6 +185,7 @@ const MessageList = () => {
               name={item.showName}
               lastContent={item.lastContent}
               lastSendTime={item.lastSendTime}
+              unreadCount={item.unreadCount}
             />
           ))}
         </div>
@@ -284,6 +293,6 @@ const MessageList = () => {
       </Modal>
     </div>
   );
-};
+});
 
 export default MessageList;
