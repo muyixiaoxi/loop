@@ -24,18 +24,22 @@ const Chat = observer(() => {
   const [inputValue, setInputValue] = useState(""); // 输入框的值
   const [openDrawer, setOpenDrawer] = useState(false); // 是否打开抽屉
   const [topSwitch, setTopSwitch] = useState<boolean>(false); //置顶开关
+
   /**
    * 发送消息
    */
-  const handleSendMessage = async () => {
+  const handleSendMessage = async (isGroupChat = false) => {
     const messageId = uuidv4(); // 生成唯一的消息ID
+    const cmd = isGroupChat ? 2 : 1;
+    const receiverId = isGroupChat ? currentFriendId : currentFriendId; // 假设 currentFriendId 可以是群聊 ID
+  
     // 在这里处理发送消息的逻辑，例如发送到服务器或WebSocket服务器
     const message = {
-      cmd: 1,
+      cmd,
       data: {
         seq_id: messageId,
         sender_id: userInfo.id,
-        receiver_id: currentFriendId, // 这里可以根据需要设置接收者ID,
+        receiver_id: receiverId, // 单聊使用好友 ID，群聊使用群聊 ID
         content: inputValue,
         send_time: Date.now(),
         type: 0,
@@ -43,20 +47,20 @@ const Chat = observer(() => {
         sender_avatar: userInfo.avatar,
       },
     };
-
+  
     // 先添加到本地存储（乐观更新）
     await db.upsertConversation(userInfo.id, {
-      targetId: currentFriendId,
-      type: "USER",
-      showName: currentFriendName,
-      headImage: currentFriendAvatar,
+      targetId: receiverId,
+      type: isGroupChat ? "GROUP" : "USER",
+      showName: isGroupChat ? currentFriendName : currentFriendName,
+      headImage: isGroupChat ? currentFriendAvatar : currentFriendAvatar,
       lastContent: inputValue,
       unreadCount: 0,
       messages: [
         {
           id: messageId,
-          targetId: currentFriendId,
-          type: "USER",
+          targetId: receiverId,
+          type: isGroupChat ? "GROUP" : "USER",
           sendId: userInfo.id,
           content: inputValue,
           sendTime: Date.now(),
@@ -66,7 +70,7 @@ const Chat = observer(() => {
         },
       ],
     });
-
+  
     handleNewConversation();
     // 发送消息到服务器
     sendMessageWithTimeout(message);
@@ -88,7 +92,7 @@ const Chat = observer(() => {
         sender_avatar: userInfo.avatar,
       },
     };
-
+  
     // 更新本地存储状态为发送中
     await db.upsertConversation(userInfo.id, {
       targetId: failedMessage.targetId,
@@ -111,7 +115,7 @@ const Chat = observer(() => {
         },
       ],
     });
-
+  
     // 更新聊天记录
     const res: any = await db.getConversation(
       userInfo.id,
@@ -143,6 +147,23 @@ const Chat = observer(() => {
   useEffect(() => {
     scrollToBottom();
   }, [currentMessages]);
+
+  const handleTextAreaKeyDown = async (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.ctrlKey) {
+      e.preventDefault(); // 阻止默认换行行为
+      // 从 IndexedDB 获取当前会话类型
+      const conversation = await db.getConversation(
+        userInfo.id,
+        Number(currentFriendId)
+      );
+      const isGroupChat = conversation?.type === "GROUP";
+      handleSendMessage(isGroupChat);
+    }
+    if (e.key === "Enter" && e.ctrlKey) {
+      // 允许换行
+      setInputValue((prev) => prev + "\n");
+    }
+  };
 
   return (
     <div className="chat-container">
@@ -248,19 +269,10 @@ const Chat = observer(() => {
             }}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.ctrlKey) {
-                e.preventDefault(); // 阻止默认换行行为
-                // 这里添加发送消息的逻辑
-                handleSendMessage();
-              }
-              if (e.key === "Enter" && e.ctrlKey) {
-                // 允许换行
-                setInputValue((prev) => prev + "\n");
-              }
-            }}
+            onKeyDown={handleTextAreaKeyDown}
           />
         </div>
+        {/* 移除发送群聊消息的按钮 */}
       </div>
 
       <Drawer
