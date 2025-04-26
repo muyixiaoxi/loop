@@ -251,12 +251,15 @@ const Home = observer(() => {
     friendId: number | string,
     currentId?: number | string
   ) => {
+    console.log("handleNewConversation", friendId, currentId);
     if (currentId && friendId === currentId) {
+      console.log("当前聊天对象是当前聊天对象");
       // 如果当前聊天对象不是新对象，则更新会话数据
       const res: any = await db.getConversation(userInfo.id, Number(currentId)); // 获取会话数据
       // 设置当前消息
       setCurrentMessages(res?.messages);
     } else {
+      console.log("当前聊天对象不是当前聊天对象");
       // 如果不是当前聊天对象，更新会话列表
       const conversationsList: any = await db.getUserConversations(userInfo.id); // 获取会话数据
       // 更新会话列表
