@@ -54,7 +54,7 @@ const Home = observer(() => {
         if (cmd === 1) {
           // 私聊消息
           handleNewStorage(data);
-
+  
           // 发送ack包
           const ack = {
             cmd: 3,
@@ -64,13 +64,13 @@ const Home = observer(() => {
               receiver_id: data.sender_id,
             },
           } as any;
-
+  
           client.sendMessage(ack);
-
-          // 返回接受成功的ack包
         } else if (cmd === 2) {
           // 群聊消息
-          handleNewStorage(data);
+          handleNewStorage(data, true); // 传递标志表示是群聊消息
+  
+          // 群聊不需要发送ack包，可根据实际需求调整
         } else if (cmd === 3) {
           // // 发送的信息接受成功
           const messageId = data.seq_id;
@@ -95,13 +95,13 @@ const Home = observer(() => {
         }
       },
     });
-
+  
     // 连接
     client.connect();
-
+  
     // 发送消息方法
     setWsClient(client);
-
+  
     return () => {
       // 组件卸载时会自动关闭连接
       client.disconnect();
@@ -217,7 +217,7 @@ const Home = observer(() => {
   };
 
   // 处理新消息,添加本地存储
-  const handleNewStorage = async (item: any) => {
+  const handleNewStorage = async (item: any, isGroupChat = false) => {
     // 检查是否是当前聊天对象
     const isCurrentFriend = item.sender_id === currentFriendIdRef.current;
 
@@ -232,19 +232,20 @@ const Home = observer(() => {
       ? 0
       : (existingConversation?.unreadCount || 0) + 1;
 
+    const targetId = isGroupChat ? item.group_id : item.sender_id; // 群聊使用 group_id，单聊使用 sender_id
     // 先添加到本地存储（乐观更新）
     await db.upsertConversation(item.receiver_id, {
-      targetId: item.sender_id,
-      type: "USER",
-      showName: item.sender_nickname,
-      headImage: item.sender_avatar,
+      targetId,
+      type: isGroupChat ? "GROUP" : "USER",
+      showName: isGroupChat ? item.group_name : item.sender_nickname,
+      headImage: isGroupChat ? item.group_avatar : item.sender_avatar,
       lastContent: item.content,
       unreadCount: newUnreadCount, // 使用计算后的未读数量
       messages: [
         {
           id: item.seq_id,
-          targetId: item.receiver_id,
-          type: "USER",
+          targetId: isGroupChat ? item.group_id : item.receiver_id,
+          type: isGroupChat ? "GROUP" : "USER",
           sendId: item.sender_id,
           content: item.content,
           sendTime: item.send_time,
@@ -254,9 +255,9 @@ const Home = observer(() => {
         },
       ],
     });
-
+  
     // 更新聊天记录
-    handleNewConversation(item.sender_id, Number(currentFriendIdRef.current)); // 处理新消息
+    handleNewConversation(targetId, Number(currentFriendIdRef.current)); // 处理新消息
   };
 
   // 监听当前聊天信息的变化
