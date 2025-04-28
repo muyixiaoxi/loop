@@ -233,6 +233,8 @@ const Home = observer(() => {
   const handleNewStorage = async (item: any, chatType: number) => {
     const userId = userInfo.id;
     const targetId = chatType == 1 ? item.sender_id : item.receiver_id;
+    const showName = chatType == 1 ? item.sender_nickname : item.group_name;
+    const headImage = chatType == 1 ? item.sender_avatar : item.group_avatar;
 
     // 检查是否是当前聊天对象
     const isCurrentFriend = targetId === currentFriendIdRef.current;
@@ -257,8 +259,8 @@ const Home = observer(() => {
     await db.upsertConversation(userId, {
       targetId: targetId,
       type: chatType,
-      showName: item.sender_nickname,
-      headImage: item.sender_avatar,
+      showName: showName,
+      headImage: headImage,
       lastContent: item.content,
       unreadCount: newUnreadCount, // 使用计算后的未读数量
       messages: [
