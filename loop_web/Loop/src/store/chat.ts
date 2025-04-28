@@ -1,7 +1,12 @@
 import { makeObservable, observable, action } from "mobx";
 
 class ChatStore {
-  // 当前会话信息
+  // 当前会话对象信息
+  currentFriend = {
+    id: "", // 会话ID
+    nickname: "", // 会话名称
+    avatar: "", // 会话头像
+  };
   currentFriendId: string | null = null;
   currentFriendName: string | null = null;
   currentFriendAvatar: string | undefined = undefined;
@@ -10,6 +15,10 @@ class ChatStore {
   currentMessages = []; // 当前会话消息列表
   // 聊天列表数据
   currentChatList = [];
+  // 设置当前会话信息
+  currentChatInfo = {
+    type: 0, // USER-单聊，GROUP-群聊
+  };
 
   constructor() {
     makeObservable(this, {
@@ -18,6 +27,7 @@ class ChatStore {
       currentFriendAvatar: observable,
       currentMessages: observable,
       currentChatList: observable,
+      currentChatInfo: observable,
       setCurrentMessages: action,
       setCurrentFriendData: action,
       setCurrentChatList: action,
@@ -44,6 +54,11 @@ class ChatStore {
   // 聊天列表数据
   setCurrentChatList = (data: []) => {
     this.currentChatList = data;
+  };
+
+  // 当前会话信息
+  setCurrentChatInfo = (data: { type: number }) => {
+    this.currentChatInfo = data;
   };
 }
 

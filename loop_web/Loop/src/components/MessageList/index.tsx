@@ -3,16 +3,7 @@ import "./index.scss";
 import MessageItem from "@/components/MessageItem";
 import { getChatDB } from "@/utils/chat-db";
 import userStore from "@/store/user";
-import {
-  Input,
-  Dropdown,
-  Menu,
-  Modal,
-  Form,
-  Button,
-  message,
-  Checkbox,
-} from "antd";
+import { Input, Dropdown, Menu, Modal, Form, message, Checkbox } from "antd";
 import { createGroup } from "@/api/group";
 import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
 import { getFriendList } from "@/api/friend";
@@ -42,7 +33,7 @@ const MessageList = observer(() => {
   const getFriendsList = async () => {
     try {
       // 使用引入的接口获取好友列表
-      const friends = await getFriendList();
+      const friends: any = await getFriendList();
       setFriendsList(friends.data);
       console.log(friends.data, "好友列表");
     } catch (error) {
@@ -113,13 +104,13 @@ const MessageList = observer(() => {
         };
         try {
           // 调用 createGroup 接口
-          const result = await createGroup(groupData);
-          if (result.code === 1000) {
+          const result: any = await createGroup(groupData);
+          if (result?.code === 1000) {
             message.success("创建成功");
             // 创建成功后，将新群聊信息添加到本地数据库，使用 result.data.id 作为群聊 ID
             await db.upsertConversation(userInfo.id, {
-              targetId: result.data.id,
-              type: "GROUP",
+              targetId: result?.data.id,
+              type: 2,
               showName: groupData.name,
               headImage: groupData.avatar,
               lastContent: "",
@@ -147,14 +138,6 @@ const MessageList = observer(() => {
     setIsModalVisible(false);
   };
 
-  const menu = (
-    <Menu>
-      <Menu.Item key="1" onClick={showModal}>
-        创建群聊
-      </Menu.Item>
-    </Menu>
-  );
-
   // 处理勾选成员变化的函数
   const handleMemberChange = (selectedValues: any[]) => {
     setSelectedMemberCount(selectedValues.length);
@@ -170,7 +153,16 @@ const MessageList = observer(() => {
             allowClear
             style={{ marginRight: 8 }}
           />
-          <Dropdown menu={menu} trigger={["hover"]}>
+          <Dropdown
+            overlay={
+              <Menu>
+                <Menu.Item key="1" onClick={showModal}>
+                  创建群聊
+                </Menu.Item>
+              </Menu>
+            }
+            trigger={["hover"]}
+          >
             <a onClick={(e) => e.preventDefault()}>
               <PlusOutlined style={{ fontSize: 20 }} />
             </a>
@@ -186,6 +178,7 @@ const MessageList = observer(() => {
               lastContent={item.lastContent}
               lastSendTime={item.lastSendTime}
               unreadCount={item.unreadCount}
+              chatType={item.type}
             />
           ))}
         </div>

@@ -25,7 +25,13 @@ export const WebSocketContext = createContext<{
 // observer 将组件变成响应式组件
 const Home = observer(() => {
   const { token, userInfo } = userStore; // 获取用户信息
-  const { currentFriendId, setCurrentChatList, setCurrentMessages } = chatStore; // 获取发送消息的函数
+  const {
+    currentFriendId,
+    currentChatInfo,
+    setCurrentChatList,
+    setCurrentMessages,
+  } = chatStore; // 获取发送消息的函数
+  console.log(currentChatInfo, "currentChatInfo");
   const db = getChatDB(userInfo.id); // 连接数据库
   const { isShowUserAmend, setIsShowUserAmend, currentRoute } = globalStore;
   const [wsClient, setWsClient] = useState<WebSocketClient | null>(null); // WebSocket 客户端
@@ -53,8 +59,8 @@ const Home = observer(() => {
         const { cmd, data } = message;
         if (cmd === 1) {
           // 私聊消息
-          handleNewStorage(data);
-  
+          handleNewStorage(data, 1);
+
           // 发送ack包
           const ack = {
             cmd: 3,
@@ -64,12 +70,12 @@ const Home = observer(() => {
               receiver_id: data.sender_id,
             },
           } as any;
-  
+
           client.sendMessage(ack);
         } else if (cmd === 2) {
           // 群聊消息
-          handleNewStorage(data, true); // 传递标志表示是群聊消息
-  
+          handleNewStorage(data, 2); // 传递标志表示是群聊消息
+
           // 群聊不需要发送ack包，可根据实际需求调整
         } else if (cmd === 3) {
           // // 发送的信息接受成功
@@ -95,13 +101,13 @@ const Home = observer(() => {
         }
       },
     });
-  
+
     // 连接
     client.connect();
-  
+
     // 发送消息方法
     setWsClient(client);
-  
+
     return () => {
       // 组件卸载时会自动关闭连接
       client.disconnect();
@@ -110,6 +116,7 @@ const Home = observer(() => {
 
   // 添加发送消息方法
   const sendMessageWithTimeout = async (message: any) => {
+    console.log(currentChatInfo.type, "发送消息");
     if (!wsClient) return;
 
     const messageId = message.data.seq_id;
@@ -197,9 +204,11 @@ const Home = observer(() => {
 
   // 更新聊天信息状态
   const handleUpdateMessageStatus = async (data: any, status: string) => {
+    const currentType = chatStore.currentChatInfo.type;
+
     await db.conversations
-      .where("[userId+targetId]")
-      .equals([data.receiver_id, data.sender_id])
+      .where("[userId+targetId+type]")
+      .equals([data.receiver_id, data.sender_id, currentType])
       .modify((conversation: any) => {
         const messageIndex = conversation.messages?.findIndex(
           (msg: any) => msg.id === data.seq_id
@@ -209,43 +218,54 @@ const Home = observer(() => {
         }
       });
 
-    // 更新聊天记录
-    const res: any = await db.getConversation(data.receiver_id, data.sender_id); // 获取会话数据
-
-    // 设置当前消息
+    // 更新聊天记录;
+    const res: any = await db.getConversation(
+      data.receiver_id,
+      data.sender_id,
+      currentType
+    ); // 获取会话数据
+    console.log("获取会话数据", res); // 获取会话数据
+    // 设置当前消息;
     setCurrentMessages(res?.messages);
   };
 
   // 处理新消息,添加本地存储
-  const handleNewStorage = async (item: any, isGroupChat = false) => {
+  const handleNewStorage = async (item: any, chatType: number) => {
+    const userId = userInfo.id;
+    const targetId = chatType == 1 ? item.sender_id : item.receiver_id;
+
     // 检查是否是当前聊天对象
-    const isCurrentFriend = item.sender_id === currentFriendIdRef.current;
+    const isCurrentFriend = targetId === currentFriendIdRef.current;
 
     // 先获取当前会话的未读数量
     const existingConversation = await db.conversations
       .where("[userId+targetId]")
-      .equals([item.receiver_id, item.sender_id])
+      .equals([userId, targetId])
       .first();
 
+    console.log(
+      existingConversation,
+      existingConversation?.unreadCount,
+      "existingConversation?.unreadCount"
+    );
     // 计算新的未读数量
     const newUnreadCount = isCurrentFriend
       ? 0
       : (existingConversation?.unreadCount || 0) + 1;
 
-    const targetId = isGroupChat ? item.group_id : item.sender_id; // 群聊使用 group_id，单聊使用 sender_id
     // 先添加到本地存储（乐观更新）
-    await db.upsertConversation(item.receiver_id, {
-      targetId,
-      type: isGroupChat ? "GROUP" : "USER",
-      showName: isGroupChat ? item.group_name : item.sender_nickname,
-      headImage: isGroupChat ? item.group_avatar : item.sender_avatar,
+    await db.upsertConversation(userId, {
+      targetId: targetId,
+      type: chatType,
+      showName: item.sender_nickname,
+      headImage: item.sender_avatar,
       lastContent: item.content,
       unreadCount: newUnreadCount, // 使用计算后的未读数量
       messages: [
         {
           id: item.seq_id,
-          targetId: isGroupChat ? item.group_id : item.receiver_id,
-          type: isGroupChat ? "GROUP" : "USER",
+          targetId: item.receiver_id,
+          type: 0,
           sendId: item.sender_id,
           content: item.content,
           sendTime: item.send_time,
@@ -255,26 +275,33 @@ const Home = observer(() => {
         },
       ],
     });
-  
+
     // 更新聊天记录
-    handleNewConversation(targetId, Number(currentFriendIdRef.current)); // 处理新消息
+    handleNewConversation(targetId); // 处理新消息
   };
 
   // 监听当前聊天信息的变化
-  const handleNewConversation = async (
-    friendId: number | string,
-    currentId?: number | string
-  ) => {
-    console.log("handleNewConversation", friendId, currentId);
+  const handleNewConversation = async (friendId: number | string) => {
+    const currentId = chatStore.currentFriendId;
+    const chatType = chatStore.currentChatInfo.type;
+
+    console.log("当前聊天对象", friendId, currentId, chatType);
+
     if (currentId && friendId === currentId) {
+      console.log("当前聊天对象");
       // 如果当前聊天对象是新对象，则更新会话数据
-      const res: any = await db.getConversation(userInfo.id, Number(currentId)); // 获取会话数据
+      const res: any = await db.getConversation(
+        userInfo.id,
+        Number(currentId),
+        chatType
+      ); // 获取会话数据
       // 设置当前消息
       setCurrentMessages(res?.messages);
     } else {
+      console.log("不是当前聊天对象");
       // 如果不是当前聊天对象，更新会话列表
       const conversationsList: any = await db.getUserConversations(userInfo.id); // 获取会话数据
-      console.log("conversationsList", conversationsList);
+      console.log(conversationsList, "conversationsList");
       // 更新会话列表
       setCurrentChatList(conversationsList);
     }

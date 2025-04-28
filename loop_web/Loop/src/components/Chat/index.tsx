@@ -10,15 +10,18 @@ import { getChatDB } from "@/utils/chat-db";
 
 const Chat = observer(() => {
   const { userInfo } = userStore;
-  const { sendMessageWithTimeout } = useContext(WebSocketContext); // 使用WebSocket上下文
+  const { sendMessageWithTimeout } = useContext<any>(WebSocketContext); // 使用WebSocket上下文
   const {
     currentFriendId,
     currentFriendName,
     currentFriendAvatar,
     currentMessages,
     setCurrentMessages,
+    currentChatInfo,
   } = chatStore;
   const db = getChatDB(userInfo.id); // 连接数据库
+
+  const chatType = currentChatInfo.type;
 
   const { TextArea } = Input; // 使用TextArea组件
   const [inputValue, setInputValue] = useState(""); // 输入框的值
@@ -28,18 +31,16 @@ const Chat = observer(() => {
   /**
    * 发送消息
    */
-  const handleSendMessage = async (isGroupChat = false) => {
+  const handleSendMessage = async () => {
     const messageId = uuidv4(); // 生成唯一的消息ID
-    const cmd = isGroupChat ? 2 : 1;
-    const receiverId = isGroupChat ? currentFriendId : currentFriendId; // 假设 currentFriendId 可以是群聊 ID
-  
+
     // 在这里处理发送消息的逻辑，例如发送到服务器或WebSocket服务器
     const message = {
-      cmd,
+      cmd: chatType,
       data: {
         seq_id: messageId,
         sender_id: userInfo.id,
-        receiver_id: receiverId, // 单聊使用好友 ID，群聊使用群聊 ID
+        receiver_id: currentFriendId, // 单聊使用好友 ID，群聊使用群聊 ID
         content: inputValue,
         send_time: Date.now(),
         type: 0,
@@ -47,20 +48,22 @@ const Chat = observer(() => {
         sender_avatar: userInfo.avatar,
       },
     };
-  
+
+    console.log(currentFriendName, currentFriendAvatar);
+
     // 先添加到本地存储（乐观更新）
     await db.upsertConversation(userInfo.id, {
-      targetId: receiverId,
-      type: isGroupChat ? "GROUP" : "USER",
-      showName: isGroupChat ? currentFriendName : currentFriendName,
-      headImage: isGroupChat ? currentFriendAvatar : currentFriendAvatar,
+      targetId: currentFriendId,
+      type: chatType,
+      showName: currentFriendName,
+      headImage: currentFriendAvatar,
       lastContent: inputValue,
       unreadCount: 0,
       messages: [
         {
           id: messageId,
-          targetId: receiverId,
-          type: isGroupChat ? "GROUP" : "USER",
+          targetId: currentFriendId,
+          type: 0,
           sendId: userInfo.id,
           content: inputValue,
           sendTime: Date.now(),
@@ -70,8 +73,10 @@ const Chat = observer(() => {
         },
       ],
     });
-  
+
+    // 更新聊天记录
     handleNewConversation();
+
     // 发送消息到服务器
     sendMessageWithTimeout(message);
     setInputValue(""); // 清空输入框
@@ -80,7 +85,7 @@ const Chat = observer(() => {
   // 重新发送
   const handleResendMessage = async (failedMessage: any) => {
     const message = {
-      cmd: 1,
+      cmd: chatType,
       data: {
         seq_id: uuidv4(), // 生成新的消息ID
         sender_id: userInfo.id,
@@ -92,11 +97,11 @@ const Chat = observer(() => {
         sender_avatar: userInfo.avatar,
       },
     };
-  
+
     // 更新本地存储状态为发送中
     await db.upsertConversation(userInfo.id, {
       targetId: failedMessage.targetId,
-      type: "USER",
+      type: chatType,
       showName: currentFriendName,
       headImage: currentFriendAvatar,
       lastContent: failedMessage.content,
@@ -105,7 +110,7 @@ const Chat = observer(() => {
         {
           id: message.data.seq_id,
           targetId: failedMessage.targetId,
-          type: "USER",
+          type: 0,
           sendId: userInfo.id,
           content: failedMessage.content,
           sendTime: Date.now(),
@@ -115,15 +120,11 @@ const Chat = observer(() => {
         },
       ],
     });
-  
-    // 更新聊天记录
-    const res: any = await db.getConversation(
-      userInfo.id,
-      Number(currentFriendId)
-    );
-    setCurrentMessages(res?.messages);
 
-    // 重新发送消息
+    // 更新聊天记录
+    handleNewConversation();
+
+    // 发送信息到服务器
     sendMessageWithTimeout(message); // 重新发送消息
   };
 
@@ -132,7 +133,8 @@ const Chat = observer(() => {
     // 点击获取新的会话好友数据
     const res: any = await db.getConversation(
       userInfo.id,
-      Number(currentFriendId)
+      Number(currentFriendId),
+      chatType
     ); // 获取会话数据
     setCurrentMessages(res?.messages); // 设置当前消息
   };
@@ -151,13 +153,8 @@ const Chat = observer(() => {
   const handleTextAreaKeyDown = async (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.ctrlKey) {
       e.preventDefault(); // 阻止默认换行行为
-      // 从 IndexedDB 获取当前会话类型
-      const conversation = await db.getConversation(
-        userInfo.id,
-        Number(currentFriendId)
-      );
-      const isGroupChat = conversation?.type === "GROUP";
-      handleSendMessage(isGroupChat);
+      // 发送信息
+      handleSendMessage();
     }
     if (e.key === "Enter" && e.ctrlKey) {
       // 允许换行

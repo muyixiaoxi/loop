@@ -17,7 +17,7 @@ export interface ChatMessage {
 // 会话类型定义
 export interface Conversation {
   targetId: number | string | null; // 会话目标ID
-  type: "GROUP" | "USER"; // 会话类型
+  type: number; // 会话类型 1: 单聊 2: 群聊
   showName: string; // 显示名称
   headImage: string; // 头像
   lastContent: string; // 最后一条消息内容
@@ -29,7 +29,11 @@ export interface Conversation {
 
 class ChatDB extends Dexie {
   // 使用复合键 [userId+targetId] 作为主键
-  conversations!: Table<Conversation & { userId: number }, [number, number]>;
+  conversations!: Table<
+    Conversation & { userId: number },
+    [number, number],
+    [number, number]
+  >;
 
   constructor(userId: number) {
     // 数据库名称包含用户ID
@@ -37,7 +41,7 @@ class ChatDB extends Dexie {
 
     this?.version(1).stores({
       // 使用复合键 [userId+targetId] 作为主键
-      conversations: "[userId+targetId]",
+      conversations: "[userId+targetId+type]",
     });
   }
 
@@ -48,7 +52,8 @@ class ChatDB extends Dexie {
   ) => {
     // 确保targetId是数字类型
     const targetId = Number(conversation.targetId);
-    const key: [number, number] = [userId, targetId];
+    const chatType = Number(conversation.type);
+    const key: [number, number, number] = [userId, targetId, chatType];
 
     const existing = await this.conversations.get(key);
 
@@ -78,7 +83,6 @@ class ChatDB extends Dexie {
     });
   };
 
-
   // 获取用户所有会话
   getUserConversations = async (userId: number) => {
     const conversations = await this.conversations
@@ -98,8 +102,9 @@ class ChatDB extends Dexie {
   };
 
   // 获取特定会话详情
-  getConversation = async (userId: number, targetId: number) => {
-    return this.conversations.get([userId, targetId]);
+  getConversation = async (userId: number, targetId: number, type: number) => {
+    console.log("getConversation", userId, targetId, type);
+    return this.conversations.get([userId, targetId, type]);
   };
 }
 
