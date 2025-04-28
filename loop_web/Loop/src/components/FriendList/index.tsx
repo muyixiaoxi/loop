@@ -13,12 +13,13 @@ import { searchUser } from "@/api/user";
 import userStore from "@/store/user";
 import ChatStore from "@/store/chat";
 import { getChatDB } from "@/utils/chat-db";
-import { getFirstLetter } from '@/utils/pinyin';
+import { getFirstLetter } from "@/utils/pinyin";
 
 const FirendList = observer(() => {
   const { userInfo } = userStore; // 获取用户信息
   const db = getChatDB(userInfo.id); // 获取数据库
-  const { setCurrentFriendData, setCurrentMessages } = ChatStore;
+  const { setCurrentFriendData, setCurrentMessages, setCurrentChatInfo } =
+    ChatStore;
   const [open, setOpen] = useState(false);
   const [addopen, setaddOpen] = useState(false); //添加好友
   const [isModalOpen, setIsModalOpen] = useState(false); // 控制模态框的显示状态
@@ -96,15 +97,19 @@ const FirendList = observer(() => {
   // 获取好友列表
   const getFriendListData = async () => {
     const res: any = await getFriendList();
-    setFriendList(res.data);
+    // 给每个好友数据添加chatType:1
+    const friendsWithType = res.data.map((friend: any) => ({
+      ...friend,
+      chatType: 1, // 添加chatType字段，1表示单聊
+    }));
 
-    console.log(res);
+    setFriendList(friendsWithType);
+
+    console.log(res, "----");
   };
 
   // 处理Modal中的搜索输入变化
   const handleModalSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log(12312312312312312312312312312312312);
-    
     const value = e.target.value;
     setSearchInput(value);
 
@@ -153,7 +158,7 @@ const FirendList = observer(() => {
   useEffect(() => {
     getFriendListData();
   }, []);
-  
+
   // 组件卸载时清除定时器
   useEffect(() => {
     return () => {
@@ -174,18 +179,26 @@ const FirendList = observer(() => {
 
   // 点击获取新的会话好友数据
   const handleNewConversation = async (data: any) => {
+    console.log(data, "设置好友数据");
     setCurrentFriendData(data); // 设置当前好友数据
-    const res: any = await db.getConversation(userInfo.id, data.id); // 获取会话数据
+    const res: any = await db.getConversation(
+      userInfo.id,
+      data.id,
+      data.chatType
+    ); // 获取会话数据
+    console.log(res, "获取会话数据");
     setCurrentMessages(res?.messages); // 设置当前消息
+    setCurrentChatInfo({ type: data.chatType });
   };
 
   // 获取排序后的好友列表
   const getSortedFriendList = () => {
     // 创建一个Map来存储按首字母分组的好友
     const groupedFriends = new Map<string, any[]>();
-    
-    friendList.forEach(friend => {
+
+    friendList.forEach((friend) => {
       const firstLetter = getFirstLetter(friend.nickname);
+
       if (!groupedFriends.has(firstLetter)) {
         groupedFriends.set(firstLetter, []);
       }
@@ -193,53 +206,57 @@ const FirendList = observer(() => {
     });
 
     // 将Map转换为数组并按字母排序
-    const sortedGroups = Array.from(groupedFriends.entries())
-      .sort(([a], [b]) => a.localeCompare(b));
+    const sortedGroups = Array.from(groupedFriends.entries()).sort(([a], [b]) =>
+      a.localeCompare(b)
+    );
 
     return sortedGroups;
   };
 
   // 添加一个新的状态来存储搜索关键词
-  const [searchKeyword, setSearchKeyword] = useState('');
-  
+  const [searchKeyword, setSearchKeyword] = useState("");
+
   // 处理通讯录搜索框的输入变化
   const handleFriendSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchKeyword(e.target.value);
   };
-  
+
   // 获取过滤后的好友列表
   const getFilteredFriendList = () => {
     if (!searchKeyword.trim()) {
       return getSortedFriendList();
     }
-  
+
     const lowerKeyword = searchKeyword.toLowerCase();
-    
+
     // 过滤好友列表
-    const filteredFriends = friendList.filter(friend => {
+    const filteredFriends = friendList.filter((friend) => {
       const nickname = friend.nickname.toLowerCase();
       const firstLetter = getFirstLetter(friend.nickname).toLowerCase();
-      
+
       // 匹配完整昵称或首字母
-      return nickname.includes(lowerKeyword) || firstLetter.includes(lowerKeyword);
+      return (
+        nickname.includes(lowerKeyword) || firstLetter.includes(lowerKeyword)
+      );
     });
-  
+
     // 将过滤后的好友列表按首字母分组
     const groupedFriends = new Map<string, any[]>();
-    
-    filteredFriends.forEach(friend => {
+
+    filteredFriends.forEach((friend) => {
       const firstLetter = getFirstLetter(friend.nickname);
       if (!groupedFriends.has(firstLetter)) {
         groupedFriends.set(firstLetter, []);
       }
       groupedFriends.get(firstLetter)?.push(friend);
     });
-  
+
     // 将Map转换为数组并按字母排序
-    return Array.from(groupedFriends.entries())
-      .sort(([a], [b]) => a.localeCompare(b));
+    return Array.from(groupedFriends.entries()).sort(([a], [b]) =>
+      a.localeCompare(b)
+    );
   };
-  
+
   // 修改渲染部分
   return (
     <div className="friend-list" style={containerStyle}>
@@ -283,7 +300,9 @@ const FirendList = observer(() => {
                         <div className="friend-list-item-avatar">
                           <img src={item.avatar} alt="头像" />
                         </div>
-                        <div className="friend-list-item-info">{item.nickname}</div>
+                        <div className="friend-list-item-info">
+                          {item.nickname}
+                        </div>
                       </div>
                     </li>
                   ))}

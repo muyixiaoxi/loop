@@ -12,6 +12,7 @@ type FriendItemProps = {
   avatar: string; // 好友头像
   lastSendTime?: number | string; // 最后发送时间
   unreadCount?: number; // 未读消息数量
+  chatType?: number; // 聊天类型
 };
 
 /**
@@ -22,8 +23,12 @@ type FriendItemProps = {
 const FriendItem = (props: FriendItemProps) => {
   const { userInfo } = userStore; // 获取用户信息
   const db = getChatDB(userInfo.id); // 获取数据库
-  const { setCurrentFriendData, setCurrentMessages, setCurrentChatList } =
-    ChatStore;
+  const {
+    setCurrentFriendData,
+    setCurrentMessages,
+    setCurrentChatList,
+    setCurrentChatInfo,
+  } = ChatStore;
 
   const {
     name,
@@ -32,6 +37,7 @@ const FriendItem = (props: FriendItemProps) => {
     lastSendTime,
     friendId,
     unreadCount = 0,
+    chatType,
   } = props;
 
   const handleNewConversation = async () => {
@@ -42,16 +48,25 @@ const FriendItem = (props: FriendItemProps) => {
       avatar: avatar,
     } as any;
     setCurrentFriendData(data); // 设置当前好友数据
-    const res: any = await db.getConversation(userInfo.id, friendId); // 获取会话数据
+
+    const res: any = await db.getConversation(
+      userInfo.id,
+      friendId,
+      Number(chatType)
+    ); // 获取会话数据
     setCurrentMessages(res?.messages); // 设置当前消息
+    console.log(chatType, "chatType取会话数据");
+    setCurrentChatInfo({ type: Number(chatType) }); // 设置当前聊天信息
+
+    console.log(res, "获取会话数据");
     // 重置未读消息数量为0
     await db.conversations
-      .where("[userId+targetId]")
-      .equals([userInfo.id, friendId])
+      .where("[userId+targetId+type]")
+      .equals([userInfo.id, friendId, Number(chatType)])
       .modify({ unreadCount: 0 });
 
     // 重置当前用户会话列表
-    const list = await db.getUserConversations(userInfo.id);
+    const list: any = await db.getUserConversations(userInfo.id);
     setCurrentChatList(list);
   };
 
