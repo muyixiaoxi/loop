@@ -214,7 +214,7 @@ const Chat = observer(() => {
             {/* 信息是好友发的，展示好友头像 */}
             {message.sendId !== userInfo.id && (
               <img
-                src={message.sendAvatar || currentFriendAvatar}
+                src={message.sender_avatar}
                 alt="avatar"
                 className="message-avatar"
               />
