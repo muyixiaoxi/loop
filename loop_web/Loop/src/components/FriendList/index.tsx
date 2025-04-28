@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { observer } from "mobx-react-lite";
-import { Drawer, Button, Modal, Input } from "antd";
+import { Drawer, Button, Modal, Input, message } from "antd"; // 引入 message 用于提示
 import { LeftOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import "./index.scss";
 import {
@@ -21,7 +21,7 @@ const FirendList = observer(() => {
   const { setCurrentFriendData, setCurrentMessages, setCurrentChatInfo } =
     ChatStore;
   const [open, setOpen] = useState(false);
-  const [addopen, setaddOpen] = useState(false); //添加好友
+  const [addopen, setaddOpen] = useState(false); // 添加好友
   const [isModalOpen, setIsModalOpen] = useState(false); // 控制模态框的显示状态
   const [searchInput, setSearchInput] = useState("");
   const [modalTimer, setModalTimer] = useState<NodeJS.Timeout | null>(null);
@@ -36,6 +36,8 @@ const FirendList = observer(() => {
     message: `你好！我是${userInfo.nickname || "匿名用户"}`,
   }); // 好友申请列表
   const [applyMessage, setApplyMessage] = useState(""); // 抽屉中的输入框内容
+  // 新增状态，用于记录已经发送请求的用户 ID
+  const [sentRequests, setSentRequests] = useState<Set<number>>(new Set()); 
 
   // 点击新的朋友
   const handleNew = async () => {
@@ -49,7 +51,7 @@ const FirendList = observer(() => {
     }
   };
 
-  //点击添加好友
+  // 点击添加好友
   const handleAD = (id: number) => {
     // 更新 addData 中的 friend_id
     setaddData((prevData: any) => ({
@@ -63,23 +65,28 @@ const FirendList = observer(() => {
   };
 
   // 发送好友申请，更新 addData 的 message 属性
-  const handleSendRequest = () => {
+  const handleSendRequest = async () => {
     const newAddData = {
       ...addData,
       message: applyMessage,
     };
     setaddData(newAddData);
-    // 可以在这里添加发送请求的逻辑
-    setaddOpen(false); // 关闭抽屉
-    const res = postAddFriend(newAddData)
-      .then((response) => {
-        console.log(response);
-      })
-      .catch((error) => {
-        console.log(error);
-      });
-    console.log(res);
+    try {
+      const response = await postAddFriend(newAddData);
+      if (response.code === 1000) {
+        message.success('添加好友请求已发送');
+        // 更新 sentRequests 状态
+        setSentRequests((prev) => new Set([...prev, newAddData.friend_id])); 
+        setaddOpen(false); // 关闭抽屉
+      } else {
+        message.error('添加好友请求失败，请稍后重试');
+      }
+    } catch (error) {
+      console.error('发送好友申请出错:', error);
+      message.error('添加好友请求出错，请稍后重试');
+    }
   };
+
   const onaddClose = () => {
     setaddOpen(false);
   };
@@ -134,9 +141,17 @@ const FirendList = observer(() => {
     try {
       const res: any = await searchUser(phone);
       console.log("搜索结果:", res);
-
+  
       if (res.code === 1000) {
         if (res.data) {
+          // 检查搜索的手机号是否是自己的手机号
+          if (phone === userInfo.phone) {
+            message.warning('不能添加自己到通讯录');
+            // 不再清空搜索结果
+            setSearchResult(res.data); 
+            setSearchStatus("success");
+            return;
+          }
           setSearchResult(res.data);
           setSearchStatus("success");
         } else {
@@ -411,24 +426,36 @@ const FirendList = observer(() => {
                         </div>
                       </div>
                     </div>
-                    {/* 根据 searchResult.is_friend 判断渲染按钮 */}
-                    {searchResult.is_friend ? (
-                      <Button
-                        type="primary"
-                        className="addbt"
-                        // 这里可以添加发消息的逻辑
-                        onClick={() => console.log("发消息给", searchResult.id)}
-                      >
-                        发消息
-                      </Button>
-                    ) : (
-                      <Button
-                        type="primary"
-                        className="addbt"
-                        onClick={() => handleAD(searchResult.id)}
-                      >
-                        添加好友
-                      </Button>
+                    {/* 当搜索结果不是自己时才显示操作按钮 */}
+                    {searchInput !== userInfo.phone && (
+                      <>
+                        {searchResult.is_friend ? (
+                          <Button
+                            type="primary"
+                            className="addbt"
+                            // 这里可以添加发消息的逻辑
+                            onClick={() => console.log("发消息给", searchResult.id)}
+                          >
+                            发消息
+                          </Button>
+                        ) : sentRequests.has(searchResult.id) ? (
+                          <Button
+                            type="default"
+                            className="addbt"
+                            disabled
+                          >
+                            已发送
+                          </Button>
+                        ) : (
+                          <Button
+                            type="primary"
+                            className="addbt"
+                            onClick={() => handleAD(searchResult.id)}
+                          >
+                            添加好友
+                          </Button>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
