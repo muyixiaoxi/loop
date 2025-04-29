@@ -1,6 +1,6 @@
 import "./index.scss";
 import { createContext, useState, useEffect, useRef } from "react";
-import { Modal } from "antd";
+import { Modal, message } from "antd";
 import { observer } from "mobx-react-lite";
 import globalStore from "@/store/global";
 import SideNavigation from "@/components/SideNavigation";
@@ -12,6 +12,7 @@ import WebSocketClient from "@/utils/websocket";
 import userStore from "@/store/user";
 import chatStore from "@/store/chat";
 import { getChatDB } from "@/utils/chat-db";
+import { usePeerConnectionStore } from "@/store/PeerConnectionStore"; // 确保导入
 
 // 创建WebSocket上下文
 export const WebSocketContext = createContext<{
@@ -54,13 +55,13 @@ const Home = observer(() => {
   useEffect(() => {
     if (!token) return;
     const client = new WebSocketClient<string>({
-      url: `ws://47.93.85.12:8080/api/v1/im?token=${token}`,
+      url: `ws://yangchengxi.a1.luyouxia.net:23914/api/v1/im?token=${token}`,
       onMessage: (message: any) => {
         const { cmd, data } = message;
         if (cmd === 1) {
           // 私聊消息
           handleNewStorage(data, 1);
-
+  
           // 发送ack包
           const ack = {
             cmd: 3,
@@ -70,12 +71,12 @@ const Home = observer(() => {
               receiver_id: data.sender_id,
             },
           } as any;
-
+  
           client.sendMessage(ack);
         } else if (cmd === 2) {
           // 群聊消息
           handleNewStorage(data, 2); // 传递标志表示是群聊消息
-
+  
           // 群聊不需要发送ack包，可根据实际需求调整
         } else if (cmd === 3) {
           // // 发送的信息接受成功
@@ -85,7 +86,7 @@ const Home = observer(() => {
             clearInterval(retryTimersRef.current[messageId].timer);
             delete retryTimersRef.current[messageId];
           }
-
+  
           setPendingMessages((prev) => {
             if (prev[messageId]) {
               clearTimeout(prev[messageId]);
@@ -95,19 +96,27 @@ const Home = observer(() => {
             }
             return prev;
           });
-
+  
           // 更新消息状态为成功;
           handleUpdateMessageStatus(data, "success");
+        } else if (cmd === 8) {
+          // 接收到 answer，设置远程描述
+          const remoteDesc = data.session_description;
+          usePeerConnectionStore.setRemoteDescription(remoteDesc);
+        } else if (cmd === 9) {
+          // 接收到 ICE 候选
+          const candidate = data.candidate;
+          usePeerConnectionStore.addIceCandidate(candidate);
         }
       },
     });
-
+  
     // 连接
     client.connect();
-
+  
     // 发送消息方法
     setWsClient(client);
-
+  
     return () => {
       // 组件卸载时会自动关闭连接
       client.disconnect();
@@ -322,6 +331,23 @@ const Home = observer(() => {
     };
   }, []);
 
+  useEffect(() => {
+    if (wsClient && usePeerConnectionStore.peerConnection) {
+      // 设置媒体流处理程序
+      usePeerConnectionStore.setupMediaStreamHandlers((remoteStream) => {
+        // 提示用户接收到视频流
+        message.success('接收到远程视频流');
+        console.log('接收到的视频流:', remoteStream);
+
+        // 将视频流绑定到 video 元素上
+        const remoteVideo = document.getElementById('remote-video') as HTMLVideoElement;
+        if (remoteVideo) {
+          remoteVideo.srcObject = remoteStream;
+        }
+      });
+    }
+  }, [wsClient]);
+
   return (
     <WebSocketContext.Provider
       value={{
@@ -342,6 +368,8 @@ const Home = observer(() => {
           </div>
           <div className="main-layout-content-right">
             {currentFriendId && <Chat />}
+            {/* 添加视频元素 */}
+            {/* <video id="remote-video" autoPlay muted /> */}
           </div>
         </div>
 

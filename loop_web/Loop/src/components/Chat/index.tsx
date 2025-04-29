@@ -2,11 +2,12 @@ import "./index.scss";
 import { observer } from "mobx-react-lite";
 import { v4 as uuidv4 } from "uuid";
 import { useState, useContext, useRef, useEffect } from "react";
-import { Input, Drawer, Switch } from "antd";
+import { Input, Drawer, Switch, Modal } from "antd"; // 引入 Modal 组件
 import { WebSocketContext } from "@/pages/Home";
 import chatStore from "@/store/chat";
 import userStore from "@/store/user";
 import { getChatDB } from "@/utils/chat-db";
+import { usePeerConnectionStore } from "@/store/PeerConnectionStore"; // 导入 PeerConnectionStore
 
 const Chat = observer(() => {
   const { userInfo } = userStore;
@@ -27,6 +28,10 @@ const Chat = observer(() => {
   const [inputValue, setInputValue] = useState(""); // 输入框的值
   const [openDrawer, setOpenDrawer] = useState(false); // 是否打开抽屉
   const [topSwitch, setTopSwitch] = useState<boolean>(false); //置顶开关
+  // 新增：管理视频弹框的显示状态
+  const [isVideoModalVisible, setIsVideoModalVisible] = useState(false); 
+  // 新增：管理本地视频流
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null); 
 
   /**
    * 发送消息
@@ -80,6 +85,28 @@ const Chat = observer(() => {
     // 发送消息到服务器
     sendMessageWithTimeout(message);
     setInputValue(""); // 清空输入框
+  };
+  //发送offer
+  const handlevideo = async() => {
+    try {
+      // 获取本地媒体流
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      setLocalStream(stream);
+      // 获取用户 ID
+      const sender_id = userInfo.id;
+      const receiver_id = currentFriendId; 
+
+      // 创建 PeerConnection
+      usePeerConnectionStore.createPeerConnection(sendMessageWithTimeout, stream, sender_id, receiver_id);
+
+      // 发送视频 offer
+      await usePeerConnectionStore.sendVideoOffer(sendMessageWithTimeout, sender_id, receiver_id);
+
+      // 显示视频弹框
+      setIsVideoModalVisible(true);
+    } catch (error) {
+      console.error("Error during getting user media or sending offer: ", error);
+    }
   };
 
   // 重新发送
@@ -172,7 +199,7 @@ const Chat = observer(() => {
           <div className="firend-name">{currentFriendName}</div>
         </div>
         <div className="chat-header-right">
-          <div className="more-video">
+          <div className="more-video" onClick={handlevideo}>
             {/* 视频 */}
             <svg
               fill="#E46342"
@@ -297,6 +324,33 @@ const Chat = observer(() => {
           </div>
         </div>
       </Drawer>
+
+      {/* 新增：视频弹框 */}
+      <Modal
+        title="本地视频流"
+        visible={isVideoModalVisible}
+        onCancel={() => {
+          setIsVideoModalVisible(false);
+          if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+          }
+        }}
+        footer={null}
+      >
+        {localStream && (
+          <video
+            autoPlay
+            muted
+            ref={(video) => {
+              if (video) {
+                video.srcObject = localStream;
+              }
+            }}
+            // 设置固定宽度和高度
+            style={{ width: '400px', height: '300px' }} 
+          />
+        )}
+      </Modal>
     </div>
   );
 });
