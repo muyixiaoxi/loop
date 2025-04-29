@@ -334,6 +334,8 @@ const Chat = observer(() => {
           if (localStream) {
             localStream.getTracks().forEach(track => track.stop());
           }
+          // 调用关闭 WebRTC 连接的方法
+          usePeerConnectionStore.closePeerConnection();
         }}
         footer={null}
       >

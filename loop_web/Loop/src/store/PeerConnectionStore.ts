@@ -30,16 +30,16 @@ class PeerConnectionStore {
   createPeerConnection(sendMessageWithTimeout: (data: any) => void, localStream: MediaStream, senderId: number, receiverId: number) {
     // 创建一个新的 RTCPeerConnection 实例，配置 ICE 服务器
     this.peerConnection = new RTCPeerConnection({
-    //   iceServers: [
-    //     {
-    //       urls: 'stun:stun.l.google.com:19302', // 这是 Google 提供的公共 STUN 服务器
-    //     },
-    //     {
-    //       urls: 'turn:47.121.25.229:3478',
-    //       username: 'admin',
-    //       credential: '123456',
-    //     },
-    //   ],
+      iceServers: [
+        {
+          urls: 'stun:stun.l.google.com:19302', // 这是 Google 提供的公共 STUN 服务器
+        },
+        {
+          urls: 'turn:47.121.25.229:3478',
+          username: 'admin',
+          credential: '123456',
+        },
+      ],
     });
 
     // 将本地媒体流添加到 RTCPeerConnection
@@ -63,6 +63,8 @@ class PeerConnectionStore {
 
     // 监听连接状态变化
     this.peerConnection.onconnectionstatechange = () => {
+        console.log('连接状态变化:', this.peerConnection?.connectionState); // 添加日志输出
+        
       if (this.peerConnection) {
         switch (this.peerConnection.connectionState) {
           case "connected":
@@ -94,16 +96,26 @@ class PeerConnectionStore {
             console.log('WebRTC ICE 连接断开或失败');
             this.isWebRTCConnected = false;
             break;
+            default:
+              console.log('WebRTC ICE 连接状态:', this.peerConnection.iceConnectionState);
         }
       }
     };
 
     // 监听远程轨道事件
     this.peerConnection.ontrack = (event) => {
+        console.log(event,'1111111111111111111111111111111111111111111111111111111111111111111111111111');
       const remoteStream = event.streams[0];
+      console.log('接收到远程媒体流:', remoteStream); // 添加日志输出
       if (remoteStream) {
         console.log('接收到远程媒体流，WebRTC 连接已接通');
         this.isWebRTCConnected = true;
+
+        // 检查是否有视频轨道
+        const videoTracks = remoteStream.getVideoTracks();
+        if (videoTracks.length > 0) {
+          console.log('检测到有视频流传输过来');
+        }
       }
     };
   }
@@ -148,23 +160,34 @@ class PeerConnectionStore {
     }
   }
 
+  // 关闭 WebRTC 连接的方法，原方法已存在，优化日志输出
   closePeerConnection() {
     if (this.peerConnection) {
+      console.log('正在关闭 WebRTC 连接...');
       this.peerConnection.close();
       this.peerConnection = null;
-      this.remoteDescriptionSet = false; // 重置远程描述状态
-      this.isWebRTCConnected = false; // 重置连接状态
+      console.log('WebRTC 连接已关闭');
     }
     if (this.dataChannel) {
+      console.log('正在关闭数据通道...');
       this.dataChannel.close();
       this.dataChannel = null;
+      console.log('数据通道已关闭');
     }
+    this.remoteDescriptionSet = false; // 重置远程描述状态
+    this.isWebRTCConnected = false; // 重置连接状态
+    console.log('WebRTC 相关状态已重置');
   }
 
   // 新增方法：添加 ICE 候选
   async addIceCandidate(candidate: RTCIceCandidateInit) {
     if (!this.peerConnection) {
       console.error('PeerConnection 未创建，无法添加 ICE 候选');
+      return;
+    }
+    // 检查远程描述是否已设置
+    if (!this.remoteDescriptionSet) {
+      console.warn('远程描述未设置，暂不添加 ICE 候选');
       return;
     }
     try {
