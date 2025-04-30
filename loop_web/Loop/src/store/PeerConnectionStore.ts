@@ -118,7 +118,7 @@ class PeerConnectionStore {
     };
 
     // 合并 ontrack 事件处理逻辑
-    const combinedOnTrack = (event) => {
+    const combinedOnTrack = (event:any) => {
       console.log(event,'1111111111111111111111111111111111111111111111111111111111111111111111111111');
       const remoteStream = event.streams[0];
       console.log('接收到远程媒体流:', remoteStream); // 添加日志输出
@@ -257,10 +257,14 @@ class PeerConnectionStore {
   setupMediaStreamHandlers(onRemoteStream: (stream: MediaStream) => void) {
     if (this.peerConnection) {
       const existingOnTrack = this.peerConnection.ontrack;
-      this.peerConnection.ontrack = (event) => {
-        existingOnTrack && existingOnTrack(event);
-        const remoteStream = event.streams[0];
-        onRemoteStream(remoteStream);
+      this.peerConnection.ontrack = (event:any) => {
+        console.log(event,'1111111111111111111111111111111111111111111111111111111111111111111111111111');
+        if(existingOnTrack){
+          existingOnTrack(event)
+          const remoteStream = event.streams[0];
+          onRemoteStream(remoteStream);
+        }
+        
       };
     }
   }
