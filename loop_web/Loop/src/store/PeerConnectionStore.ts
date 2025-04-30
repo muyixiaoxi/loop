@@ -1,20 +1,26 @@
-import { makeObservable, observable, action } from 'mobx';
+import { makeObservable, observable, action } from'mobx';
 
 class PeerConnectionStore {
   // 用于存储 RTCPeerConnection 实例
-  peerConnection: RTCPeerConnection | null = null; 
+  peerConnection: RTCPeerConnection | null = null;
   // 用于跟踪是否设置了远程描述
-  remoteDescriptionSet: boolean = false; 
+  remoteDescriptionSet: boolean = false;
   // 数据通道
   dataChannel: RTCDataChannel | null = null;
   // 新增：用于跟踪 WebRTC 连接是否接通
-  isWebRTCConnected: boolean = false; 
+  isWebRTCConnected: boolean = false;
+  // 新增：用于记录音频流是否成功添加到轨道
+  isAudioStreamAdded: boolean = false;
+  // 新增：用于记录视频流是否成功添加到轨道
+  isVideoStreamAdded: boolean = false;
 
   constructor() {
     makeObservable(this, {
       peerConnection: observable,
       remoteDescriptionSet: observable,
       isWebRTCConnected: observable, // 让新状态可观察
+      isAudioStreamAdded: observable,
+      isVideoStreamAdded: observable,
       createPeerConnection: action,
       setRemoteDescription: action,
       closePeerConnection: action,
@@ -30,21 +36,30 @@ class PeerConnectionStore {
   createPeerConnection(sendMessageWithTimeout: (data: any) => void, localStream: MediaStream, senderId: number, receiverId: number) {
     // 创建一个新的 RTCPeerConnection 实例，配置 ICE 服务器
     this.peerConnection = new RTCPeerConnection({
-      iceServers: [
-        {
-          urls: 'stun:stun.l.google.com:19302', // 这是 Google 提供的公共 STUN 服务器
-        },
-        {
-          urls: 'turn:47.121.25.229:3478',
-          username: 'admin',
-          credential: '123456',
-        },
-      ],
+      // iceServers: [
+      //   {
+      //     urls: 'stun:stun.l.google.com:19302', // 这是 Google 提供的公共 STUN 服务器
+      //   },
+      //   {
+      //     urls: 'turn:47.121.25.229:3478',
+      //     username: 'admin',
+      //     credential: '123456',
+      //   },
+      // ],
     });
 
     // 将本地媒体流添加到 RTCPeerConnection
     localStream.getTracks().forEach(track => {
-      this.peerConnection?.addTrack(track, localStream);
+      console.log('添加本地媒体流:', track); // 添加日志输出
+      if (track.kind === 'audio') {
+        this.peerConnection?.addTrack(track, localStream);
+        this.isAudioStreamAdded = true;
+        console.log('音频流已成功添加到本地轨道');
+      } else if (track.kind === 'video') {
+        this.peerConnection?.addTrack(track, localStream);
+        this.isVideoStreamAdded = true;
+        console.log('视频流已成功添加到本地轨道');
+      }
     });
 
     this.peerConnection.onicecandidate = (event) => {
@@ -64,7 +79,7 @@ class PeerConnectionStore {
     // 监听连接状态变化
     this.peerConnection.onconnectionstatechange = () => {
         console.log('连接状态变化:', this.peerConnection?.connectionState); // 添加日志输出
-        
+
       if (this.peerConnection) {
         switch (this.peerConnection.connectionState) {
           case "connected":
@@ -102,9 +117,9 @@ class PeerConnectionStore {
       }
     };
 
-    // 监听远程轨道事件
-    this.peerConnection.ontrack = (event) => {
-        console.log(event,'1111111111111111111111111111111111111111111111111111111111111111111111111111');
+    // 合并 ontrack 事件处理逻辑
+    const combinedOnTrack = (event) => {
+      console.log(event,'1111111111111111111111111111111111111111111111111111111111111111111111111111');
       const remoteStream = event.streams[0];
       console.log('接收到远程媒体流:', remoteStream); // 添加日志输出
       if (remoteStream) {
@@ -118,6 +133,8 @@ class PeerConnectionStore {
         }
       }
     };
+
+    this.peerConnection.ontrack = combinedOnTrack;
   }
 
   async sendVideoOffer(sendMessageWithTimeout: (data: any) => void, senderId: number, receiverId: number) {
@@ -176,6 +193,8 @@ class PeerConnectionStore {
     }
     this.remoteDescriptionSet = false; // 重置远程描述状态
     this.isWebRTCConnected = false; // 重置连接状态
+    this.isAudioStreamAdded = false; // 重置音频流添加状态
+    this.isVideoStreamAdded = false; // 重置视频流添加状态
     console.log('WebRTC 相关状态已重置');
   }
 
@@ -234,10 +253,12 @@ class PeerConnectionStore {
     }
   }
 
-  // 设置媒体流处理程序
+  // 设置媒体流处理程序，修改为合并逻辑
   setupMediaStreamHandlers(onRemoteStream: (stream: MediaStream) => void) {
     if (this.peerConnection) {
+      const existingOnTrack = this.peerConnection.ontrack;
       this.peerConnection.ontrack = (event) => {
+        existingOnTrack && existingOnTrack(event);
         const remoteStream = event.streams[0];
         onRemoteStream(remoteStream);
       };
