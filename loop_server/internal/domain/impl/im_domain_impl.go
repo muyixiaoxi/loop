@@ -152,3 +152,17 @@ func (i *imDomainImpl) GetOfflineMessage(ctx context.Context, userId uint) ([]*d
 	}
 	return messages, nil
 }
+
+func (i *imDomainImpl) SendMessage(ctx context.Context, cmd int, receiverId uint, data any) error {
+	dataByte, err := json.Marshal(data)
+	if err != nil {
+		slog.Error("internal/domain/impl/im_domain_impl.go json.Marshal(data) err:", err)
+		return err
+	}
+	msgByte, err := json.Marshal(dto.Message{Cmd: cmd, Data: dataByte})
+	if err != nil {
+		slog.Error("internal/domain/impl/im_domain_impl.go json.Marshal(msg) err:", err)
+		return err
+	}
+	return vars.Ws.SendMessage(receiverId, msgByte)
+}

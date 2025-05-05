@@ -13,4 +13,5 @@ type ImDomain interface {
 	HandleAck(ctx context.Context, ack *dto.Ack) error
 	HandleGroupMessage(ctx context.Context, pMsg *dto.GroupMessage, userIds []uint) error
 	GetOfflineMessage(ctx context.Context, userId uint) ([]*dto.Message, error)
+	SendMessage(ctx context.Context, cmd int, receiverId uint, data any) error
 }

@@ -53,6 +53,7 @@ func (u *userServerImpl) Register(c *gin.Context) {
 		Nickname: p.Nickname,
 		Password: p.Password,
 		Phone:    p.Phone,
+		Avatar:   consts.GetDefaultAvatar(),
 	}
 
 	if err := u.user.Register(c, user); err != nil {

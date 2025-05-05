@@ -47,7 +47,7 @@ func (u *userDomainImpl) Login(ctx context.Context, phone, password string) (*dt
 
 // Register 注册
 func (u *userDomainImpl) Register(ctx context.Context, user *dto.User) error {
-	return u.userRepo.Create(ctx, user)
+	return u.userRepo.Register(ctx, user)
 }
 
 // QueryUser 查询用户信息

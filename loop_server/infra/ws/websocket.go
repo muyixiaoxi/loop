@@ -16,6 +16,7 @@ var Upgrade = websocket.Upgrader{
 
 type Client struct {
 	Conn   *websocket.Conn
+	Mu     *sync.Mutex
 	UserId uint
 }
 
@@ -47,4 +48,11 @@ func (s *Server) Delete(key uint) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.clients, key)
+}
+
+func (s *Server) SendMessage(userId uint, msg []byte) error {
+	client := s.Get(userId)
+	client.Mu.Lock()
+	defer client.Mu.Unlock()
+	return client.Conn.WriteMessage(websocket.TextMessage, msg)
 }

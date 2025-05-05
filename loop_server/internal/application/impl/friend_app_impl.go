@@ -18,6 +18,9 @@ func NewFriendAppImpl(friendDomain domain.FriendDomain, userDomain domain.UserDo
 
 // AddFriend 添加好友
 func (u *friendAppImpl) AddFriend(ctx context.Context, friendId uint, message string) error {
+	if friendId == request.GetCurrentUser(ctx) {
+		return nil
+	}
 	req := &dto.FriendRequest{
 		RequesterId: request.GetCurrentUser(ctx),
 		RecipientId: friendId,

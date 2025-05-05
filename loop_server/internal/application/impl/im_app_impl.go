@@ -8,17 +8,19 @@ import (
 	"loop_server/infra/redis"
 	"loop_server/infra/vars"
 	"loop_server/infra/ws"
+	"loop_server/internal/application"
 	"loop_server/internal/domain"
 	"loop_server/internal/model/dto"
 )
 
 type imAppImpl struct {
+	sfuApp      application.SfuAPP
 	imDomain    domain.ImDomain
 	groupDomain domain.GroupDomain
 }
 
-func NewImAppImpl(imDomain domain.ImDomain, groupDomain domain.GroupDomain) *imAppImpl {
-	return &imAppImpl{imDomain: imDomain, groupDomain: groupDomain}
+func NewImAppImpl(sfuApp application.SfuAPP, imDomain domain.ImDomain, groupDomain domain.GroupDomain) *imAppImpl {
+	return &imAppImpl{sfuApp: sfuApp, imDomain: imDomain, groupDomain: groupDomain}
 }
 
 func (i *imAppImpl) HandleMessage(ctx context.Context, curUserId uint, msgByte []byte) error {
@@ -36,6 +38,13 @@ func (i *imAppImpl) HandleMessage(ctx context.Context, curUserId uint, msgByte [
 		return i.handlerAck(ctx, msg)
 	case consts.WsMessageCmdGroupMessage:
 		return i.handlerGroupMessage(ctx, msg)
+	case consts.WsMessageCmdPrivateOffer:
+	case consts.WsMessageCmdPrivateAnswer:
+	case consts.WsMessageCmdPrivateIce:
+	case consts.WsMessageCmdGroupInitiatorOffer:
+		return i.handlerGroupOffer(ctx, msg)
+	case consts.WsMessageCmdGroupIce:
+		return i.handlerGroupIce(ctx, msg)
 	}
 	return nil
 }
@@ -140,4 +149,34 @@ func (i *imAppImpl) handlerAck(ctx context.Context, msg *dto.Message) error {
 
 func (i *imAppImpl) GetOfflineMessage(ctx context.Context, userId uint) ([]*dto.Message, error) {
 	return i.imDomain.GetOfflineMessage(ctx, userId)
+}
+
+func (i *imAppImpl) handlerGroupOffer(ctx context.Context, msg *dto.Message) error {
+	var sdpMessage dto.WebRTCMessage
+	err := json.Unmarshal(msg.Data, &sdpMessage)
+	if err != nil {
+		slog.Error("handlerGroupOffer unmarshal err:", err)
+		return err
+	}
+	userId := sdpMessage.SenderId
+	answer, err := i.sfuApp.SetOfferGetAnswer(ctx, sdpMessage.ReceiverId, sdpMessage.SenderNickname, sdpMessage.SenderAvatar,
+		sdpMessage.ReceiverIdList, sdpMessage.ReceiverAvatarList, sdpMessage.MediaType, sdpMessage.SessionDescription)
+	if err != nil {
+		return err
+	}
+
+	sdpMessage.SenderId, sdpMessage.ReceiverId = sdpMessage.ReceiverId, sdpMessage.SenderId
+	sdpMessage.SessionDescription = answer
+	return i.imDomain.SendMessage(ctx, consts.WsMessageCmdGroupAnswer, userId, sdpMessage)
+}
+
+func (i *imAppImpl) handlerGroupIce(ctx context.Context, msg *dto.Message) error {
+	var sdpMessage dto.WebRTCMessage
+	err := json.Unmarshal(msg.Data, &sdpMessage)
+	if err != nil {
+		slog.Error("handlerGroupOffer unmarshal err:", err)
+		return err
+	}
+	return i.sfuApp.SetIceCandidateInit(ctx, sdpMessage.ReceiverId, sdpMessage.SenderNickname, sdpMessage.SenderAvatar,
+		sdpMessage.ReceiverIdList, sdpMessage.ReceiverAvatarList, sdpMessage.MediaType, sdpMessage.CandidateInit)
 }

@@ -7,6 +7,7 @@ import (
 	"loop_server/infra/ws"
 	"loop_server/internal/application"
 	"loop_server/pkg/request"
+	"sync"
 )
 
 type imServerImpl struct {
@@ -36,6 +37,7 @@ func (i *imServerImpl) WsHandler(c *gin.Context) {
 	client := &ws.Client{
 		UserId: userId,
 		Conn:   conn,
+		Mu:     &sync.Mutex{},
 	}
 
 	i.im.AddOnlineUser(c, client)

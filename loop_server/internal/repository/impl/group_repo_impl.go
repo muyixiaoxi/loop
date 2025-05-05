@@ -77,7 +77,7 @@ func (g *groupRepoImpl) DeleteGroup(ctx context.Context, groupId uint) error {
 
 func (g *groupRepoImpl) GetGroupList(ctx context.Context, userId uint) ([]*dto.Group, error) {
 	var group []*po.Group
-	err := g.db.WithContext(ctx).Model(&po.GroupShip{}).Where("user_id = ?", userId).Find(&group).Error
+	err := g.db.WithContext(ctx).Model(&group).Joins("join group_ship on group_ship.group_id = group.id and group_ship.user_id = ?", userId).Find(&group).Error
 	if err != nil {
 		slog.Error("internal/repository/impl/group_repo_impl.go GetGroupList err:", err)
 		return nil, err

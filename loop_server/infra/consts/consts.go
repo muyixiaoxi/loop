@@ -13,11 +13,18 @@ const (
 )
 
 const (
-	WsMessageCmdHeartbeat      = 0   // 心跳
-	WsMessageCmdPrivateMessage = 1   // 私聊
-	WsMessageCmdGroupMessage   = 2   // 群聊
-	WsMessageCmdAck            = 3   // 私信应答
-	WsMessageCmdRemind         = 100 //提醒
+	WsMessageCmdHeartbeat           = 0 + iota // 心跳
+	WsMessageCmdPrivateMessage                 // 私聊
+	WsMessageCmdGroupMessage                   // 群聊
+	WsMessageCmdAck                            // 私信应答
+	WsMessageCmdPrivateOffer                   // 私聊offer
+	WsMessageCmdPrivateAnswer                  // 私聊answer
+	WsMessageCmdPrivateIce                     // 私聊ice
+	WsMessageCmdGroupInitiatorOffer            // 群聊发起者offer
+	WsMessageCmdGroupAnswer                    // 群聊answer
+	WsMessageCmdGroupIce                       // 群聊ice
+	WsMessageCmdCallInvitation                 // 呼叫邀请
+	WsMessageCmdRemind              = 100      //提醒
 )
 
 const (
@@ -28,4 +35,13 @@ const (
 
 const (
 	AckGroupMessage = true
+)
+
+const (
+	WsParticipantInitiatorYes = true
+	WsParticipantInitiatorNo  = false
+)
+
+const (
+	WsMessageGroupCallMessageTemplate = "邀请你多人聊天"
 )
