@@ -12,6 +12,7 @@ import WebSocketClient from "@/utils/websocket";
 import userStore from "@/store/user";
 import chatStore from "@/store/chat";
 import { getChatDB } from "@/utils/chat-db";
+import { getLocalTime, getOfflineMessage } from "@/api/chat";
 
 // 创建WebSocket上下文
 export const WebSocketContext = createContext<{
@@ -45,6 +46,59 @@ const Home = observer(() => {
   const retryTimersRef = useRef<
     Record<string, { timer: NodeJS.Timeout; count: number }>
   >({});
+  const LocalTime = async () => {
+    const data = await getLocalTime(); // 获取当前时间
+    // return data; // 返回当前时间
+    console.log(data, "当前时间"); // 打印当前时间
+  };
+
+  //
+  const ChangeOffline = async () => {
+    const { data }: any = await getOfflineMessage(); // 获取当前时间
+
+    // 处理离线消息数据
+    const processedData = data.reduce((result: any[], item: any) => {
+      if (item.cmd === 1) {
+        // 处理cmd为1的数据
+        result.push({
+          cmd: 3,
+          data: {
+            seq_id: item.data.seq_id,
+            sender_id: item.data.sender_id,
+            receiver_id: item.data.receiver_id,
+            // 单聊不需要is_group字段
+          },
+        });
+      } else if (item.cmd === 2) {
+        // 处理cmd为2的数据，只保留每个sender_id的最后一条
+        const existingIndex = result.findIndex(
+          (msg) => msg.cmd === 2 && msg.data.sender_id === item.data.sender_id
+        );
+
+        if (existingIndex !== -1) {
+          // 如果已存在该sender_id的消息，更新为最新的消息
+          result[existingIndex] = {
+            cmd: 3,
+            data: {
+              seq_id: item.data.seq_id,
+              sender_id: item.data.sender_id,
+              receiver_id: item.data.receiver_id,
+              is_group: true, // 群聊需要is_group字段
+            },
+          };
+        }
+      }
+      return result;
+    }, []);
+
+    console.log(data, "离线消息"); // 打印当前时间
+    console.log(processedData, "处理后的离线消息"); // 打印当前时间
+  };
+
+  useEffect(() => {
+    LocalTime(); // 调用获取当前时间的函数
+    ChangeOffline(); // 调用获取当前时间的函数
+  }, []);
 
   // 保持ref与state同步
   useEffect(() => {
@@ -76,7 +130,18 @@ const Home = observer(() => {
           // 群聊消息
           handleNewStorage(data, 2); // 传递标志表示是群聊消息
 
-          // 群聊不需要发送ack包，可根据实际需求调整
+          // 发送ack包
+          const ack = {
+            cmd: 3,
+            data: {
+              seq_id: data.seq_id,
+              sender_id: data.receiver_id,
+              receiver_id: data.sender_id,
+              is_group: true, // 群聊消息需要添加is_group字段
+            },
+          } as any;
+
+          client.sendMessage(ack);
         } else if (cmd === 3) {
           // // 发送的信息接受成功
           const messageId = data.seq_id;
