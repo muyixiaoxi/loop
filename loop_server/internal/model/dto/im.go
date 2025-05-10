@@ -29,6 +29,10 @@ type GroupMessage struct {
 	GroupAvatar    string `json:"group_avatar"`    // 群头像
 }
 
+type GroupOfflineMessage struct {
+	SeqId string `json:"seq_id"` // 唯一标识
+}
+
 type Ack struct {
 	SeqId      string `json:"seq_id"`      // 唯一标识
 	SenderId   uint   `json:"sender_id"`   // 发送者Id

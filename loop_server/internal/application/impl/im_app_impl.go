@@ -11,16 +11,19 @@ import (
 	"loop_server/internal/application"
 	"loop_server/internal/domain"
 	"loop_server/internal/model/dto"
+	"loop_server/internal/model/po"
+	"strings"
 )
 
 type imAppImpl struct {
 	sfuApp      application.SfuAPP
 	imDomain    domain.ImDomain
 	groupDomain domain.GroupDomain
+	userDomain  domain.UserDomain
 }
 
-func NewImAppImpl(sfuApp application.SfuAPP, imDomain domain.ImDomain, groupDomain domain.GroupDomain) *imAppImpl {
-	return &imAppImpl{sfuApp: sfuApp, imDomain: imDomain, groupDomain: groupDomain}
+func NewImAppImpl(sfuApp application.SfuAPP, imDomain domain.ImDomain, groupDomain domain.GroupDomain, userDomain domain.UserDomain) *imAppImpl {
+	return &imAppImpl{sfuApp: sfuApp, imDomain: imDomain, groupDomain: groupDomain, userDomain: userDomain}
 }
 
 func (i *imAppImpl) HandleMessage(ctx context.Context, curUserId uint, msgByte []byte) error {
@@ -55,6 +58,37 @@ func (i *imAppImpl) handlerGroupMessage(ctx context.Context, msg *dto.Message) e
 	if gMsg.SeqId == "" || gMsg.ReceiverId == 0 {
 		return nil
 	}
+
+	if err := i.imDomain.SaveGroupMessage(ctx, &po.GroupMessage{
+		GroupId:  gMsg.ReceiverId,
+		SeqId:    gMsg.SeqId,
+		SenderId: gMsg.SenderId,
+		Content:  gMsg.Content,
+		Type:     gMsg.Type,
+		SendTime: gMsg.SendTime,
+	}); err != nil {
+		if strings.Contains(err.Error(), consts.Duplicate) {
+			return i.imDomain.SendAck(ctx, &dto.Ack{
+				SeqId:      gMsg.SeqId,
+				SenderId:   gMsg.ReceiverId,
+				ReceiverId: gMsg.SenderId,
+				IsGroup:    consts.AckGroupMessage,
+			})
+		}
+		return err
+	}
+	// 通知在线用户
+	go i.groupMessageInfoOnlineUser(ctx, gMsg)
+
+	return i.imDomain.SendAck(ctx, &dto.Ack{
+		SeqId:      gMsg.SeqId,
+		SenderId:   gMsg.ReceiverId,
+		ReceiverId: gMsg.SenderId,
+		IsGroup:    consts.AckGroupMessage,
+	})
+}
+
+func (i *imAppImpl) groupMessageInfoOnlineUser(ctx context.Context, gMsg *dto.GroupMessage) error {
 	// 群信息
 	group, err := i.groupDomain.GetGroupById(ctx, gMsg.ReceiverId)
 	if err != nil {
@@ -68,16 +102,10 @@ func (i *imAppImpl) handlerGroupMessage(ctx context.Context, msg *dto.Message) e
 	if err != nil {
 		return err
 	}
-	if err := i.imDomain.HandleGroupMessage(ctx, gMsg, userIds); err != nil {
+	if err := i.imDomain.SendGroupMessage(ctx, gMsg, userIds); err != nil {
 		return err
 	}
-
-	return i.imDomain.HandleAck(ctx, &dto.Ack{
-		SeqId:      gMsg.SeqId,
-		SenderId:   gMsg.ReceiverId,
-		ReceiverId: gMsg.SenderId,
-		IsGroup:    consts.AckGroupMessage,
-	})
+	return nil
 }
 
 func (i *imAppImpl) handleHeartbeat(ctx context.Context, curUserId uint, msgByte []byte) error {
@@ -148,7 +176,73 @@ func (i *imAppImpl) handlerAck(ctx context.Context, msg *dto.Message) error {
 }
 
 func (i *imAppImpl) GetOfflineMessage(ctx context.Context, userId uint) ([]*dto.Message, error) {
-	return i.imDomain.GetOfflineMessage(ctx, userId)
+	msg, err := i.imDomain.GetOfflinePrivateMessage(ctx, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	// 获取群消息
+	groupMsg, err := i.getOfflineGroupMessage(ctx, userId)
+	if err != nil {
+		return nil, err
+	}
+	msg = append(msg, groupMsg...)
+	return msg, nil
+}
+
+func (i *imAppImpl) getOfflineGroupMessage(ctx context.Context, userId uint) ([]*dto.Message, error) {
+	groupList, err := i.groupDomain.GetGroupList(ctx, userId)
+	if err != nil {
+		return nil, err
+	}
+	groupIdList := make([]uint, len(groupList))
+	groupHash := make(map[uint]*dto.Group, len(groupList))
+	for i, group := range groupList {
+		groupIdList[i] = group.ID
+		groupHash[group.ID] = group
+	}
+	gmsg, err := i.imDomain.GetOfflineGroupMessage(ctx, groupIdList, userId)
+	if err != nil {
+		return nil, err
+	}
+	userIdMap := make(map[uint]*dto.User)
+	for _, message := range gmsg {
+		userIdMap[message.SenderId] = nil
+	}
+	userIdList := make([]uint, 0, len(userIdMap))
+	for id, _ := range userIdMap {
+		userIdList = append(userIdList, id)
+	}
+	userList, err := i.userDomain.GetUserListByUserIds(ctx, userIdList)
+	if err != nil {
+		return nil, err
+	}
+	for _, user := range userList {
+		userIdMap[user.ID] = user
+	}
+
+	resp := make([]*dto.Message, len(gmsg))
+	for _, message := range gmsg {
+		data := &dto.GroupMessage{
+			SeqId:          message.SeqId,
+			SenderId:       message.SenderId,
+			ReceiverId:     userId,
+			Content:        message.Content,
+			Type:           message.Type,
+			SendTime:       message.SendTime,
+			SenderNickname: userIdMap[message.SenderId].Nickname,
+			SenderAvatar:   userIdMap[message.SenderId].Avatar,
+			GroupName:      groupHash[message.GroupId].Name,
+			GroupAvatar:    groupHash[message.GroupId].Avatar,
+		}
+		dataByte, _ := json.Marshal(data)
+		tmp := &dto.Message{
+			Cmd:  consts.WsMessageCmdGroupMessage,
+			Data: dataByte,
+		}
+		resp = append(resp, tmp)
+	}
+	return resp, nil
 }
 
 func (i *imAppImpl) handlerGroupOffer(ctx context.Context, msg *dto.Message) error {
@@ -179,4 +273,38 @@ func (i *imAppImpl) handlerGroupIce(ctx context.Context, msg *dto.Message) error
 	}
 	return i.sfuApp.SetIceCandidateInit(ctx, sdpMessage.ReceiverId, sdpMessage.SenderNickname, sdpMessage.SenderAvatar,
 		sdpMessage.ReceiverIdList, sdpMessage.ReceiverAvatarList, sdpMessage.MediaType, sdpMessage.CandidateInit)
+}
+
+func (i *imAppImpl) SubmitOfflineMessage(ctx context.Context, userId uint, seqIdList []*dto.Ack) error {
+	// 私聊
+	used := make(map[string]bool, len(seqIdList))
+	groupAck := make([]*dto.Ack, 0)
+	for _, s := range seqIdList {
+		if !s.IsGroup {
+			used[s.SeqId] = true
+		} else {
+			groupAck = append(groupAck, s)
+		}
+	}
+
+	messages, err := i.imDomain.GetOfflinePrivateMessage(ctx, userId)
+	if err != nil {
+		return err
+	}
+
+	deleteMessageList := make([]*dto.Message, 0, len(seqIdList))
+	for _, message := range messages {
+		data := &dto.PrivateMessage{}
+		if err := json.Unmarshal(message.Data, data); err != nil {
+			return err
+		}
+
+		deleteMessageList = append(deleteMessageList, message)
+	}
+	err = i.imDomain.DeleteOfflinePrivateMessage(ctx, userId, deleteMessageList)
+	if err != nil {
+		return err
+	}
+
+	return i.imDomain.HandleOfflineGroupMessage(ctx, groupAck)
 }

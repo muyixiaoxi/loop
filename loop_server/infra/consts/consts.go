@@ -16,7 +16,7 @@ const (
 	WsMessageCmdHeartbeat           = 0 + iota // 心跳
 	WsMessageCmdPrivateMessage                 // 私聊
 	WsMessageCmdGroupMessage                   // 群聊
-	WsMessageCmdAck                            // 私信应答
+	WsMessageCmdAck                            // 应答
 	WsMessageCmdPrivateOffer                   // 私聊offer
 	WsMessageCmdPrivateAnswer                  // 私聊answer
 	WsMessageCmdPrivateIce                     // 私聊ice
@@ -24,6 +24,7 @@ const (
 	WsMessageCmdGroupAnswer                    // 群聊answer
 	WsMessageCmdGroupIce                       // 群聊ice
 	WsMessageCmdCallInvitation                 // 呼叫邀请
+	WsMessageCmdGroupAck                       //群聊应答
 	WsMessageCmdRemind              = 100      //提醒
 )
 
@@ -44,4 +45,9 @@ const (
 
 const (
 	WsMessageGroupCallMessageTemplate = "邀请你多人聊天"
+)
+
+const (
+	WsMessageAckStatePending      = "pending"
+	WsMessageAckStateAcknowledged = "acknowledged"
 )

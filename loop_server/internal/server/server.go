@@ -62,10 +62,13 @@ func (s *server) InitRouter() {
 		group.POST("/admin/add", s.group.AddAdmin)
 	}
 
-	im := r
+	im := r.Group("/im")
 	{
 		im.Use(middleware.JWTAuthMiddleware())
-		r.GET("/im", s.im.WsHandler)
+		im.GET("", s.im.WsHandler)
+		im.GET("/offline_message", s.im.GetOfflineMessage)
+		im.GET("/local_time", s.im.GetLocalTime)
+		im.POST("/submit_message", s.im.SubmitOfflineMessage)
 	}
 	router.Run(":" + strconv.Itoa(vars.App.Port))
 }

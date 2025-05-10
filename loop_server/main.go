@@ -21,17 +21,18 @@ func main() {
 	userRepo := repo_impl.NewUserRepoImpl(db)
 	friendRepo := repo_impl.NewFriendRepoImpl(db)
 	groupRepo := repo_impl.NewGroupRepoImpl(db)
+	imRepo := repo_impl.NewImRepoImpl(db)
 
 	userDomain := domain_impl.NewUserDomainImpl(userRepo)
 	friendDomain := domain_impl.NewFriendDomainImpl(friendRepo)
 	groupDomain := domain_impl.NewGroupDomainImpl(groupRepo)
-	imDomain := domain_impl.NewImDomainImpl()
+	imDomain := domain_impl.NewImDomainImpl(imRepo)
 
 	userApp := app_impl.NewUserAppImpl(userDomain, friendDomain)
 	friendApp := app_impl.NewFriendAppImpl(friendDomain, userDomain)
 	groupApp := app_impl.NewGroupAppImpl(groupDomain, userDomain)
 	sufApp := app_impl.NewSfuAppImpl(imDomain)
-	imApp := app_impl.NewImAppImpl(sufApp, imDomain, groupDomain)
+	imApp := app_impl.NewImAppImpl(sufApp, imDomain, groupDomain, userDomain)
 
 	userServer := server_impl.NewUserServerImpl(userApp)
 	friendServer := server_impl.NewFriendServerImpl(friendApp)

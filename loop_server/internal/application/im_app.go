@@ -11,4 +11,5 @@ type ImApp interface {
 	RemoveOnlineUser(ctx context.Context, userId uint) error
 	HandleMessage(ctx context.Context, curUserId uint, msgByte []byte) error
 	GetOfflineMessage(ctx context.Context, userId uint) ([]*dto.Message, error)
+	SubmitOfflineMessage(ctx context.Context, userId uint, seqIdList []*dto.Ack) error
 }

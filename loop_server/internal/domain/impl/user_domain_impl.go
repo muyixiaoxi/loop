@@ -74,5 +74,8 @@ func (u *userDomainImpl) UpdateUserPassword(ctx context.Context, userId uint, pa
 }
 
 func (u *userDomainImpl) GetUserListByUserIds(ctx context.Context, userIds []uint) ([]*dto.User, error) {
+	if len(userIds) == 0 {
+		return nil, nil
+	}
 	return u.userRepo.GetUserListByUserIds(ctx, userIds)
 }
