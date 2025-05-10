@@ -1,46 +1,77 @@
 import "./index.scss";
-import { useState } from "react";
-import userStore from "@/store/user";
-import navigationStore from "@/store/navigation";
 import { observer } from "mobx-react-lite";
-
-import {
-  MessageOutlined,
-  TeamOutlined,
-  UserSwitchOutlined,
-  SettingOutlined,
-} from "@ant-design/icons";
+import { WebSocketContext } from "@/pages/Home";
+import { useContext } from "react";
+import userStore from "@/store/user";
+import globalStore from "@/store/global";
+import icon1 from "../../../public/message.svg";
+import icon2 from "../../../public/message2.svg";
+import icon3 from "../../../public/address.svg";
+import icon4 from "../../../public/address2.svg";
+import icon5 from "../../../public/setting.svg";
+import { Popover, Button } from "antd";
+import { useNavigate } from "react-router-dom";
 
 const SideNavigation = observer(() => {
   const { userInfo } = userStore;
-  const { currentRoute, setCurrentRoute } = navigationStore;
-  const [showEditUser, setShowEditUser] = useState(false);
+  const { isShowUserAmend, setIsShowUserAmend, currentRoute, setCurrentRoute } =
+    globalStore;
+  const navigate = useNavigate();
 
-  // 处理图标点击事件
+  const messageIcon = currentRoute === "conversation" ? icon2 : icon1;
+  const addressIcon = currentRoute === "friend" ? icon4 : icon3;
+  const settingIcon = icon5;
+
+  const { disconnect } = useContext(WebSocketContext); // 获取WebSocket断开方法
+
   const handleIconClick = (item: string) => {
     setCurrentRoute(item);
   };
 
+  const logoutContent = (
+    <div>
+      <Button
+        onClick={() => {
+          // 清除本地存储
+          localStorage.removeItem("userdata");
+          localStorage.removeItem("loopUserStore");
+          // 断开WebSocket连接
+          disconnect?.();
+          // 使用 replace 选项重定向到登录页面
+          navigate("/change", { replace: true });
+        }}
+      >
+        退出登录
+      </Button>
+    </div>
+  );
+
   return (
     <div className="side-navigation">
-      <div className="avatar" onClick={() => setShowEditUser(!showEditUser)}>
+      <div
+        className="avatar"
+        onClick={() => setIsShowUserAmend(!isShowUserAmend)}
+      >
         <img src={userInfo.avatar} alt="" />
       </div>
       <div className="choice">
-        <div
-          className="conversation"
-          onClick={() => handleIconClick("conversation")}
-        >
-          <MessageOutlined />
+        <div>
+          <div
+            className="conversation"
+            onClick={() => handleIconClick("conversation")}
+          >
+            <img src={messageIcon} alt="Conversation" />
+          </div>
+          <div className="friend" onClick={() => handleIconClick("friend")}>
+            <img src={addressIcon} alt="Address" />
+          </div>
         </div>
-        {/* <div className="people" onClick={() => handleIconClick("team")}>
-          <TeamOutlined />
-        </div> */}
-        <div className="address" onClick={() => handleIconClick("address")}>
-          <UserSwitchOutlined />
-        </div>
-        <div className="setting" onClick={() => handleIconClick("setting")}>
-          <SettingOutlined />
+        <div>
+          <Popover placement="right" content={logoutContent}>
+            <div className="setting">
+              <img src={settingIcon} alt="Setting" />
+            </div>
+          </Popover>
         </div>
       </div>
     </div>
