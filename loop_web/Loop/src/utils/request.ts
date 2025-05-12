@@ -17,6 +17,7 @@ export const setHttpNavigate = (navigate: ReturnType<typeof useNavigate>) => {
 const service = axios.create({
   // 修改 baseURL
   // baseURL: import.meta.env.VITE_API_BASE_URL,
+  // baseURL: "http://47.93.85.12:8080",
   baseURL: "",
   timeout: 5000,
 });

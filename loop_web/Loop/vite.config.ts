@@ -5,6 +5,7 @@ import path from "path"; // 引入 path 模块
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  base: "./", // 设置相对路径
   resolve: {
     alias: {
       // 设置路径别名
