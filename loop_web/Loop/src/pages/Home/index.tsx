@@ -12,6 +12,11 @@ import WebSocketClient from "@/utils/websocket";
 import userStore from "@/store/user";
 import chatStore from "@/store/chat";
 import { getChatDB } from "@/utils/chat-db";
+import {
+  getLocalTime,
+  getOfflineMessage,
+  submitOfflineMessage,
+} from "@/api/chat";
 import { usePeerConnectionStore } from "@/store/PeerConnectionStore"; // 确保导入
 
 // 创建WebSocket上下文
@@ -32,9 +37,14 @@ const Home = observer(() => {
     setCurrentChatList,
     setCurrentMessages,
   } = chatStore; // 获取发送消息的函数
-  console.log(currentChatInfo, "currentChatInfo");
+
   const db = getChatDB(userInfo.id); // 连接数据库
-  const { isShowUserAmend, setIsShowUserAmend, currentRoute } = globalStore;
+  const {
+    isShowUserAmend,
+    setIsShowUserAmend,
+    currentRoute,
+    setTimeDifference,
+  } = globalStore;
   const [wsClient, setWsClient] = useState<WebSocketClient | null>(null); // WebSocket 客户端
   // 使用ref保存currentFriendId的引用
   const currentFriendIdRef = useRef<string | number>(currentFriendId); // 监听currentFriendId的变化
@@ -47,6 +57,63 @@ const Home = observer(() => {
     Record<string, { timer: NodeJS.Timeout; count: number }>
   >({});
 
+  // 获取与服务器时间差
+  const LocalTime = async () => {
+    const startTime = new Date().getTime();
+    const { data }: any = await getLocalTime(); // 获取当前时间
+    const serverTime = data.time; // 服务器返回的时间
+    const endTime = new Date().getTime();
+
+    const timeDifference = (startTime + endTime) / 2; // 计算时间差
+    const timeDiff = serverTime - timeDifference; // 客户端与服务器时间差
+    setTimeDifference(timeDiff); // 存储时间差到全局状态
+  };
+
+  //  存储离线信息到本地
+  const ChangeOffline = async () => {
+    const { data }: any = await getOfflineMessage();
+    const userId = userInfo.id;
+    const processedData: any = []; // 用于存储处理后的数据;
+
+    for (const item of data) {
+      if (item?.cmd === 1) {
+        await handleNewStorage(item.data, 1);
+        processedData.push({
+          seq_id: item.data.seq_id,
+          sender_id: userId,
+          receiver_id: item.data.sender_id,
+        });
+      } else if (item?.cmd === 2) {
+        await handleNewStorage(item.data, 2);
+        const existingIndex = processedData.findIndex(
+          (msg) => msg.receiver_id === item.data.receiver_id
+        );
+        if (existingIndex !== -1) {
+          processedData[existingIndex] = {
+            seq_id: item.data.seq_id,
+            sender_id: userId,
+            receiver_id: item.data.receiver_id,
+            is_group: true,
+          };
+        } else {
+          processedData.push({
+            seq_id: item.data.seq_id,
+            sender_id: userId,
+            receiver_id: item.data.receiver_id,
+            is_group: true,
+          });
+        }
+      }
+    }
+
+    await submitOfflineMessage(processedData);
+  };
+
+  useEffect(() => {
+    LocalTime(); // 调用获取当前时间的函数
+    ChangeOffline(); // 调用获取离线聊天的方法
+  }, []);
+
   // 保持ref与state同步
   useEffect(() => {
     currentFriendIdRef.current = currentFriendId;
@@ -54,30 +121,43 @@ const Home = observer(() => {
 
   useEffect(() => {
     if (!token) return;
+    const userId = userInfo.id;
+
     const client = new WebSocketClient<string>({
-      url: `ws://yangchengxi.a1.luyouxia.net:23914/api/v1/im?token=${token}`,
+      url: `ws://47.93.85.12:8080/api/v1/im?token=${token}`,
       onMessage: (message: any) => {
         const { cmd, data } = message;
         if (cmd === 1) {
           // 私聊消息
           handleNewStorage(data, 1);
-  
+
           // 发送ack包
           const ack = {
             cmd: 3,
             data: {
               seq_id: data.seq_id,
-              sender_id: data.receiver_id,
+              sender_id: userId,
               receiver_id: data.sender_id,
             },
           } as any;
-  
+
           client.sendMessage(ack);
         } else if (cmd === 2) {
           // 群聊消息
           handleNewStorage(data, 2); // 传递标志表示是群聊消息
-  
-          // 群聊不需要发送ack包，可根据实际需求调整
+
+          // 发送ack包
+          const ack = {
+            cmd: 3,
+            data: {
+              seq_id: data.seq_id,
+              sender_id: userId,
+              receiver_id: data.receiver_id,
+              is_group: true, // 群聊消息需要添加is_group字段
+            },
+          } as any;
+
+          client.sendMessage(ack);
         } else if (cmd === 3) {
           // // 发送的信息接受成功
           const messageId = data.seq_id;
@@ -86,7 +166,7 @@ const Home = observer(() => {
             clearInterval(retryTimersRef.current[messageId].timer);
             delete retryTimersRef.current[messageId];
           }
-  
+
           setPendingMessages((prev) => {
             if (prev[messageId]) {
               clearTimeout(prev[messageId]);
@@ -96,7 +176,7 @@ const Home = observer(() => {
             }
             return prev;
           });
-  
+
           // 更新消息状态为成功;
           handleUpdateMessageStatus(data, "success");
         } else if (cmd === 8) {
@@ -110,13 +190,13 @@ const Home = observer(() => {
         }
       },
     });
-  
+
     // 连接
     client.connect();
-  
+
     // 发送消息方法
     setWsClient(client);
-  
+
     return () => {
       // 组件卸载时会自动关闭连接
       client.disconnect();
@@ -233,7 +313,6 @@ const Home = observer(() => {
       data.sender_id,
       currentType
     ); // 获取会话数据
-    console.log("获取会话数据", res); // 获取会话数据
     // 设置当前消息;
     setCurrentMessages(res?.messages);
   };
@@ -254,11 +333,11 @@ const Home = observer(() => {
       .equals([userId, targetId])
       .first();
 
-    console.log(
-      existingConversation,
-      existingConversation?.unreadCount,
-      "existingConversation?.unreadCount"
-    );
+    // console.log(
+    //   existingConversation,
+    //   existingConversation?.unreadCount,
+    //   "existingConversation?.unreadCount"
+    // );
     // 计算新的未读数量
     const newUnreadCount = isCurrentFriend
       ? 0
@@ -293,13 +372,14 @@ const Home = observer(() => {
 
   // 监听当前聊天信息的变化
   const handleNewConversation = async (friendId: number | string) => {
+    console.log("监听当前聊天信息的变化", friendId);
     const currentId = chatStore.currentFriendId;
     const chatType = chatStore.currentChatInfo.type;
 
-    console.log("当前聊天对象", friendId, currentId, chatType);
+    // console.log("当前聊天对象", friendId, currentId, chatType);
 
     if (currentId && friendId === currentId) {
-      console.log("当前聊天对象");
+      // console.log("当前聊天对象");
       // 如果当前聊天对象是新对象，则更新会话数据
       const res: any = await db.getConversation(
         userInfo.id,
@@ -309,10 +389,10 @@ const Home = observer(() => {
       // 设置当前消息
       setCurrentMessages(res?.messages);
     } else {
-      console.log("不是当前聊天对象");
+      // console.log("不是当前聊天对象");
       // 如果不是当前聊天对象，更新会话列表
       const conversationsList: any = await db.getUserConversations(userInfo.id); // 获取会话数据
-      console.log(conversationsList, "conversationsList");
+      // console.log(conversationsList, "conversationsList");
       // 更新会话列表
       setCurrentChatList(conversationsList);
     }
@@ -336,11 +416,13 @@ const Home = observer(() => {
       // 设置媒体流处理程序
       usePeerConnectionStore.setupMediaStreamHandlers((remoteStream) => {
         // 提示用户接收到视频流
-        message.success('接收到远程视频流');
-        console.log('接收到的视频流:', remoteStream);
+        message.success("接收到远程视频流");
+        console.log("接收到的视频流:", remoteStream);
 
         // 将视频流绑定到 video 元素上
-        const remoteVideo = document.getElementById('remote-video') as HTMLVideoElement;
+        const remoteVideo = document.getElementById(
+          "remote-video"
+        ) as HTMLVideoElement;
         if (remoteVideo) {
           remoteVideo.srcObject = remoteStream;
         }
@@ -377,6 +459,7 @@ const Home = observer(() => {
           <Modal
             open={isShowUserAmend}
             onCancel={() => setIsShowUserAmend(!isShowUserAmend)}
+            closable={false}
             footer={null}
             title="用户信息"
           >

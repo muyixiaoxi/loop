@@ -5,7 +5,8 @@ import { LeftOutlined } from "@ant-design/icons";
 import { LoginPost } from "@/api/login";
 import { useNavigate } from "react-router-dom";
 import userStore from "@/store/user";
-import saveUserToHistory from "../../utils/userHistory"; // 导入保存历史用户的函数
+import saveUserToHistory from "@/utils/userHistory"; // 导入保存历史用户的函数
+import { decryptData } from "@/utils/crypto";
 
 const Change = () => {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ const Change = () => {
 
   // 设置初始用户为历史记录中的第一条数据，如果没有则使用默认值
   const [currentUser, setCurrentUser] = useState({
+    id: historyUsers[0]?.id,
     avatar: historyUsers[0]?.avatar,
     nickname: historyUsers[0]?.nickname,
   });
@@ -35,6 +37,7 @@ const Change = () => {
   };
   const handleSelectAccount = (user: any) => {
     setCurrentUser({
+      id: user.id,
       avatar: user.avatar,
       nickname: user.nickname,
     });
@@ -51,7 +54,7 @@ const Change = () => {
 
     // 从历史账号中查找当前选中的账号
     const selectedUser = historyUsers.find(
-      (user: any) => user.nickname === currentUser.nickname
+      (user: any) => user.id === currentUser.id
     );
 
     if (!selectedUser) {
@@ -60,26 +63,28 @@ const Change = () => {
     }
 
     try {
-      const result: any = await LoginPost({
-        phone: selectedUser.phone,
-        password: selectedUser.password,
+      console.log(selectedUser.phone, decryptData(selectedUser.phone));
+      const { code, data, msg }: any = await LoginPost({
+        phone: decryptData(selectedUser.phone),
+        password: decryptData(selectedUser.password),
       });
 
-      if (result?.code === 1000) {
-        setToken(result.data.token);
-        setUserInfo(result.data.user);
+      if (code === 1000) {
+        setToken(data.token);
+        setUserInfo(data.user);
         // 保存账号信息到历史记录
         saveUserToHistory({
+          id: data.user.id,
           phone: selectedUser.phone,
           password: selectedUser.password, // 注意：实际项目中不建议存储明文密码
-          avatar: result.data.user.avatar,
-          nickname: result.data.user.nickname,
+          avatar: data.user.avatar,
+          nickname: data.user.nickname,
           timestamp: new Date().getTime(),
         });
         navigate("/home");
         messageApi.success("登录成功");
       } else {
-        messageApi.error(result.msg || "登录失败");
+        messageApi.error(msg || "登录失败");
       }
     } catch (error) {
       messageApi.error("登录请求失败");

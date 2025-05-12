@@ -6,6 +6,7 @@ import { Input, Drawer, Switch, Modal } from "antd"; // 引入 Modal 组件
 import { WebSocketContext } from "@/pages/Home";
 import chatStore from "@/store/chat";
 import userStore from "@/store/user";
+import globalStore from "@/store/global";
 import { getChatDB } from "@/utils/chat-db";
 import { usePeerConnectionStore } from "@/store/PeerConnectionStore"; // 导入 PeerConnectionStore
 
@@ -20,6 +21,7 @@ const Chat = observer(() => {
     setCurrentMessages,
     currentChatInfo,
   } = chatStore;
+  const { timeDifference } = globalStore; // 引入时间差函数
   const db = getChatDB(userInfo.id); // 连接数据库
 
   const chatType = currentChatInfo.type;
@@ -29,9 +31,9 @@ const Chat = observer(() => {
   const [openDrawer, setOpenDrawer] = useState(false); // 是否打开抽屉
   const [topSwitch, setTopSwitch] = useState<boolean>(false); //置顶开关
   // 新增：管理视频弹框的显示状态
-  const [isVideoModalVisible, setIsVideoModalVisible] = useState(false); 
+  const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
   // 新增：管理本地视频流
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null); 
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
 
   /**
    * 发送消息
@@ -47,7 +49,7 @@ const Chat = observer(() => {
         sender_id: userInfo.id,
         receiver_id: currentFriendId, // 单聊使用好友 ID，群聊使用群聊 ID
         content: inputValue,
-        send_time: Date.now(),
+        send_time: Date.now() + timeDifference,
         type: 0,
         sender_nickname: userInfo.nickname,
         sender_avatar: userInfo.avatar,
@@ -71,7 +73,7 @@ const Chat = observer(() => {
           type: 0,
           sendId: userInfo.id,
           content: inputValue,
-          sendTime: Date.now(),
+          sendTime: Date.now() + timeDifference,
           sender_nickname: userInfo.nickname,
           sender_avatar: userInfo.avatar,
           status: "sending",
@@ -87,25 +89,40 @@ const Chat = observer(() => {
     setInputValue(""); // 清空输入框
   };
   //发送offer
-  const handlevideo = async() => {
+  const handlevideo = async () => {
     try {
       // 获取本地媒体流
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
       setLocalStream(stream);
       // 获取用户 ID
       const sender_id = userInfo.id;
-      const receiver_id = currentFriendId; 
+      const receiver_id = currentFriendId;
 
       // 创建 PeerConnection
-      usePeerConnectionStore.createPeerConnection(sendMessageWithTimeout, stream, sender_id, receiver_id);
+      usePeerConnectionStore.createPeerConnection(
+        sendMessageWithTimeout,
+        stream,
+        sender_id,
+        Number(receiver_id)
+      );
 
       // 发送视频 offer
-      await usePeerConnectionStore.sendVideoOffer(sendMessageWithTimeout, sender_id, receiver_id);
+      await usePeerConnectionStore.sendVideoOffer(
+        sendMessageWithTimeout,
+        sender_id,
+        Number(receiver_id)
+      );
 
       // 显示视频弹框
       setIsVideoModalVisible(true);
     } catch (error) {
-      console.error("Error during getting user media or sending offer: ", error);
+      console.error(
+        "Error during getting user media or sending offer: ",
+        error
+      );
     }
   };
 
@@ -118,7 +135,7 @@ const Chat = observer(() => {
         sender_id: userInfo.id,
         receiver_id: failedMessage.targetId,
         content: failedMessage.content,
-        send_time: Date.now(),
+        send_time: Date.now() + timeDifference,
         type: 0,
         sender_nickname: userInfo.nickname,
         sender_avatar: userInfo.avatar,
@@ -140,7 +157,7 @@ const Chat = observer(() => {
           type: 0,
           sendId: userInfo.id,
           content: failedMessage.content,
-          sendTime: Date.now(),
+          sendTime: Date.now() + timeDifference,
           sender_nickname: userInfo.nickname,
           sender_avatar: userInfo.avatar,
           status: "sending",
@@ -332,7 +349,7 @@ const Chat = observer(() => {
         onCancel={() => {
           setIsVideoModalVisible(false);
           if (localStream) {
-            localStream.getTracks().forEach(track => track.stop());
+            localStream.getTracks().forEach((track) => track.stop());
           }
           // 调用关闭 WebRTC 连接的方法
           usePeerConnectionStore.closePeerConnection();
@@ -349,7 +366,7 @@ const Chat = observer(() => {
               }
             }}
             // 设置固定宽度和高度
-            style={{ width: '400px', height: '300px' }} 
+            style={{ width: "400px", height: "300px" }}
           />
         )}
       </Modal>

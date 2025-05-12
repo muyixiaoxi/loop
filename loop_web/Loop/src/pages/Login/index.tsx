@@ -7,6 +7,7 @@ import { generateNickname } from "@/utils/nickname";
 import { useNavigate } from "react-router-dom";
 import userStore from "@/store/user";
 import saveUserToHistory from "../../utils/userHistory"; // 导入保存历史用户的函数
+import { encryptData } from "@/utils/crypto";
 
 const Login = () => {
   const { setUserInfo, setToken } = userStore;
@@ -26,17 +27,18 @@ const Login = () => {
         phone: value.phone,
         password: value.password,
       };
-      const result: any = await LoginPost(valueParams);
-      if (result?.code === 1000) {
-        setToken(result.data.token);
-        setUserInfo(result.data.user);
+      const { code, data }: any = await LoginPost(valueParams);
+      if (code === 1000) {
+        setToken(data.token);
+        setUserInfo(data.user);
 
         // 保存账号信息到历史记录
         saveUserToHistory({
-          phone: value.phone,
-          password: value.password, // 注意：实际项目中不建议存储明文密码
-          avatar: result.data.user.avatar,
-          nickname: result.data.user.nickname,
+          id: data.user.id, // 用户ID
+          phone: encryptData(value.phone),
+          password: encryptData(value.password), // 注意：实际项目中不建议存储明文密码
+          avatar: data.user.avatar,
+          nickname: data.user.nickname,
           timestamp: new Date().getTime(),
         });
 
