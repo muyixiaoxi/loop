@@ -4,7 +4,8 @@ import { Form, Input, Select, InputNumber, Button, message } from "antd";
 import { editUser } from "@/api/user";
 import userStore from "@/store/user";
 import { observer } from "mobx-react-lite";
-import { useOSSUpload } from '../../utils/useOSSUpload';
+import { useOSSUpload } from "../../utils/useOSSUpload";
+import saveUserToHistory from "@/utils/userHistory"; // 导入保存历史用户的函数
 
 // 定义用户类型
 type UserType = {
@@ -20,6 +21,12 @@ const EditUser = observer(() => {
   const { userInfo, setUserInfo } = userStore;
   const [formData, setFormData] = useState<UserType>(userInfo);
   const { avatarUrl, handleUpload } = useOSSUpload();
+  const historyUsers = JSON.parse(localStorage.getItem("hisuser") || "[]"); // 从本地存储中获取历史用户
+
+  // 根据当前用户ID从历史用户中查找对应账号
+  const selectedUser = historyUsers.find(
+    (user: any) => user.id === userInfo.id
+  );
 
   // 当 userInfo 变化时更新 formData
   useEffect(() => {
@@ -31,9 +38,9 @@ const EditUser = observer(() => {
     if (file) {
       const url = await handleUpload(file);
       if (url) {
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
-          avatar: url
+          avatar: url,
         }));
       }
     }
@@ -59,9 +66,18 @@ const EditUser = observer(() => {
     };
 
     try {
-      const res: any = await editUser(updatedUserData);
-      if (res && res.code === 1000) {
-        setUserInfo(res.data);
+      const { data, code }: any = await editUser(updatedUserData);
+      if (code === 1000) {
+        setUserInfo(data);
+        // 保存账号信息到历史记录
+        saveUserToHistory({
+          id: data.id,
+          phone: selectedUser.phone,
+          password: selectedUser.password, // 注意：实际项目中不建议存储明文密码
+          avatar: data.avatar,
+          nickname: data.nickname,
+          timestamp: new Date().getTime(),
+        });
         message.success("个人信息修改成功");
       } else {
         message.error("个人信息修改失败");
