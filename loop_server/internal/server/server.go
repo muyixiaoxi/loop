@@ -49,13 +49,16 @@ func (s *server) InitRouter() {
 		friend.GET("/list", s.friend.GetFriendList)
 		friend.GET("/request/list", s.friend.GetFriendRequestList)
 		friend.GET("/request/statistics", s.friend.FriendListStatistics)
+		friend.GET("/list/group_id", s.friend.GetFriendListByGroupId)
 	}
 
 	group := user.Group("/group")
 	{
+		group.GET("", s.group.GetGroupList)
+		group.GET("/info", s.group.GroupInfo)
+		group.GET("/member", s.group.GetGroupMemberList)
 		group.POST("/add", s.group.CreateGroup)
 		group.POST("/delete", s.group.DeleteGroup)
-		group.GET("", s.group.GetGroupList)
 
 		group.POST("/member/add", s.group.AddMember)
 		group.POST("/member/delete", s.group.DeleteMember)

@@ -29,7 +29,7 @@ func main() {
 	imDomain := domain_impl.NewImDomainImpl(imRepo)
 
 	userApp := app_impl.NewUserAppImpl(userDomain, friendDomain)
-	friendApp := app_impl.NewFriendAppImpl(friendDomain, userDomain)
+	friendApp := app_impl.NewFriendAppImpl(friendDomain, userDomain, groupDomain)
 	groupApp := app_impl.NewGroupAppImpl(groupDomain, userDomain)
 	sufApp := app_impl.NewSfuAppImpl(imDomain)
 	imApp := app_impl.NewImAppImpl(sufApp, imDomain, groupDomain, userDomain)

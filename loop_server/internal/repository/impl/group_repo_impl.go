@@ -48,6 +48,8 @@ func (g *groupRepoImpl) CreateGroup(ctx context.Context, dto *dto.Group, userIds
 		tx.Rollback()
 		return nil, err
 	}
+	tx.Create(&po.GroupMessage{})
+
 	err = tx.Commit().Error
 	if err != nil {
 		slog.Error("internal/repository/impl/group_repo_impl.go Create err:", err)

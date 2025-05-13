@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"loop_server/internal/model/dto"
+	"loop_server/internal/model/param"
 )
 
 type FriendApp interface {
@@ -12,4 +13,5 @@ type FriendApp interface {
 	GetFriendRequest(ctx context.Context) ([]*dto.FriendRequestListNode, error)
 	GetFriendList(ctx context.Context) ([]*dto.User, error)
 	FriendListStatistics(ctx context.Context) (*dto.FriendListStatistics, error)
+	GetFriendListByGroupId(ctx context.Context, groupId uint) ([]*param.InviteFriendAddGroupList, error)
 }

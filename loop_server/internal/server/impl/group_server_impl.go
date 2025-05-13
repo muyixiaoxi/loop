@@ -134,3 +134,31 @@ func (g *groupServerImpl) AddAdmin(c *gin.Context) {
 	}
 	response.Success(c, nil)
 }
+
+func (g *groupServerImpl) GroupInfo(c *gin.Context) {
+	input := &param.GroupId{}
+	if err := c.ShouldBind(input); err != nil {
+		response.Fail(c, response.CodeInvalidParam)
+		return
+	}
+	group, err := g.group.GetGroup(c, input.GroupId)
+	if err != nil {
+		response.Fail(c, response.CodeServerBusy)
+		return
+	}
+	response.Success(c, group)
+}
+
+func (g *groupServerImpl) GetGroupMemberList(c *gin.Context) {
+	input := &param.GroupId{}
+	if err := c.ShouldBind(input); err != nil {
+		response.Fail(c, response.CodeInvalidParam)
+		return
+	}
+	members, err := g.group.GetGroupMemberList(c, input.GroupId)
+	if err != nil {
+		response.Fail(c, response.CodeServerBusy)
+		return
+	}
+	response.Success(c, members)
+}

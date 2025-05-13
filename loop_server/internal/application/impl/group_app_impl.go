@@ -97,3 +97,15 @@ func (g *groupAppImpl) AddAdmin(ctx context.Context, groupId, userId uint) error
 	}
 	return g.group.AddAdmin(ctx, groupId, userId)
 }
+
+func (g *groupAppImpl) GetGroup(ctx context.Context, groupId uint) (*dto.Group, error) {
+	return g.group.GetGroupById(ctx, groupId)
+}
+
+func (g *groupAppImpl) GetGroupMemberList(ctx context.Context, groupId uint) ([]*dto.User, error) {
+	userIds, err := g.group.GetGroupUserId(ctx, groupId)
+	if err != nil {
+		return nil, err
+	}
+	return g.user.GetUserListByUserIds(ctx, userIds)
+}

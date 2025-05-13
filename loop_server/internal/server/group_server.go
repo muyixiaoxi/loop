@@ -9,4 +9,6 @@ type GroupServer interface {
 	AddMember(c *gin.Context)
 	DeleteMember(c *gin.Context)
 	AddAdmin(c *gin.Context)
+	GroupInfo(c *gin.Context)
+	GetGroupMemberList(c *gin.Context)
 }

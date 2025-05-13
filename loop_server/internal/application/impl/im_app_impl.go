@@ -221,12 +221,12 @@ func (i *imAppImpl) getOfflineGroupMessage(ctx context.Context, userId uint) ([]
 		userIdMap[user.ID] = user
 	}
 
-	resp := make([]*dto.Message, len(gmsg))
+	resp := make([]*dto.Message, 0, len(gmsg))
 	for _, message := range gmsg {
 		data := &dto.GroupMessage{
 			SeqId:          message.SeqId,
 			SenderId:       message.SenderId,
-			ReceiverId:     userId,
+			ReceiverId:     message.GroupId,
 			Content:        message.Content,
 			Type:           message.Type,
 			SendTime:       message.SendTime,

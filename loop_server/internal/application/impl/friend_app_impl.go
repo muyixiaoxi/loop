@@ -4,16 +4,18 @@ import (
 	"context"
 	"loop_server/internal/domain"
 	"loop_server/internal/model/dto"
+	"loop_server/internal/model/param"
 	"loop_server/pkg/request"
 )
 
 type friendAppImpl struct {
 	friendDomain domain.FriendDomain
 	userDomain   domain.UserDomain
+	groupDomain  domain.GroupDomain
 }
 
-func NewFriendAppImpl(friendDomain domain.FriendDomain, userDomain domain.UserDomain) *friendAppImpl {
-	return &friendAppImpl{friendDomain: friendDomain, userDomain: userDomain}
+func NewFriendAppImpl(friendDomain domain.FriendDomain, userDomain domain.UserDomain, groupAppImpl domain.GroupDomain) *friendAppImpl {
+	return &friendAppImpl{friendDomain: friendDomain, userDomain: userDomain, groupDomain: groupAppImpl}
 }
 
 // AddFriend 添加好友
@@ -100,4 +102,29 @@ func (u *friendAppImpl) GetFriendList(ctx context.Context) ([]*dto.User, error) 
 
 func (u *friendAppImpl) FriendListStatistics(ctx context.Context) (*dto.FriendListStatistics, error) {
 	return u.friendDomain.FriendRequestStatistics(ctx, request.GetCurrentUser(ctx))
+}
+
+func (u *friendAppImpl) GetFriendListByGroupId(ctx context.Context, groupId uint) ([]*param.InviteFriendAddGroupList, error) {
+	users, err := u.friendDomain.GetFriendList(ctx)
+	if err != nil {
+		return nil, err
+	}
+	groupUsers, err := u.groupDomain.GetGroupUserId(ctx, groupId)
+	if err != nil {
+		return nil, err
+	}
+	hash := make(map[uint]bool, len(groupUsers))
+	for _, user := range groupUsers {
+		hash[user] = true
+	}
+	var data []*param.InviteFriendAddGroupList
+	for _, user := range users {
+		data = append(data, &param.InviteFriendAddGroupList{
+			UserId:       user.ID,
+			UserAvatar:   user.Avatar,
+			UserNickname: user.Nickname,
+			IsGroup:      hash[user.ID],
+		})
+	}
+	return data, nil
 }
