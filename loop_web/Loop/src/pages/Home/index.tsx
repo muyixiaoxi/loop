@@ -86,7 +86,7 @@ const Home = observer(() => {
       } else if (item?.cmd === 2) {
         await handleNewStorage(item.data, 2);
         const existingIndex = processedData.findIndex(
-          (msg) => msg.receiver_id === item.data.receiver_id
+          (msg: any) => msg.receiver_id === item.data.receiver_id
         );
         if (existingIndex !== -1) {
           processedData[existingIndex] = {

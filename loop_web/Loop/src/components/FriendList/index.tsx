@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { observer } from "mobx-react-lite";
-import { Drawer, Button, Modal, Input, message, Tabs } from "antd"; 
+import { Drawer, Button, Modal, Input, message, Tabs } from "antd";
+import type { TabsProps } from "antd";
 import { LeftOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import "./index.scss";
 import {
@@ -19,28 +20,28 @@ import { getGroupList } from "@/api/group";
 const { TabPane } = Tabs;
 
 const FirendList = observer(() => {
-  const { userInfo } = userStore; 
-  const db = getChatDB(userInfo.id); 
+  const { userInfo } = userStore;
+  const db = getChatDB(userInfo.id);
   const { setCurrentFriendData, setCurrentMessages, setCurrentChatInfo } =
     ChatStore;
   const [open, setOpen] = useState(false);
-  const [addopen, setaddOpen] = useState(false); 
-  const [isModalOpen, setIsModalOpen] = useState(false); 
+  const [addopen, setaddOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [modalTimer, setModalTimer] = useState<NodeJS.Timeout | null>(null);
   const [searchResult, setSearchResult] = useState<any>(null);
   const [searchStatus, setSearchStatus] = useState<
     "idle" | "loading" | "success" | "error"
   >("idle");
-  const [friendList, setFriendList] = useState<any[]>([]); 
-  const [newFriendList, setNewFriendList] = useState<any[]>([]); 
+  const [friendList, setFriendList] = useState<any[]>([]);
+  const [newFriendList, setNewFriendList] = useState<any[]>([]);
   const [addData, setaddData] = useState<any>({
     friend_id: 0,
     message: `你好！我是${userInfo.nickname || "匿名用户"}`,
-  }); 
-  const [applyMessage, setApplyMessage] = useState(""); 
-  const [sentRequests, setSentRequests] = useState<Set<number>>(new Set()); 
-  const [groupList, setGroupList] = useState<any[]>([]); 
+  });
+  const [applyMessage, setApplyMessage] = useState("");
+  const [sentRequests, setSentRequests] = useState<Set<number>>(new Set());
+  const [groupList, setGroupList] = useState<any[]>([]);
 
   const [searchKeyword, setSearchKeyword] = useState("");
 
@@ -76,16 +77,16 @@ const FirendList = observer(() => {
     try {
       const response = await postAddFriend(newAddData);
       if (response.code === 1000) {
-        message.success('添加好友请求已发送');
+        message.success("添加好友请求已发送");
         // 更新 sentRequests 状态
-        setSentRequests((prev) => new Set([...prev, newAddData.friend_id])); 
+        setSentRequests((prev) => new Set([...prev, newAddData.friend_id]));
         setaddOpen(false); // 关闭抽屉
       } else {
-        message.error('添加好友请求失败，请稍后重试');
+        message.error("添加好友请求失败，请稍后重试");
       }
     } catch (error) {
-      console.error('发送好友申请出错:', error);
-      message.error('添加好友请求出错，请稍后重试');
+      console.error("发送好友申请出错:", error);
+      message.error("添加好友请求出错，请稍后重试");
     }
   };
 
@@ -121,14 +122,14 @@ const FirendList = observer(() => {
       // 假设接口返回的数据结构是 { data: [...] }
       if (res.data && Array.isArray(res.data)) {
         setGroupList(res.data);
-        console.log('群聊列表:', res.data);
+        console.log("群聊列表:", res.data);
       } else {
-        console.error('群聊数据格式不正确');
-        message.error('获取群聊列表出错，请稍后重试');
+        console.error("群聊数据格式不正确");
+        message.error("获取群聊列表出错，请稍后重试");
       }
     } catch (error) {
-      console.error('获取群聊列表出错:', error);
-      message.error('获取群聊列表出错，请稍后重试');
+      console.error("获取群聊列表出错:", error);
+      message.error("获取群聊列表出错，请稍后重试");
     }
   };
 
@@ -156,14 +157,14 @@ const FirendList = observer(() => {
     try {
       const res: any = await searchUser(phone);
       console.log("搜索结果:", res);
-  
+
       if (res.code === 1000) {
         if (res.data) {
           // 检查搜索的手机号是否是自己的手机号
           if (phone === userInfo.phone) {
-            message.warning('不能添加自己到通讯录');
+            message.warning("不能添加自己到通讯录");
             // 不再清空搜索结果
-            setSearchResult(res.data); 
+            setSearchResult(res.data);
             setSearchStatus("success");
             return;
           }
@@ -205,17 +206,22 @@ const FirendList = observer(() => {
     postHandleFriend(data);
   };
 
-  const handleNewConversation = async (data: any) => {
-    console.log(data, "设置好友数据");
-    setCurrentFriendData(data); // 设置当前好友数据
+  // 点击好友、群聊，更换会话内容
+  const handleNewConversation = async (data: any, type: number) => {
+    const params = {
+      id: data.id,
+      nickname: data.name,
+      avatar: data.avatar,
+    };
+    setCurrentFriendData(params); // 设置当前好友数据
+
     const res: any = await db.getConversation(
       userInfo.id,
       data.id,
-      data.chatType
+      type // 1: 单聊 2: 群聊
     ); // 获取会话数据
-    console.log(res, "获取会话数据");
     setCurrentMessages(res?.messages); // 设置当前消息
-    setCurrentChatInfo({ type: data.chatType });
+    setCurrentChatInfo({ type });
   };
 
   const getSortedFriendList = () => {
@@ -336,6 +342,73 @@ const FirendList = observer(() => {
     );
   };
 
+  const itemsTabs: TabsProps["items"] = [
+    {
+      key: "1",
+      label: "好友",
+      children: (
+        <div className="content_roll">
+          <ul className="friend-ul">
+            {getFilteredFriendList().map(([letter, friends]) => (
+              <div key={letter}>
+                <div className="friend-list-letter">{letter}</div>
+                <ul className="friend-ul">
+                  {friends.map((item: any) => (
+                    <li key={item.id}>
+                      <div
+                        className="friend-list-item"
+                        onClick={() => handleNewConversation(item, 1)}
+                      >
+                        <div className="friend-list-item-avatar">
+                          <img src={item.avatar} alt="头像" />
+                        </div>
+                        <div className="friend-list-item-info">
+                          {item.nickname}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </ul>
+        </div>
+      ),
+    },
+    {
+      key: "2",
+      label: "群聊",
+      children: (
+        <div className="content_roll">
+          <ul className="group-ul">
+            {getFilteredGroupList().map(([letter, groups]) => (
+              <div key={letter}>
+                <div className="friend-list-letter">{letter}</div>
+                <ul className="group-ul">
+                  {groups.map((item: any) => (
+                    <li key={item.id}>
+                      <div
+                        className="friend-list-item"
+                        onClick={() => {
+                          handleNewConversation(item, 2);
+                        }}
+                      >
+                        <div className="friend-list-item-avatar">
+                          <img src={item.avatar} alt="群头像" />
+                        </div>
+                        <div className="friend-list-item-info">{item.name}</div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </ul>
+        </div>
+      ),
+    },
+  ];
+
   // 修改渲染部分
   return (
     <div className="friend-list" style={containerStyle}>
@@ -365,64 +438,10 @@ const FirendList = observer(() => {
             </div>
             <div className="friend-list-item-info">新朋友</div>
           </div>
-          <Tabs defaultActiveKey="1" >
-            <TabPane tab="好友" key="1" >
-              <ul className="friend-ul">
-                {getFilteredFriendList().map(([letter, friends]) => (
-                  <div key={letter}>
-                    <div className="friend-list-letter">{letter}</div>
-                    <ul className="friend-ul">
-                      {friends.map((item: any) => (
-                        <li key={item.id}>
-                          <div
-                            className="friend-list-item"
-                            onClick={() => handleNewConversation(item)}
-                          >
-                            <div className="friend-list-item-avatar">
-                              <img src={item.avatar} alt="头像" />
-                            </div>
-                            <div className="friend-list-item-info">
-                              {item.nickname}
-                            </div>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </ul>
-            </TabPane>
-            <TabPane tab="群聊" key="2">
-              <ul className="group-ul">
-                {getFilteredGroupList().map(([letter, groups]) => (
-                  <div key={letter}>
-                    <div className="friend-list-letter">{letter}</div>
-                    <ul className="group-ul">
-                      {groups.map((item: any) => (
-                        <li key={item.id}>
-                          <div
-                            className="friend-list-item"
-                            onClick={() => {
-                              console.log('处理群聊会话:', item);
-                            }}
-                          >
-                            <div className="friend-list-item-avatar">
-                              <img src={item.avatar} alt="群头像" />
-                            </div>
-                            <div className="friend-list-item-info">
-                              {item.name}
-                            </div>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </ul>
-            </TabPane>
-          </Tabs>
+          <Tabs defaultActiveKey="1" items={itemsTabs} />
         </div>
       </div>
+
       <Drawer
         title={
           <div className="drawer-header">
@@ -469,6 +488,7 @@ const FirendList = observer(() => {
           ))}
         </div>
       </Drawer>
+
       <Modal
         title="添加新朋友"
         open={isModalOpen}
@@ -530,16 +550,14 @@ const FirendList = observer(() => {
                             type="primary"
                             className="addbt"
                             // 这里可以添加发消息的逻辑
-                            onClick={() => console.log("发消息给", searchResult.id)}
+                            onClick={() =>
+                              console.log("发消息给", searchResult.id)
+                            }
                           >
                             发消息
                           </Button>
                         ) : sentRequests.has(searchResult.id) ? (
-                          <Button
-                            type="default"
-                            className="addbt"
-                            disabled
-                          >
+                          <Button type="default" className="addbt" disabled>
                             已发送
                           </Button>
                         ) : (

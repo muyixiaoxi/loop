@@ -190,6 +190,9 @@ const MessageList = observer(() => {
         open={isModalVisible}
         onOk={handleOk}
         onCancel={handleCancel}
+        closable={false}
+        okText="创建"
+        cancelText="取消"
       >
         <Form form={form} layout="vertical">
           <Form.Item
@@ -249,7 +252,7 @@ const MessageList = observer(() => {
             // 添加群简介必填校验规则
             rules={[{ required: true, message: "请输入群简介" }]}
           >
-            <Input.TextArea />
+            <Input.TextArea style={{ height: 80, resize: "none" }} />
           </Form.Item>
           <Form.Item
             label="群成员"
