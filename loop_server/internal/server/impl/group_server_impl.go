@@ -162,3 +162,17 @@ func (g *groupServerImpl) GetGroupMemberList(c *gin.Context) {
 	}
 	response.Success(c, members)
 }
+
+func (g *groupServerImpl) ExitGroup(c *gin.Context) {
+	input := &param.GroupId{}
+	if err := c.ShouldBind(input); err != nil {
+		response.Fail(c, response.CodeInvalidParam)
+		return
+	}
+	err := g.group.ExitGroup(c, input.GroupId)
+	if err != nil {
+		response.Fail(c, response.CodeServerBusy)
+		return
+	}
+	response.Success(c, nil)
+}

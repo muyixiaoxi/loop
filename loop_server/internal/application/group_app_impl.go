@@ -11,6 +11,7 @@ type GroupApp interface {
 	DeleteGroup(ctx context.Context, groupId uint) error
 	GetGroup(ctx context.Context, groupId uint) (*dto.Group, error)
 	GetGroupList(ctx context.Context) ([]*dto.Group, error)
+	ExitGroup(ctx context.Context, groupId uint) error
 	AddMember(ctx context.Context, groupId uint, userIds []uint) error
 	DeleteMember(c context.Context, groupId uint, userId uint) error
 	AddAdmin(ctx context.Context, groupId, userId uint) error

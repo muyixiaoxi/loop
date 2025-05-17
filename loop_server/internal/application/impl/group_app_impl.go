@@ -177,3 +177,14 @@ func (g *groupAppImpl) GetGroupMemberList(ctx context.Context, groupId uint) ([]
 
 	return members, nil
 }
+
+func (g *groupAppImpl) ExitGroup(ctx context.Context, groupId uint) error {
+	group, err := g.group.GetGroupById(ctx, groupId)
+	if err != nil {
+		return err
+	}
+	if group.OwnerId != request.GetCurrentUser(ctx) {
+		return g.group.DeleteGroup(ctx, groupId)
+	}
+	return g.group.DeleteMember(ctx, groupId, request.GetCurrentUser(ctx))
+}

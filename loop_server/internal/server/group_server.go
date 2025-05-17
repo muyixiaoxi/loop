@@ -11,4 +11,5 @@ type GroupServer interface {
 	AddAdmin(c *gin.Context)
 	GroupInfo(c *gin.Context)
 	GetGroupMemberList(c *gin.Context)
+	ExitGroup(c *gin.Context)
 }
