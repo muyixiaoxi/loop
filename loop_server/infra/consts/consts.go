@@ -51,3 +51,12 @@ const (
 	WsMessageAckStatePending      = "pending"
 	WsMessageAckStateAcknowledged = "acknowledged"
 )
+
+const (
+	GroupMessageTypeText    = 0
+	GroupMessageTypePicture = 1
+	GroupMessageTypeFile    = 2
+	GroupMessageTypeVoice   = 3
+	GroupMessageTypeAudio   = 4
+	GroupMessageTypeInvite  = 5 // 邀请入群
+)

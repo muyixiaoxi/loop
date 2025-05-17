@@ -2,20 +2,23 @@ package impl
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/samber/lo"
 	"loop_server/infra/consts"
 	"loop_server/internal/domain"
 	"loop_server/internal/model/dto"
+	"loop_server/internal/model/param"
 	"loop_server/pkg/request"
 )
 
 type groupAppImpl struct {
 	group domain.GroupDomain
 	user  domain.UserDomain
+	im    domain.ImDomain
 }
 
-func NewGroupAppImpl(group domain.GroupDomain, user domain.UserDomain) *groupAppImpl {
-	return &groupAppImpl{group: group, user: user}
+func NewGroupAppImpl(group domain.GroupDomain, user domain.UserDomain, im domain.ImDomain) *groupAppImpl {
+	return &groupAppImpl{group: group, user: user, im: im}
 }
 
 func (g *groupAppImpl) CreateGroup(ctx context.Context, group *dto.CreateGroupRequest) (*dto.Group, error) {
@@ -25,7 +28,33 @@ func (g *groupAppImpl) CreateGroup(ctx context.Context, group *dto.CreateGroupRe
 		return nil, err
 	}
 
-	return g.group.CreateGroup(ctx, group)
+	data, msg, err := g.group.CreateGroup(ctx, group)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := g.user.QueryUser(ctx, &dto.QueryUserRequest{UserId: request.GetCurrentUser(ctx)})
+	if err != nil {
+		return nil, err
+	}
+
+	receiverIds := make([]uint, 0)
+	json.Unmarshal([]byte(msg.ReceiverIds), &receiverIds)
+	g.im.SendGroupMessage(ctx, &dto.GroupMessage{
+		SeqId:          msg.SeqId,
+		SenderId:       msg.SenderId,
+		ReceiverId:     msg.GroupId,
+		ReceiverIds:    receiverIds,
+		Content:        "",
+		Type:           msg.Type,
+		SendTime:       msg.SendTime,
+		SenderNickname: user.Nickname,
+		SenderAvatar:   "",
+		GroupName:      data.Name,
+		GroupAvatar:    data.Avatar,
+	}, append(group.UserIds, user.ID))
+
+	return data, nil
 }
 
 func (g *groupAppImpl) DeleteGroup(ctx context.Context, groupId uint) error {
@@ -61,11 +90,11 @@ func (g *groupAppImpl) AddMember(ctx context.Context, groupId uint, userIds []ui
 }
 
 func (g *groupAppImpl) DeleteMember(ctx context.Context, groupId uint, userId uint) error {
-	curShip, err := g.group.GetGroupShip(ctx, groupId, request.GetCurrentUser(ctx))
+	curShip, err := g.group.GetGroupShipByUserId(ctx, groupId, request.GetCurrentUser(ctx))
 	if err != nil {
 		return err
 	}
-	userShip, err := g.group.GetGroupShip(ctx, groupId, userId)
+	userShip, err := g.group.GetGroupShipByUserId(ctx, groupId, userId)
 	if err != nil {
 		return err
 	}
@@ -99,13 +128,52 @@ func (g *groupAppImpl) AddAdmin(ctx context.Context, groupId, userId uint) error
 }
 
 func (g *groupAppImpl) GetGroup(ctx context.Context, groupId uint) (*dto.Group, error) {
-	return g.group.GetGroupById(ctx, groupId)
-}
-
-func (g *groupAppImpl) GetGroupMemberList(ctx context.Context, groupId uint) ([]*dto.User, error) {
-	userIds, err := g.group.GetGroupUserId(ctx, groupId)
+	group, err := g.group.GetGroupById(ctx, groupId)
 	if err != nil {
 		return nil, err
 	}
-	return g.user.GetUserListByUserIds(ctx, userIds)
+	ship, err := g.group.GetGroupShipByRole(ctx, groupId, consts.GroupRoleAdmin)
+	if err != nil {
+		return nil, err
+	}
+	userIds := make([]uint, 0, len(ship))
+	for _, groupShip := range ship {
+		userIds = append(userIds, groupShip.UserId)
+	}
+
+	group.AdminIds = userIds
+
+	return group, nil
+}
+
+func (g *groupAppImpl) GetGroupMemberList(ctx context.Context, groupId uint) ([]*param.Member, error) {
+	ships, err := g.group.GetGroupShip(ctx, groupId)
+	if err != nil {
+		return nil, err
+	}
+	userIds := make([]uint, 0, len(ships))
+	shipMap := make(map[uint]int, len(ships))
+	for _, ship := range ships {
+		userIds = append(userIds, ship.UserId)
+		shipMap[ship.UserId] = ship.Role
+	}
+	users, err := g.user.GetUserListByUserIds(ctx, userIds)
+	if err != nil {
+		return nil, err
+	}
+
+	members := make([]*param.Member, 0, len(users))
+	for _, user := range users {
+		members = append(members, &param.Member{
+			UserID:    user.ID,
+			Nickname:  user.Nickname,
+			Avatar:    user.Avatar,
+			Signature: user.Signature,
+			Gender:    user.Gender,
+			Age:       user.Age,
+			Role:      shipMap[user.ID],
+		})
+	}
+
+	return members, nil
 }

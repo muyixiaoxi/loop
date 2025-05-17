@@ -94,7 +94,7 @@ func (u *friendRepoImpl) GetFriendRequestListByRequesterIdOrRecipientId(ctx cont
 
 func (u *friendRepoImpl) GetFriendListByUserId(ctx context.Context, userId uint) ([]*dto.User, error) {
 	var data []*po.User
-	err := u.db.Select("user.id", "nickname", "avatar", "signature", "gender", "age").Joins("join friend_ship on user.id = friend_ship.friend_id").Where("user_id = ?", userId).
+	err := u.db.Select("user.id", "nickname", "avatar", "signature", "gender", "age").Joins("join friend_ship on user.id = friend_ship.friend_id and friend_ship.deleted_at is null").Where("user_id = ?", userId).
 		Find(&data).Error
 	if err != nil {
 		slog.Error("internal/repository/impl/user_repo_impl.go GetFriendListByUserId error", err)
@@ -114,7 +114,7 @@ func (u *friendRepoImpl) IsFriend(ctx context.Context, userId uint, friendId uin
 }
 
 func (u *friendRepoImpl) DeleteFriend(ctx context.Context, userId uint, friendId uint) error {
-	err := u.db.WithContext(ctx).Where("user_id = ? AND friend_id = ?", userId, friendId).Delete(&po.FriendShip{}).Error
+	err := u.db.WithContext(ctx).Where("user_id = ? AND friend_id = ? OR user_id = ? AND friend_id = ?", userId, friendId, friendId, userId).Delete(&po.FriendShip{}).Error
 	if err != nil {
 		slog.Error("internal/repository/impl/friend_repo_impl.go DeleteFriend error", err)
 	}

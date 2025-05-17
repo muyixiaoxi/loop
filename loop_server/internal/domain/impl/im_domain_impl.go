@@ -201,6 +201,8 @@ func (i *imDomainImpl) sendGroupMessage(ctx context.Context, userId uint, receiv
 		slog.Error("internal/domain/impl/im_domain_impl.go SendGroupMessage redis rpush err:", err)
 		return err
 	}
+	// 自动过期
+	vars.Redis.ExpireAt(ctx, redis.GetGroupAckListKey(userId, receiverId), time.Now().Add(time.Hour))
 
 	err = vars.Redis.HSet(ctx, redis.GetGroupAckStatusKey(userId, receiverId), seqId, "pending").Err()
 	if err != nil {
@@ -208,6 +210,7 @@ func (i *imDomainImpl) sendGroupMessage(ctx context.Context, userId uint, receiv
 		slog.Error("internal/domain/impl/im_domain_impl.go SendGroupMessage redis hset err:", err)
 		return err
 	}
+	vars.Redis.ExpireAt(ctx, redis.GetGroupAckStatusKey(userId, receiverId), time.Now().Add(time.Hour))
 
 	err = vars.Ws.Get(userId).Conn.WriteMessage(websocket.TextMessage, msgByte)
 	if err != nil {
@@ -221,7 +224,7 @@ func (i *imDomainImpl) sendGroupMessage(ctx context.Context, userId uint, receiv
 
 func (i *imDomainImpl) ackListener(ctx context.Context, userId uint, receiverId uint, seqId string, msgByte []byte, replay int) {
 	time.Sleep(time.Second * 1)
-	status, err := vars.Redis.HGet(ctx, redis.GetGroupAckListKey(userId, receiverId), seqId).Result()
+	status, err := vars.Redis.HGet(ctx, redis.GetGroupAckStatusKey(userId, receiverId), seqId).Result()
 	if err == redis2.Nil {
 		return
 	}

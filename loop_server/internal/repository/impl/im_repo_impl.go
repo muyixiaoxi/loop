@@ -24,12 +24,20 @@ func (g *imRepoImpl) SaveGroupMessage(ctx context.Context, pMs *po.GroupMessage)
 }
 
 func (g *imRepoImpl) GetOfflineGroupMessage(ctx context.Context, groupId uint, userId uint) ([]*po.GroupMessage, error) {
+	var id int64
+	err := g.db.WithContext(ctx).Model(&po.GroupMessage{}).Select("group_message.id").
+		Joins("JOIN group_ship gs ON group_message.seq_id = gs.last_ack_seq_id").
+		Where("gs.group_id = ? AND gs.user_id = ?", groupId, userId).Scan(&id).Error
+	if err != nil {
+		slog.Error("groupRepoImpl.GetOfflineGroupMessage error")
+		return nil, err
+	}
+
 	var data []*po.GroupMessage
-	err := g.db.WithContext(ctx).
+	err = g.db.WithContext(ctx).
 		Model(&po.GroupMessage{}).
 		Where("group_id = ?", groupId).
-		Where("sender_id != ? and id > (SELECT gm.id FROM group_message gm JOIN group_ship gs ON gm.seq_id = gs.last_ack_seq_id "+
-			"WHERE gs.group_id = ? AND gs.user_id = ?)", userId, groupId, userId).
+		Where("sender_id != ? and id > ? ", userId, id).
 		Find(&data).Error
 	if err != nil {
 		slog.Error("internal/repository/impl/group_repo_impl.go GetOfflineGroupMessage err:", err)

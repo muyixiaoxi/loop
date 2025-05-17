@@ -5,11 +5,12 @@ import (
 )
 
 type Group struct {
-	ID        uint       `json:"id"`       // id
-	Name      string     `json:"name"`     // 群名称
-	Avatar    string     `json:"avatar"`   // 群头像
-	Describe  string     `json:"describe"` // 群简介
-	OwnerId   uint       `json:"ownerId"`  // 群主id
+	ID        uint       `json:"id"`        // id
+	Name      string     `json:"name"`      // 群名称
+	Avatar    string     `json:"avatar"`    // 群头像
+	Describe  string     `json:"describe"`  // 群简介
+	OwnerId   uint       `json:"owner_id"`  // 群主id
+	AdminIds  []uint     `json:"admin_ids"` // 管理员id
 	CreatedAt *time.Time `json:"created_at,omitempty"`
 	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 }

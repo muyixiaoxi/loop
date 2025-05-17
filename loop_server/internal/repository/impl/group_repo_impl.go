@@ -2,11 +2,14 @@ package impl
 
 import (
 	"context"
+	"encoding/json"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"log/slog"
 	"loop_server/infra/consts"
 	"loop_server/internal/model/dto"
 	"loop_server/internal/model/po"
+	"time"
 )
 
 type groupRepoImpl struct {
@@ -17,14 +20,14 @@ func NewGroupRepoImpl(db *gorm.DB) *groupRepoImpl {
 	return &groupRepoImpl{db: db}
 }
 
-func (g *groupRepoImpl) CreateGroup(ctx context.Context, dto *dto.Group, userIds []uint) (*dto.Group, error) {
+func (g *groupRepoImpl) CreateGroup(ctx context.Context, dto *dto.Group, userIds []uint) (*dto.Group, *po.GroupMessage, error) {
 	group := po.ConvertGroupDtoToPo(dto)
 	tx := g.db.WithContext(ctx).Begin()
 	err := tx.Create(group).Error
 	if err != nil {
 		slog.Error("internal/repository/impl/group_repo_impl.go Create err:", err)
 		tx.Rollback()
-		return nil, err
+		return nil, nil, err
 	}
 	ships := make([]*po.GroupShip, 0, len(userIds)+1)
 	for _, id := range userIds {
@@ -46,17 +49,35 @@ func (g *groupRepoImpl) CreateGroup(ctx context.Context, dto *dto.Group, userIds
 	if err != nil {
 		slog.Error("internal/repository/impl/group_repo_impl.go Create err:", err)
 		tx.Rollback()
-		return nil, err
+		return nil, nil, err
 	}
-	tx.Create(&po.GroupMessage{})
+
+	uIds, _ := json.Marshal(userIds)
+	msg := &po.GroupMessage{
+		GroupId:     group.ID,
+		SeqId:       uuid.New().String(),
+		SenderId:    group.OwnerId,
+		Content:     "",
+		ReceiverIds: string(uIds),
+		Type:        consts.GroupMessageTypeInvite,
+		SendTime:    time.Now().UnixMilli(),
+	}
+
+	// 创建系统消息
+	err = tx.Create(msg).Error
+	if err != nil {
+		slog.Error("internal/repository/impl/group_repo_impl.go Create err:", err)
+		tx.Rollback()
+		return nil, nil, err
+	}
 
 	err = tx.Commit().Error
 	if err != nil {
 		slog.Error("internal/repository/impl/group_repo_impl.go Create err:", err)
 		tx.Rollback()
-		return nil, err
+		return nil, nil, err
 	}
-	return group.ConvertDto(), err
+	return group.ConvertDto(), msg, err
 }
 
 func (g *groupRepoImpl) DeleteGroup(ctx context.Context, groupId uint) error {
@@ -120,7 +141,7 @@ func (g *groupRepoImpl) DeleteMember(ctx context.Context, groupId uint, userId u
 	return nil
 }
 
-func (g *groupRepoImpl) GetGroupShip(ctx context.Context, groupId, userId uint) (*dto.GroupShip, error) {
+func (g *groupRepoImpl) GetGroupShipByUserId(ctx context.Context, groupId, userId uint) (*dto.GroupShip, error) {
 	var ship po.GroupShip
 	err := g.db.WithContext(ctx).Where("group_id = ? and user_id = ?", groupId, userId).Find(&ship).Error
 	if err != nil {
@@ -128,6 +149,34 @@ func (g *groupRepoImpl) GetGroupShip(ctx context.Context, groupId, userId uint) 
 		return nil, err
 	}
 	return ship.ConvertToDto(), nil
+}
+
+func (g *groupRepoImpl) GetGroupShipByRole(ctx context.Context, groupId, role uint) ([]*dto.GroupShip, error) {
+	var ship []*po.GroupShip
+	err := g.db.WithContext(ctx).Where("group_id = ? and role = ?", groupId, role).Find(&ship).Error
+	if err != nil {
+		slog.Error("internal/repository/impl/group_repo_impl.go GetGroupUser err:", err)
+		return nil, err
+	}
+	data := make([]*dto.GroupShip, 0, len(ship))
+	for _, groupShip := range ship {
+		data = append(data, groupShip.ConvertToDto())
+	}
+	return data, nil
+}
+
+func (g *groupRepoImpl) GetGroupShip(ctx context.Context, groupId uint) ([]*dto.GroupShip, error) {
+	var ship []*po.GroupShip
+	err := g.db.WithContext(ctx).Where("group_id = ?", groupId).Find(&ship).Error
+	if err != nil {
+		slog.Error("internal/repository/impl/group_repo_impl.go GetGroupUser err:", err)
+		return nil, err
+	}
+	data := make([]*dto.GroupShip, 0, len(ship))
+	for _, groupShip := range ship {
+		data = append(data, groupShip.ConvertToDto())
+	}
+	return data, nil
 }
 
 func (g *groupRepoImpl) AddAdmin(ctx context.Context, groupId, userId uint) error {

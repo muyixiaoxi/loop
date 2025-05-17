@@ -22,3 +22,13 @@ type DeleteGroup struct {
 type GroupId struct {
 	GroupId uint `json:"group_id" form:"group_id"`
 }
+
+type Member struct {
+	UserID    uint   `json:"user_id,omitempty"`
+	Nickname  string `json:"nickname"`
+	Avatar    string `json:"avatar,omitempty"`
+	Signature string `json:"signature"`
+	Gender    int    `json:"gender,omitempty"`
+	Age       int    `json:"age"`
+	Role      int    `json:"role"`
+}

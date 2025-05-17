@@ -41,15 +41,24 @@ func (i *imAppImpl) HandleMessage(ctx context.Context, curUserId uint, msgByte [
 		return i.handlerAck(ctx, msg)
 	case consts.WsMessageCmdGroupMessage:
 		return i.handlerGroupMessage(ctx, msg)
-	case consts.WsMessageCmdPrivateOffer:
-	case consts.WsMessageCmdPrivateAnswer:
-	case consts.WsMessageCmdPrivateIce:
+	case consts.WsMessageCmdPrivateOffer, consts.WsMessageCmdPrivateAnswer, consts.WsMessageCmdPrivateIce:
+		return i.handlerPrivateOffer(ctx, msg)
 	case consts.WsMessageCmdGroupInitiatorOffer:
 		return i.handlerGroupOffer(ctx, msg)
 	case consts.WsMessageCmdGroupIce:
 		return i.handlerGroupIce(ctx, msg)
 	}
 	return nil
+}
+
+func (i *imAppImpl) handlerPrivateOffer(ctx context.Context, msg *dto.Message) error {
+	var sdpMessage dto.WebRTCMessage
+	err := json.Unmarshal(msg.Data, &sdpMessage)
+	if err != nil {
+		slog.Error("sdp message unmarshal err:", err)
+		return err
+	}
+	return i.imDomain.SendMessage(ctx, msg.Cmd, sdpMessage.ReceiverId, sdpMessage)
 }
 
 func (i *imAppImpl) handlerGroupMessage(ctx context.Context, msg *dto.Message) error {
