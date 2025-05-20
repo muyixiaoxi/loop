@@ -27,7 +27,7 @@ const Login = () => {
         phone: value.phone,
         password: value.password,
       };
-      const { code, data }: any = await LoginPost(valueParams);
+      const { code, data, result }: any = await LoginPost(valueParams);
       if (code === 1000) {
         setToken(data.token);
         setUserInfo(data.user);
@@ -78,7 +78,10 @@ const Login = () => {
     <div className="login">
       <div className="login-container">
         <div className="logo">
-          <img src="../logo.png" alt="" />
+          <img
+            src="https://loopavatar.oss-cn-beijing.aliyuncs.com/1747749019930_logo.png"
+            alt=""
+          />
         </div>
         <div className="login-form">
           <Form
