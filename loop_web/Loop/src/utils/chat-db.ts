@@ -106,6 +106,30 @@ class ChatDB extends Dexie {
     console.log("getConversation", userId, targetId, type);
     return this.conversations.get([userId, targetId, type]);
   };
+
+  // 清空特定会话的消息记录（保留会话）
+  clearMessages = async (userId: number, targetId: number, type: number) => {
+    const key: [number, number, number] = [userId, targetId, type];
+    const existing = await this.conversations.get(key);
+
+    if (existing) {
+      return this.conversations.update(key, {
+        messages: [],
+        lastContent: "",
+        unreadCount: 0,
+      });
+    }
+  };
+
+  // 删除整个会话（包括消息记录）
+  deleteConversation = async (
+    userId: number,
+    targetId: number,
+    type: number
+  ) => {
+    const key: [number, number, number] = [userId, targetId, type];
+    return this.conversations.delete(key);
+  };
 }
 
 // 数据库实例管理器

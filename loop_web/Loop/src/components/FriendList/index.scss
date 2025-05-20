@@ -105,6 +105,11 @@
     }
   }
 
+  .content_roll {
+    height: calc(100vh - 230px);
+    overflow-y: auto;
+  }
+
   .ant-drawer-header {
     padding: 0px;
   }

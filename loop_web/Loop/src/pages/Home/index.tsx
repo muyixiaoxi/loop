@@ -86,7 +86,7 @@ const Home = observer(() => {
       } else if (item?.cmd === 2) {
         await handleNewStorage(item.data, 2);
         const existingIndex = processedData.findIndex(
-          (msg) => msg.receiver_id === item.data.receiver_id
+          (msg: any) => msg.receiver_id === item.data.receiver_id
         );
         if (existingIndex !== -1) {
           processedData[existingIndex] = {
@@ -125,6 +125,7 @@ const Home = observer(() => {
 
     const client = new WebSocketClient<string>({
       url: `ws://47.93.85.12:8080/api/v1/im?token=${token}`,
+      // url: `ws://yangchengxi.a1.luyouxia.net:23914/api/v1/im?token=${token}`,
       onMessage: (message: any) => {
         const { cmd, data } = message;
         if (cmd === 1) {

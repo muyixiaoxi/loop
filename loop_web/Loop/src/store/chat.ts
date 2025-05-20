@@ -40,7 +40,6 @@ class ChatStore {
     nickname: string;
     avatar: string;
   }) => {
-    console.log("setCurrentFriendData", data);
     this.currentFriendId = data.id;
     this.currentFriendName = data.nickname;
     this.currentFriendAvatar = data.avatar;

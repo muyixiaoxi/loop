@@ -190,6 +190,9 @@ const MessageList = observer(() => {
         open={isModalVisible}
         onOk={handleOk}
         onCancel={handleCancel}
+        closable={false}
+        okText="创建"
+        cancelText="取消"
       >
         <Form form={form} layout="vertical">
           <Form.Item
@@ -239,17 +242,38 @@ const MessageList = observer(() => {
           <Form.Item
             label="群聊名字"
             name="groupName"
-            rules={[{ required: true, message: "请输入群聊名字" }]}
+            rules={[
+              { required: true, message: "请输入群聊名字" },
+              {
+                validator: (_, value) =>
+                  value?.trim()
+                    ? Promise.resolve()
+                    : Promise.reject(new Error("群聊名字不能为空")),
+              },
+            ]}
           >
-            <Input />
+            <Input showCount maxLength={16} />
           </Form.Item>
           <Form.Item
             label="群简介"
             name="groupDescription"
             // 添加群简介必填校验规则
-            rules={[{ required: true, message: "请输入群简介" }]}
+            rules={[
+              { required: true, message: "请输入群简介" },
+              {
+                validator: (_, value) =>
+                  value?.trim()
+                    ? Promise.resolve()
+                    : Promise.reject(new Error("群聊名字不能为空")),
+              },
+            ]}
           >
-            <Input.TextArea />
+            <Input.TextArea
+              style={{ height: 80, resize: "none" }}
+              autoSize={{ minRows: 3, maxRows: 5 }}
+              showCount
+              maxLength={100}
+            />
           </Form.Item>
           <Form.Item
             label="群成员"
