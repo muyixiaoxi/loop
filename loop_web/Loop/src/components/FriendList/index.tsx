@@ -17,13 +17,15 @@ import { getChatDB } from "@/utils/chat-db";
 import { getFirstLetter } from "@/utils/pinyin";
 import { getGroupList } from "@/api/group";
 
-const { TabPane } = Tabs;
-
 const FirendList = observer(() => {
   const { userInfo } = userStore;
   const db = getChatDB(userInfo.id);
-  const { setCurrentFriendData, setCurrentMessages, setCurrentChatInfo } =
-    ChatStore;
+  const {
+    currentChatList,
+    setCurrentFriendData,
+    setCurrentMessages,
+    setCurrentChatInfo,
+  } = ChatStore;
   const [open, setOpen] = useState(false);
   const [addopen, setaddOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -210,7 +212,7 @@ const FirendList = observer(() => {
   const handleNewConversation = async (data: any, type: number) => {
     const params = {
       id: data.id,
-      nickname: data.name,
+      nickname: type == 1 ? data.nickname : data.name,
       avatar: data.avatar,
     };
     setCurrentFriendData(params); // 设置当前好友数据
@@ -341,6 +343,12 @@ const FirendList = observer(() => {
       a.localeCompare(b)
     );
   };
+
+  useEffect(() => {
+    // 监听聊天列表变化，更新本地状态
+    getFriendListData();
+    getGroupListData();
+  }, [currentChatList]);
 
   const itemsTabs: TabsProps["items"] = [
     {

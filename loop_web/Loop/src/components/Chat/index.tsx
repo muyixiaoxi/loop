@@ -2,14 +2,14 @@ import "./index.scss";
 import { observer } from "mobx-react-lite";
 import { v4 as uuidv4 } from "uuid";
 import { useState, useContext, useRef, useEffect } from "react";
-import { Input, Drawer, Switch, Modal } from "antd"; // 引入 Modal 组件
+import { Input, Drawer, Modal } from "antd"; // 引入 Modal 组件
 import { WebSocketContext } from "@/pages/Home";
 import chatStore from "@/store/chat";
 import userStore from "@/store/user";
 import globalStore from "@/store/global";
 import { getChatDB } from "@/utils/chat-db";
 import { usePeerConnectionStore } from "@/store/PeerConnectionStore"; // 导入 PeerConnectionStore
-
+import ChatInfo from "@/components/ChatInfo"; // 导入 ChatInfo 组件
 const Chat = observer(() => {
   const { userInfo } = userStore;
   const { sendMessageWithTimeout } = useContext<any>(WebSocketContext); // 使用WebSocket上下文
@@ -29,7 +29,6 @@ const Chat = observer(() => {
   const { TextArea } = Input; // 使用TextArea组件
   const [inputValue, setInputValue] = useState(""); // 输入框的值
   const [openDrawer, setOpenDrawer] = useState(false); // 是否打开抽屉
-  const [topSwitch, setTopSwitch] = useState<boolean>(false); //置顶开关
   // 新增：管理视频弹框的显示状态
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
   // 新增：管理本地视频流
@@ -228,7 +227,12 @@ const Chat = observer(() => {
               <path d="M9 9.5a4 4 0 00-4 4v9a4 4 0 004 4h10a4 4 0 004-4v-9a4 4 0 00-4-4H9zm16.829 12.032l3.723 1.861A1 1 0 0031 22.5v-9a1 1 0 00-1.448-.894l-3.723 1.861A1.5 1.5 0 0025 15.81v4.38a1.5 1.5 0 00.829 1.342z"></path>
             </svg>
           </div>
-          <div className="more-mask" onClick={() => setOpenDrawer(true)}>
+          <div
+            className="more-mask"
+            onClick={() => {
+              setOpenDrawer(true);
+            }}
+          >
             {/* 更多 */}
             <svg
               fill="#E46342"
@@ -324,22 +328,25 @@ const Chat = observer(() => {
         }}
         onClose={() => setOpenDrawer(false)}
         open={openDrawer}
-        style={{ position: "absolute" }}
+        style={{ position: "absolute", overflowX: "hidden" }}
+        // maskClosable={false}
         maskClosable={true}
+        className="chatInfo-drawer"
       >
-        <div className="chat-drawer">
-          <div className="chat-drawer-img">
-            <img src={currentFriendAvatar} alt="头像" />
-          </div>
-          <div className="chat-drawer-name">{currentFriendName}</div>
-          <div className="chat-drawer-istop">
-            <div className="chat-drawer-istop-text">聊天置顶</div>
-            <Switch
-              value={topSwitch}
-              onChange={() => setTopSwitch(!topSwitch)}
-            />
-          </div>
-        </div>
+        {/* {openDrawer && (
+          <ChatInfo
+            friendId={Number(currentFriendId)}
+            setOpenDrawer={setOpenDrawer}
+            openDrawer={openDrawer}
+            refreshConversation={handleNewConversation}
+          />
+        )} */}
+        <ChatInfo
+          friendId={Number(currentFriendId)}
+          setOpenDrawer={setOpenDrawer}
+          openDrawer={openDrawer}
+          refreshConversation={handleNewConversation}
+        />
       </Drawer>
 
       {/* 新增：视频弹框 */}

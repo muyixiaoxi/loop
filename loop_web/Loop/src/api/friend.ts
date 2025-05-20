@@ -23,5 +23,12 @@ export const getFriendList = () => {
 
 // 处理好友申请
 export const postHandleFriend = (data: any) => {
-  return http.post("/api/v1/user/friend/dispose", data)
-}
+  return http.post("/api/v1/user/friend/dispose", data);
+};
+
+// 删除好友
+export const deleteFriend = (friend_id: number) => {
+  return http.post(`/api/v1/user/friend/delete`, {
+    friend_id,
+  });
+};

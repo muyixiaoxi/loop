@@ -140,7 +140,7 @@ const Change = () => {
                 style={{ color: "#1677ff", cursor: "pointer" }}
                 onClick={handlejump}
               >
-                添加账号
+                密码登录
               </span>
             </div>
           </div>
