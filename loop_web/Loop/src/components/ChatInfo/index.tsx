@@ -204,7 +204,7 @@ const ChatInfo = (props: ChatInfoProps) => {
       await addGroupMember(friendId, selectedUsers);
       setIsModalOpen(false);
       setSelectedUsers([]);
-      // await handleGroupMemberList(); // 刷新成员列表
+      await handleGroupMemberList(); // 刷新成员列表
     } catch (error) {
       console.error("添加成员失败:", error);
     }
@@ -279,6 +279,22 @@ const ChatInfo = (props: ChatInfoProps) => {
     } catch (error) {
       console.error("修改群信息失败:", error);
     }
+  };
+
+  /**
+   * 打开群信息编辑抽屉
+   */
+  const handleEditGroupDrawerOpen = () => {
+    if (!isGroupOwnerOrAdmin()) {
+      message.warning("只有管理者才能修改群信息");
+      return;
+    }
+    setEditGroupInfo({
+      name: groupInfo.name,
+      avatar: groupInfo.avatar,
+      describe: groupInfo.describe,
+    });
+    setShowEditGroupDrawer(true);
   };
 
   // ===================== 其他操作方法 =====================
@@ -622,31 +638,11 @@ const ChatInfo = (props: ChatInfoProps) => {
 
           {chatType === 2 && (
             <div className="chat-group-info">
-              <div
-                className="group-info"
-                onClick={() => {
-                  setEditGroupInfo({
-                    name: groupInfo.name,
-                    avatar: groupInfo.avatar,
-                    describe: groupInfo.describe,
-                  });
-                  setShowEditGroupDrawer(true);
-                }}
-              >
+              <div className="group-info" onClick={handleEditGroupDrawerOpen}>
                 <div className="group-label"> 群聊名称</div>
                 <div className="group-name">{groupInfo.name}</div>
               </div>
-              <div
-                className="group-info"
-                onClick={() => {
-                  setEditGroupInfo({
-                    name: groupInfo.name,
-                    avatar: groupInfo.avatar,
-                    describe: groupInfo.describe,
-                  });
-                  setShowEditGroupDrawer(true);
-                }}
-              >
+              <div className="group-info" onClick={handleEditGroupDrawerOpen}>
                 <div className="group-label"> 群头像</div>
                 <div className="group-avatar">
                   <img src={groupInfo.avatar} alt="头像" />
@@ -654,14 +650,7 @@ const ChatInfo = (props: ChatInfoProps) => {
               </div>
               <div
                 className="group-info group-describe"
-                onClick={() => {
-                  setEditGroupInfo({
-                    name: groupInfo.name,
-                    avatar: groupInfo.avatar,
-                    describe: groupInfo.describe,
-                  });
-                  setShowEditGroupDrawer(true);
-                }}
+                onClick={handleEditGroupDrawerOpen}
               >
                 <div className="group-label">群简介</div>
                 <div className="group-describe-text">
@@ -831,31 +820,34 @@ const ChatInfo = (props: ChatInfoProps) => {
                       </div>
                     );
                   })}
-                <div
-                  className="manager-item-list-item add-manager"
-                  onClick={() => {
-                    // 添加管理员
-                    setShowAddAdminDrawer(true);
-                  }}
-                >
-                  <div className="add-manager-icon">
-                    <svg
-                      viewBox="0 0 1024 1024"
-                      version="1.1"
-                      xmlns="http://www.w3.org/2000/svg"
-                      p-id="5423"
-                      width="20"
-                      height="20"
-                    >
-                      <path
-                        d="M352 480h320c9.344 0 17.024 3.008 23.04 8.96 5.952 6.016 8.96 13.696 8.96 23.04a31.168 31.168 0 0 1-8.96 23.04 31.168 31.168 0 0 1-23.04 8.96h-320a31.168 31.168 0 0 1-23.04-8.96A31.168 31.168 0 0 1 320 512c0-9.344 3.008-17.024 8.96-23.04a31.168 31.168 0 0 1 23.04-8.96z m128 192v-320c0-9.344 3.008-17.024 8.96-23.04A31.168 31.168 0 0 1 512 320c9.344 0 17.024 3.008 23.04 8.96 5.952 6.016 8.96 13.696 8.96 23.04v320a31.168 31.168 0 0 1-8.96 23.04A31.168 31.168 0 0 1 512 704a31.168 31.168 0 0 1-23.04-8.96 31.168 31.168 0 0 1-8.96-23.04zM512 896c108.672-2.688 199.168-40.192 271.488-112.512S893.312 620.672 896 512c-2.688-108.672-40.192-199.168-112.512-271.488S620.672 130.688 512 128c-108.672 2.688-199.168 40.192-271.488 112.512S130.688 403.328 128 512c2.688 108.672 40.192 199.168 112.512 271.488S403.328 893.312 512 896z m0 64c-126.72-3.328-232.192-47.168-316.544-131.52C111.232 744.192 67.392 638.72 64 512c3.328-126.72 47.168-232.192 131.456-316.544C279.872 111.232 385.344 67.392 512 64c126.72 3.328 232.192 47.168 316.48 131.456C912.832 279.872 956.672 385.344 960 512c-3.328 126.72-47.168 232.192-131.52 316.48C744.192 912.832 638.72 956.672 512 960z"
-                        fill="red"
-                        p-id="5424"
-                      ></path>
-                    </svg>
+                {/* 群主才能添加管理员 */}
+                {userInfo?.id === groupInfo?.owner_id && (
+                  <div
+                    className="manager-item-list-item add-manager"
+                    onClick={() => {
+                      // 添加管理员
+                      setShowAddAdminDrawer(true);
+                    }}
+                  >
+                    <div className="add-manager-icon">
+                      <svg
+                        viewBox="0 0 1024 1024"
+                        version="1.1"
+                        xmlns="http://www.w3.org/2000/svg"
+                        p-id="5423"
+                        width="20"
+                        height="20"
+                      >
+                        <path
+                          d="M352 480h320c9.344 0 17.024 3.008 23.04 8.96 5.952 6.016 8.96 13.696 8.96 23.04a31.168 31.168 0 0 1-8.96 23.04 31.168 31.168 0 0 1-23.04 8.96h-320a31.168 31.168 0 0 1-23.04-8.96A31.168 31.168 0 0 1 320 512c0-9.344 3.008-17.024 8.96-23.04a31.168 31.168 0 0 1 23.04-8.96z m128 192v-320c0-9.344 3.008-17.024 8.96-23.04A31.168 31.168 0 0 1 512 320c9.344 0 17.024 3.008 23.04 8.96 5.952 6.016 8.96 13.696 8.96 23.04v320a31.168 31.168 0 0 1-8.96 23.04A31.168 31.168 0 0 1 512 704a31.168 31.168 0 0 1-23.04-8.96 31.168 31.168 0 0 1-8.96-23.04zM512 896c108.672-2.688 199.168-40.192 271.488-112.512S893.312 620.672 896 512c-2.688-108.672-40.192-199.168-112.512-271.488S620.672 130.688 512 128c-108.672 2.688-199.168 40.192-271.488 112.512S130.688 403.328 128 512c2.688 108.672 40.192 199.168 112.512 271.488S403.328 893.312 512 896z m0 64c-126.72-3.328-232.192-47.168-316.544-131.52C111.232 744.192 67.392 638.72 64 512c3.328-126.72 47.168-232.192 131.456-316.544C279.872 111.232 385.344 67.392 512 64c126.72 3.328 232.192 47.168 316.48 131.456C912.832 279.872 956.672 385.344 960 512c-3.328 126.72-47.168 232.192-131.52 316.48C744.192 912.832 638.72 956.672 512 960z"
+                          fill="red"
+                          p-id="5424"
+                        ></path>
+                      </svg>
+                    </div>
+                    <div>添加管理员</div>
                   </div>
-                  <div>添加管理员</div>
-                </div>
+                )}
               </div>
             </div>
           </div>

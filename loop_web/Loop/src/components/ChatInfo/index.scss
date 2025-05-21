@@ -13,11 +13,10 @@
   }
 
   &-list-item {
-    padding: 24px;
+    padding: 10px 20px;
     display: flex;
     flex-wrap: wrap; // 添加换行属性
-    gap: 3px;
-    padding-bottom: 10px;
+    gap: 5px;
 
     .chat-list-item {
       width: 60px;
