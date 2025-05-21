@@ -17,15 +17,18 @@ import {
   getOfflineMessage,
   submitOfflineMessage,
 } from "@/api/chat";
+import ChatPrivateVideo from "@/components/ChatPrivateVideo";
 import ChatVideoAcceptor from "@/components/ChatVideoAcceptor";
 import { usePeerConnectionStore } from "@/store/PeerConnectionStore"; // 确保导入
 
 // 创建WebSocket上下文
 export const WebSocketContext = createContext<{
   sendMessageWithTimeout?: (message: any) => void;
+  sendNonChatMessage?: (message: any) => void;
   disconnect?: () => void;
 }>({
   sendMessageWithTimeout: () => {},
+  sendNonChatMessage: () => {},
   disconnect: () => {},
 });
 
@@ -34,9 +37,9 @@ const Home = observer(() => {
   const { token, userInfo } = userStore; // 获取用户信息
   const {
     currentFriendId,
-    currentChatInfo,
     setCurrentChatList,
     setCurrentMessages,
+    currentChatInfo,
   } = chatStore; // 获取发送消息的函数
 
   const db = getChatDB(userInfo.id); // 连接数据库
@@ -57,6 +60,12 @@ const Home = observer(() => {
   const retryTimersRef = useRef<
     Record<string, { timer: NodeJS.Timeout; count: number }>
   >({});
+  // 视频通话相关状态
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
+  const [isCaller, setIsCaller] = useState(false);
+  const [callerInfo, setCallerInfo] = useState<any>({});
 
   // 视频呼叫相关状态
   const [isCalling, setIsCalling] = useState(false); // 是否正在呼叫
@@ -129,7 +138,7 @@ const Home = observer(() => {
 
     const client = new WebSocketClient<string>({
       url: `ws://47.93.85.12:8080/api/v1/im?token=${token}`,
-      onMessage: (message: any) => {
+      onMessage: async (message: any) => {
         const { cmd, data } = message;
         if (cmd === 1) {
           // 私聊消息
@@ -186,7 +195,19 @@ const Home = observer(() => {
         } else if (cmd === 4) {
           // 单聊发送的offer
           console.log("单聊发送的offer", data);
-          handleVideoOffer(data.session_description);
+
+          // 设置呼叫者数据，用于接听
+          setCallerInfo(data);
+          //  打开弹窗，等待接听
+          setIsCalling(true);
+        } else if (cmd === 5) {
+          // 接收到 answer，设置远程描述
+          const remoteDesc = data.session_description;
+          usePeerConnectionStore.setRemoteDescription(remoteDesc);
+        } else if (cmd === 6) {
+          // ICE候选消息
+          console.log("收到ICE候选:", data.candidate_init);
+          usePeerConnectionStore.addIceCandidate(data.candidate_init);
         } else {
           console.log(cmd, "cmd");
           console.log(data, "data");
@@ -220,56 +241,121 @@ const Home = observer(() => {
     usePeerConnectionStore.setupMediaStreamHandlers(
       (remoteStream: MediaStream) => {
         console.log("收到远程媒体流", remoteStream);
-        // setRemoteStream(remoteStream);
+        setRemoteStream(remoteStream);
       }
     );
   }, []);
 
-  // 处理收到的视频通话邀请
-  const handleVideoOffer = async (offer: RTCSessionDescriptionInit) => {
+  // 处理接受视频通话
+  const handleAcceptCall = async () => {
     try {
       // 1. 获取本地媒体流
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true,
       });
-      // setLocalStream(stream);
+      setLocalStream(stream);
+      setIsCaller(false);
 
-      // 2. 设置当前用户为被呼叫方
-      // setIsCaller(false);
-      // 3. 创建PeerConnection
+      // 2. 创建PeerConnection
       usePeerConnectionStore.createPeerConnection(
-        sendMessageWithTimeout,
+        sendNonChatMessage,
         stream,
         userInfo.id,
-        Number(currentFriendId)
+        callerInfo.sender_id,
+        currentChatInfo.type
       );
 
-      // 4. 设置远程描述
-      await usePeerConnectionStore.setRemoteDescription(offer);
+      // 3. 设置远程描述
+      await usePeerConnectionStore.setRemoteDescription(
+        callerInfo.session_description
+      );
 
-      // 5. 创建并发送answer
+      // 4. 创建并发送answer
       const answer = await usePeerConnectionStore.createAnswer();
-      sendMessageWithTimeout({
+
+      const sdpData: any = {
         cmd: 5, // answer命令
         data: {
           sender_id: userInfo.id,
-          receiver_id: currentFriendId,
+          receiver_id: callerInfo.sender_id,
           session_description: answer,
         },
-      });
+      };
 
-      // 6. 显示视频弹框
-      setIsCalling(true);
+      sendNonChatMessage(sdpData);
+      // 3. 显示视频弹框
+      setIsVideoModalVisible(true);
+      setIsCalling(false);
+
+      // 确保ICE候选交换已启用
+      usePeerConnectionStore.setupMediaStreamHandlers(
+        (remoteStream: MediaStream) => {
+          console.log("收到远程媒体流", remoteStream);
+          setRemoteStream(remoteStream);
+        }
+      );
     } catch (error) {
-      console.error("处理视频邀请失败:", error);
+      console.error("接受视频通话失败:", error);
       message.error("接受视频通话失败");
     }
   };
 
+  // 处理拒绝视频通话
+  const handleRejectCall = () => {
+    setIsCalling(false);
+    // 可以发送拒绝消息给对方
+    sendNonChatMessage({
+      cmd: 6, // 拒绝命令
+      data: {
+        sender_id: userInfo.id,
+        receiver_id: currentFriendId,
+      },
+    });
+  };
+
+  // // 处理收到的视频通话邀请
+  // const handleVideoOffer = async (offer: RTCSessionDescriptionInit) => {
+  //   try {
+  //     // 1. 获取本地媒体流
+  //     const stream = await navigator.mediaDevices.getUserMedia({
+  //       video: true,
+  //       audio: true,
+  //     });
+
+  //     // 3. 创建PeerConnection
+  //     usePeerConnectionStore.createPeerConnection(
+  //       sendNonChatMessage,
+  //       stream,
+  //       userInfo.id,
+  //       Number(currentFriendId),
+  //       currentChatInfo.type
+  //     );
+
+  //     // 4. 设置远程描述
+  //     await usePeerConnectionStore.setRemoteDescription(offer);
+
+  //     // 5. 创建并发送answer
+  //     const answer = await usePeerConnectionStore.createAnswer();
+  //     sendNonChatMessage({
+  //       cmd: 5, // answer命令
+  //       data: {
+  //         sender_id: userInfo.id,
+  //         receiver_id: currentFriendId,
+  //         session_description: answer,
+  //       },
+  //     });
+
+  //     // 6. 显示视频弹框
+  //     setIsCalling(true);
+  //   } catch (error) {
+  //     console.error("处理视频邀请失败:", error);
+  //     message.error("接受视频通话失败");
+  //   }
+  // };
+
   // 添加发送消息方法
   const sendMessageWithTimeout = async (message: any) => {
-    console.log(currentChatInfo.type, "发送消息");
     if (!wsClient) return;
 
     const messageId = message.data.seq_id;
@@ -353,6 +439,16 @@ const Home = observer(() => {
         });
       }, 10000),
     }));
+  };
+
+  // 发送非聊天信息
+  const sendNonChatMessage = (message: any) => {
+    console.log(wsClient, "发送非聊天信息", message);
+    if (wsClient) {
+      wsClient.sendMessage(message);
+    } else {
+      console.error("WebSocket未连接");
+    }
   };
 
   // 更新聊天信息状态
@@ -469,6 +565,7 @@ const Home = observer(() => {
     <WebSocketContext.Provider
       value={{
         sendMessageWithTimeout,
+        sendNonChatMessage,
         disconnect: () => wsClient?.disconnect(),
       }}
     >
@@ -485,24 +582,53 @@ const Home = observer(() => {
           </div>
           <div className="main-layout-content-right">
             {currentFriendId && <Chat />}
-            {/* 添加视频元素 */}
-            {/* <video id="remote-video" autoPlay muted /> */}
           </div>
         </div>
 
-        <div>
-          <ChatVideoAcceptor
-            callerInfo={{ name: "张三", avatar: "url-to-avatar" }}
-            onAccept={() => {
-              console.log("接受视频通话");
+        {/* 添加视频元素 */}
+        <Modal
+          open={isVideoModalVisible}
+          closable={false}
+          onCancel={() => {
+            setIsVideoModalVisible(false);
+            if (localStream) {
+              localStream.getTracks().forEach((track) => track.stop());
+            }
+            usePeerConnectionStore.closePeerConnection();
+          }}
+          footer={null}
+          width={800}
+          destroyOnClose
+        >
+          <ChatPrivateVideo
+            localStream={localStream}
+            remoteStream={remoteStream}
+            onClose={() => {
+              setIsVideoModalVisible(false);
+              if (localStream) {
+                localStream.getTracks().forEach((track) => track.stop());
+              }
+              usePeerConnectionStore.closePeerConnection();
+              // 发送结束通话消息
+              sendNonChatMessage({
+                cmd: 6,
+                data: {
+                  sender_id: userInfo.id,
+                  receiver_id: currentFriendId,
+                },
+              });
             }}
-            onReject={() => {
-              console.log("拒绝视频通话");
-            }}
-            visible={isCalling}
-            timeout={30000}
+            isCaller={isCaller}
           />
-        </div>
+        </Modal>
+
+        <ChatVideoAcceptor
+          callerInfo={callerInfo}
+          onAccept={() => handleAcceptCall()}
+          onReject={handleRejectCall}
+          visible={isCalling}
+          timeout={30000}
+        />
 
         {isShowUserAmend ? (
           <Modal

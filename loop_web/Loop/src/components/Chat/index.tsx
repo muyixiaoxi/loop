@@ -14,7 +14,8 @@ import ChatPrivateVideo from "@/components/ChatPrivateVideo";
 
 const Chat = observer(() => {
   const { userInfo } = userStore;
-  const { sendMessageWithTimeout } = useContext<any>(WebSocketContext); // 使用WebSocket上下文
+  const { sendMessageWithTimeout, sendNonChatMessage } =
+    useContext<any>(WebSocketContext); // 使用WebSocket上下文
   const {
     currentFriendId,
     currentFriendName,
@@ -110,17 +111,19 @@ const Chat = observer(() => {
 
       // 3. 创建PeerConnection
       usePeerConnectionStore.createPeerConnection(
-        sendMessageWithTimeout,
+        sendNonChatMessage,
         stream,
         userInfo.id,
-        Number(currentFriendId)
+        Number(currentFriendId),
+        chatType
       );
 
       // 4. 发送视频offer
       await usePeerConnectionStore.sendVideoOffer(
-        sendMessageWithTimeout,
+        sendNonChatMessage,
         userInfo.id,
-        Number(currentFriendId)
+        Number(currentFriendId),
+        chatType
       );
 
       // 5. 显示视频弹框
@@ -377,7 +380,7 @@ const Chat = observer(() => {
           onStartCall={handlevideo}
           onEndCall={() => {
             // 发送结束通话的消息
-            sendMessageWithTimeout({
+            sendNonChatMessage({
               cmd: "end_call",
               data: {
                 sender_id: userInfo.id,
