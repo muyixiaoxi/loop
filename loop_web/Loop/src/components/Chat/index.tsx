@@ -2,7 +2,7 @@ import "./index.scss";
 import { observer } from "mobx-react-lite";
 import { v4 as uuidv4 } from "uuid";
 import { useState, useContext, useRef, useEffect } from "react";
-import { Input, Drawer, Modal } from "antd"; // 引入 Modal 组件
+import { Input, Drawer, Modal, message } from "antd"; // 引入 Modal 组件
 import { WebSocketContext } from "@/pages/Home";
 import chatStore from "@/store/chat";
 import userStore from "@/store/user";
@@ -10,6 +10,8 @@ import globalStore from "@/store/global";
 import { getChatDB } from "@/utils/chat-db";
 import { usePeerConnectionStore } from "@/store/PeerConnectionStore"; // 导入 PeerConnectionStore
 import ChatInfo from "@/components/ChatInfo"; // 导入 ChatInfo 组件
+import ChatPrivateVideo from "@/components/ChatPrivateVideo";
+
 const Chat = observer(() => {
   const { userInfo } = userStore;
   const { sendMessageWithTimeout } = useContext<any>(WebSocketContext); // 使用WebSocket上下文
@@ -33,6 +35,10 @@ const Chat = observer(() => {
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
   // 新增：管理本地视频流
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+
+  // 在组件状态中添加远程视频流状态
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [isCaller, setIsCaller] = useState(false); // 是否是呼叫方
 
   /**
    * 发送消息
@@ -87,41 +93,41 @@ const Chat = observer(() => {
     sendMessageWithTimeout(message);
     setInputValue(""); // 清空输入框
   };
-  //发送offer
+
+  //打开视频通话
+
   const handlevideo = async () => {
     try {
-      // 获取本地媒体流
+      // 1. 获取本地媒体流
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true,
       });
       setLocalStream(stream);
-      // 获取用户 ID
-      const sender_id = userInfo.id;
-      const receiver_id = currentFriendId;
 
-      // 创建 PeerConnection
+      // 2. 设置当前用户为呼叫方
+      setIsCaller(true);
+
+      // 3. 创建PeerConnection
       usePeerConnectionStore.createPeerConnection(
         sendMessageWithTimeout,
         stream,
-        sender_id,
-        Number(receiver_id)
+        userInfo.id,
+        Number(currentFriendId)
       );
 
-      // 发送视频 offer
+      // 4. 发送视频offer
       await usePeerConnectionStore.sendVideoOffer(
         sendMessageWithTimeout,
-        sender_id,
-        Number(receiver_id)
+        userInfo.id,
+        Number(currentFriendId)
       );
 
-      // 显示视频弹框
+      // 5. 显示视频弹框
       setIsVideoModalVisible(true);
     } catch (error) {
-      console.error(
-        "Error during getting user media or sending offer: ",
-        error
-      );
+      console.error("获取用户媒体或发送offer失败:", error);
+      message.error("启动视频通话失败");
     }
   };
 
@@ -329,18 +335,9 @@ const Chat = observer(() => {
         onClose={() => setOpenDrawer(false)}
         open={openDrawer}
         style={{ position: "absolute", overflowX: "hidden" }}
-        // maskClosable={false}
         maskClosable={true}
         className="chatInfo-drawer"
       >
-        {/* {openDrawer && (
-          <ChatInfo
-            friendId={Number(currentFriendId)}
-            setOpenDrawer={setOpenDrawer}
-            openDrawer={openDrawer}
-            refreshConversation={handleNewConversation}
-          />
-        )} */}
         <ChatInfo
           friendId={Number(currentFriendId)}
           setOpenDrawer={setOpenDrawer}
@@ -351,31 +348,44 @@ const Chat = observer(() => {
 
       {/* 新增：视频弹框 */}
       <Modal
-        title="本地视频流"
-        visible={isVideoModalVisible}
+        open={isVideoModalVisible}
+        closable={false}
         onCancel={() => {
           setIsVideoModalVisible(false);
           if (localStream) {
             localStream.getTracks().forEach((track) => track.stop());
           }
-          // 调用关闭 WebRTC 连接的方法
           usePeerConnectionStore.closePeerConnection();
+          setLocalStream(null);
+          setRemoteStream(null);
         }}
         footer={null}
+        width={800}
+        destroyOnClose
       >
-        {localStream && (
-          <video
-            autoPlay
-            muted
-            ref={(video) => {
-              if (video) {
-                video.srcObject = localStream;
-              }
-            }}
-            // 设置固定宽度和高度
-            style={{ width: "400px", height: "300px" }}
-          />
-        )}
+        <ChatPrivateVideo
+          localStream={localStream}
+          remoteStream={remoteStream}
+          onClose={() => {
+            setIsVideoModalVisible(false);
+            if (localStream) {
+              localStream.getTracks().forEach((track) => track.stop());
+            }
+            usePeerConnectionStore.closePeerConnection();
+          }}
+          isCaller={isCaller}
+          onStartCall={handlevideo}
+          onEndCall={() => {
+            // 发送结束通话的消息
+            sendMessageWithTimeout({
+              cmd: "end_call",
+              data: {
+                sender_id: userInfo.id,
+                receiver_id: currentFriendId,
+              },
+            });
+          }}
+        />
       </Modal>
     </div>
   );
