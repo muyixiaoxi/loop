@@ -2,12 +2,15 @@ import "./index.scss";
 import { observer } from "mobx-react-lite";
 import { v4 as uuidv4 } from "uuid";
 import { useState, useContext, useRef, useEffect } from "react";
-import { Input, Drawer, Switch, Modal } from "antd"; // 引入 Modal 组件
+import { Input, Drawer, Modal, message } from "antd"; // 引入 Modal 组件
 import { WebSocketContext } from "@/pages/Home";
 import chatStore from "@/store/chat";
 import userStore from "@/store/user";
+import globalStore from "@/store/global";
 import { getChatDB } from "@/utils/chat-db";
 import { usePeerConnectionStore } from "@/store/PeerConnectionStore"; // 导入 PeerConnectionStore
+import ChatInfo from "@/components/ChatInfo"; // 导入 ChatInfo 组件
+import ChatPrivateVideo from "@/components/ChatPrivateVideo";
 
 const Chat = observer(() => {
   const { userInfo } = userStore;
@@ -20,6 +23,7 @@ const Chat = observer(() => {
     setCurrentMessages,
     currentChatInfo,
   } = chatStore;
+  const { timeDifference } = globalStore; // 引入时间差函数
   const db = getChatDB(userInfo.id); // 连接数据库
 
   const chatType = currentChatInfo.type;
@@ -27,11 +31,14 @@ const Chat = observer(() => {
   const { TextArea } = Input; // 使用TextArea组件
   const [inputValue, setInputValue] = useState(""); // 输入框的值
   const [openDrawer, setOpenDrawer] = useState(false); // 是否打开抽屉
-  const [topSwitch, setTopSwitch] = useState<boolean>(false); //置顶开关
   // 新增：管理视频弹框的显示状态
-  const [isVideoModalVisible, setIsVideoModalVisible] = useState(false); 
+  const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
   // 新增：管理本地视频流
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null); 
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+
+  // 在组件状态中添加远程视频流状态
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [isCaller, setIsCaller] = useState(false); // 是否是呼叫方
 
   /**
    * 发送消息
@@ -47,7 +54,7 @@ const Chat = observer(() => {
         sender_id: userInfo.id,
         receiver_id: currentFriendId, // 单聊使用好友 ID，群聊使用群聊 ID
         content: inputValue,
-        send_time: Date.now(),
+        send_time: Date.now() + timeDifference,
         type: 0,
         sender_nickname: userInfo.nickname,
         sender_avatar: userInfo.avatar,
@@ -71,7 +78,7 @@ const Chat = observer(() => {
           type: 0,
           sendId: userInfo.id,
           content: inputValue,
-          sendTime: Date.now(),
+          sendTime: Date.now() + timeDifference,
           sender_nickname: userInfo.nickname,
           sender_avatar: userInfo.avatar,
           status: "sending",
@@ -86,26 +93,41 @@ const Chat = observer(() => {
     sendMessageWithTimeout(message);
     setInputValue(""); // 清空输入框
   };
-  //发送offer
-  const handlevideo = async() => {
+
+  //打开视频通话
+
+  const handlevideo = async () => {
     try {
-      // 获取本地媒体流
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      // 1. 获取本地媒体流
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
       setLocalStream(stream);
-      // 获取用户 ID
-      const sender_id = userInfo.id;
-      const receiver_id = currentFriendId; 
 
-      // 创建 PeerConnection
-      usePeerConnectionStore.createPeerConnection(sendMessageWithTimeout, stream, sender_id, receiver_id);
+      // 2. 设置当前用户为呼叫方
+      setIsCaller(true);
 
-      // 发送视频 offer
-      await usePeerConnectionStore.sendVideoOffer(sendMessageWithTimeout, sender_id, receiver_id);
+      // 3. 创建PeerConnection
+      usePeerConnectionStore.createPeerConnection(
+        sendMessageWithTimeout,
+        stream,
+        userInfo.id,
+        Number(currentFriendId)
+      );
 
-      // 显示视频弹框
+      // 4. 发送视频offer
+      await usePeerConnectionStore.sendVideoOffer(
+        sendMessageWithTimeout,
+        userInfo.id,
+        Number(currentFriendId)
+      );
+
+      // 5. 显示视频弹框
       setIsVideoModalVisible(true);
     } catch (error) {
-      console.error("Error during getting user media or sending offer: ", error);
+      console.error("获取用户媒体或发送offer失败:", error);
+      message.error("启动视频通话失败");
     }
   };
 
@@ -118,7 +140,7 @@ const Chat = observer(() => {
         sender_id: userInfo.id,
         receiver_id: failedMessage.targetId,
         content: failedMessage.content,
-        send_time: Date.now(),
+        send_time: Date.now() + timeDifference,
         type: 0,
         sender_nickname: userInfo.nickname,
         sender_avatar: userInfo.avatar,
@@ -140,7 +162,7 @@ const Chat = observer(() => {
           type: 0,
           sendId: userInfo.id,
           content: failedMessage.content,
-          sendTime: Date.now(),
+          sendTime: Date.now() + timeDifference,
           sender_nickname: userInfo.nickname,
           sender_avatar: userInfo.avatar,
           status: "sending",
@@ -211,7 +233,12 @@ const Chat = observer(() => {
               <path d="M9 9.5a4 4 0 00-4 4v9a4 4 0 004 4h10a4 4 0 004-4v-9a4 4 0 00-4-4H9zm16.829 12.032l3.723 1.861A1 1 0 0031 22.5v-9a1 1 0 00-1.448-.894l-3.723 1.861A1.5 1.5 0 0025 15.81v4.38a1.5 1.5 0 00.829 1.342z"></path>
             </svg>
           </div>
-          <div className="more-mask" onClick={() => setOpenDrawer(true)}>
+          <div
+            className="more-mask"
+            onClick={() => {
+              setOpenDrawer(true);
+            }}
+          >
             {/* 更多 */}
             <svg
               fill="#E46342"
@@ -307,51 +334,58 @@ const Chat = observer(() => {
         }}
         onClose={() => setOpenDrawer(false)}
         open={openDrawer}
-        style={{ position: "absolute" }}
+        style={{ position: "absolute", overflowX: "hidden" }}
         maskClosable={true}
+        className="chatInfo-drawer"
       >
-        <div className="chat-drawer">
-          <div className="chat-drawer-img">
-            <img src={currentFriendAvatar} alt="头像" />
-          </div>
-          <div className="chat-drawer-name">{currentFriendName}</div>
-          <div className="chat-drawer-istop">
-            <div className="chat-drawer-istop-text">聊天置顶</div>
-            <Switch
-              value={topSwitch}
-              onChange={() => setTopSwitch(!topSwitch)}
-            />
-          </div>
-        </div>
+        <ChatInfo
+          friendId={Number(currentFriendId)}
+          setOpenDrawer={setOpenDrawer}
+          openDrawer={openDrawer}
+          refreshConversation={handleNewConversation}
+        />
       </Drawer>
 
       {/* 新增：视频弹框 */}
       <Modal
-        title="本地视频流"
-        visible={isVideoModalVisible}
+        open={isVideoModalVisible}
+        closable={false}
         onCancel={() => {
           setIsVideoModalVisible(false);
           if (localStream) {
-            localStream.getTracks().forEach(track => track.stop());
+            localStream.getTracks().forEach((track) => track.stop());
           }
-          // 调用关闭 WebRTC 连接的方法
           usePeerConnectionStore.closePeerConnection();
+          setLocalStream(null);
+          setRemoteStream(null);
         }}
         footer={null}
+        width={800}
+        destroyOnClose
       >
-        {localStream && (
-          <video
-            autoPlay
-            muted
-            ref={(video) => {
-              if (video) {
-                video.srcObject = localStream;
-              }
-            }}
-            // 设置固定宽度和高度
-            style={{ width: '400px', height: '300px' }} 
-          />
-        )}
+        <ChatPrivateVideo
+          localStream={localStream}
+          remoteStream={remoteStream}
+          onClose={() => {
+            setIsVideoModalVisible(false);
+            if (localStream) {
+              localStream.getTracks().forEach((track) => track.stop());
+            }
+            usePeerConnectionStore.closePeerConnection();
+          }}
+          isCaller={isCaller}
+          onStartCall={handlevideo}
+          onEndCall={() => {
+            // 发送结束通话的消息
+            sendMessageWithTimeout({
+              cmd: "end_call",
+              data: {
+                sender_id: userInfo.id,
+                receiver_id: currentFriendId,
+              },
+            });
+          }}
+        />
       </Modal>
     </div>
   );

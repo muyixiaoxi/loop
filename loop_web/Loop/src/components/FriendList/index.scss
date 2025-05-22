@@ -6,7 +6,7 @@
   .friend-list-title {
     font-size: 1.5rem;
     font-weight: 600;
-    padding: 0 20px;
+    padding: 10px 20px 0px;
   }
   .friend-list-search {
     padding: 8px 16px;
@@ -103,6 +103,11 @@
         background-color: #fff;
       }
     }
+  }
+
+  .content_roll {
+    height: calc(100vh - 230px);
+    overflow-y: auto;
   }
 
   .ant-drawer-header {
@@ -286,6 +291,6 @@
 .category-header:hover {
   background-color: #e8e8e8;
 }
-.ant-tabs-nav-wrap{
+.ant-tabs-nav-wrap {
   margin-left: 20px;
 }

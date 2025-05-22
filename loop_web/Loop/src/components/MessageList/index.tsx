@@ -3,7 +3,8 @@ import "./index.scss";
 import MessageItem from "@/components/MessageItem";
 import { getChatDB } from "@/utils/chat-db";
 import userStore from "@/store/user";
-import { Input, Dropdown, Menu, Modal, Form, message, Checkbox } from "antd";
+import { Input, Dropdown, Modal, Form, message, Checkbox } from "antd";
+import type { MenuProps } from "antd";
 import { createGroup } from "@/api/group";
 import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
 import { getFriendList } from "@/api/friend";
@@ -24,10 +25,10 @@ const MessageList = observer(() => {
   // 新增状态，用于记录勾选成员的数量
   const [selectedMemberCount, setSelectedMemberCount] = useState(0);
 
+  // 获取聊天列表
   const handleMessageList = async () => {
     const list = await db.getUserConversations(userInfo.id);
     setChatList(list);
-    console.log(list, "聊天列表");
   };
 
   const getFriendsList = async () => {
@@ -143,6 +144,16 @@ const MessageList = observer(() => {
     setSelectedMemberCount(selectedValues.length);
   };
 
+  const itemFound: MenuProps["items"] = [
+    {
+      key: "1",
+      label: (
+        <a target="_blank" rel="noopener noreferrer" onClick={showModal}>
+          创建群聊
+        </a>
+      ),
+    },
+  ];
   return (
     <div className="message-list">
       <div className="message-list-content">
@@ -153,16 +164,7 @@ const MessageList = observer(() => {
             allowClear
             style={{ marginRight: 8 }}
           />
-          <Dropdown
-            overlay={
-              <Menu>
-                <Menu.Item key="1" onClick={showModal}>
-                  创建群聊
-                </Menu.Item>
-              </Menu>
-            }
-            trigger={["hover"]}
-          >
+          <Dropdown menu={{ items: itemFound }} trigger={["hover"]}>
             <a onClick={(e) => e.preventDefault()}>
               <PlusOutlined style={{ fontSize: 20 }} />
             </a>
@@ -188,6 +190,9 @@ const MessageList = observer(() => {
         open={isModalVisible}
         onOk={handleOk}
         onCancel={handleCancel}
+        closable={false}
+        okText="创建"
+        cancelText="取消"
       >
         <Form form={form} layout="vertical">
           <Form.Item
@@ -237,17 +242,38 @@ const MessageList = observer(() => {
           <Form.Item
             label="群聊名字"
             name="groupName"
-            rules={[{ required: true, message: "请输入群聊名字" }]}
+            rules={[
+              { required: true, message: "请输入群聊名字" },
+              {
+                validator: (_, value) =>
+                  value?.trim()
+                    ? Promise.resolve()
+                    : Promise.reject(new Error("群聊名字不能为空")),
+              },
+            ]}
           >
-            <Input />
+            <Input showCount maxLength={16} />
           </Form.Item>
           <Form.Item
             label="群简介"
             name="groupDescription"
             // 添加群简介必填校验规则
-            rules={[{ required: true, message: "请输入群简介" }]}
+            rules={[
+              { required: true, message: "请输入群简介" },
+              {
+                validator: (_, value) =>
+                  value?.trim()
+                    ? Promise.resolve()
+                    : Promise.reject(new Error("群聊名字不能为空")),
+              },
+            ]}
           >
-            <Input.TextArea />
+            <Input.TextArea
+              style={{ height: 80, resize: "none" }}
+              autoSize={{ minRows: 3, maxRows: 5 }}
+              showCount
+              maxLength={100}
+            />
           </Form.Item>
           <Form.Item
             label="群成员"
