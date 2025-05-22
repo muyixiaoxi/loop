@@ -49,16 +49,17 @@ class PeerConnectionStore {
 
   /**
    * 创建新的 RTCPeerConnection 实例
-   * @param sendMessageWithTimeout 消息发送函数
+   * @param sendNonChatMessage 消息发送函数
    * @param localStream 本地媒体流
    * @param senderId 发送方ID
    * @param receiverId 接收方ID
    */
   createPeerConnection(
-    sendMessageWithTimeout: (data: any) => void,
+    sendNonChatMessage: (data: any) => void,
     localStream: MediaStream,
     senderId: number,
-    receiverId: number
+    receiverId: number,
+    chatType: number
   ) {
     // 初始化配置
     const config = {
@@ -73,11 +74,14 @@ class PeerConnectionStore {
     // 添加本地媒体流
     this._addLocalStream(localStream);
 
+    console.log("chatType:", chatType);
+
     // 设置事件处理器
     this._setupConnectionEventHandlers(
-      sendMessageWithTimeout,
+      sendNonChatMessage,
       senderId,
-      receiverId
+      receiverId,
+      chatType
     );
   }
 
@@ -105,9 +109,10 @@ class PeerConnectionStore {
    * 发送视频通话邀请(Offer)
    */
   async sendVideoOffer(
-    sendMessageWithTimeout: (data: any) => void,
+    sendNonChatMessage: (data: any) => void,
     senderId: number,
-    receiverId: number
+    receiverId: number,
+    chatType: number
   ) {
     if (!this.peerConnection) return;
 
@@ -115,13 +120,19 @@ class PeerConnectionStore {
       const offer = await this.peerConnection.createOffer();
       await this.peerConnection.setLocalDescription(offer);
 
+      console.log("发送 Offer:", offer);
+
+      // 4: 私聊视频呼叫，7: 群聊视频呼叫
+      const cmd = chatType === 1 ? 4 : 7;
+
       // 发送 Offer 消息
-      sendMessageWithTimeout({
-        cmd: 4, // 自定义协议命令
+      sendNonChatMessage({
+        cmd, // 自定义协议命令
         data: {
           sender_id: senderId,
           receiver_id: receiverId,
           session_description: offer,
+          chatType: chatType,
         },
       });
     } catch (error) {
@@ -153,6 +164,7 @@ class PeerConnectionStore {
 
     try {
       await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      console.log("成功添加ICE候选:", candidate);
     } catch (error) {
       console.error("添加 ICE 候选失败:", error);
     }
@@ -237,21 +249,25 @@ class PeerConnectionStore {
 
   // 设置连接事件处理器
   private _setupConnectionEventHandlers(
-    sendMessageWithTimeout: (data: any) => void,
+    sendNonChatMessage: (data: any) => void,
     senderId: number,
-    receiverId: number
+    receiverId: number,
+    chatType: number
   ) {
     if (!this.peerConnection) return;
 
     // ICE 候选处理
     this.peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
-        sendMessageWithTimeout({
-          cmd: 4, // 自定义协议命令
+        console.log("发送 ICE 候选:", event.candidate);
+        // const cmd = chatType === 1 ? 6 : 9;
+        console.log("senderId:", chatType);
+        sendNonChatMessage({
+          cmd: 6, // 自定义协议命令
           data: {
             sender_id: senderId,
             receiver_id: receiverId,
-            candidate_init: event.candidate,
+            candidate_init: event.candidate.toJSON(),
           },
         });
       }
