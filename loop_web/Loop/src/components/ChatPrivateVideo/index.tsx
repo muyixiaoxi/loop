@@ -28,18 +28,29 @@ const ChatPrivateVideo: React.FC<ChatPrivateVideoProps> = ({
   const [isVideoOff, setIsVideoOff] = useState(false); // 是否关闭视频
 
   // 监听本地视频流变化，设置到video元素
+  // 添加useEffect监听流变化
   useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
-    }
-  }, [localStream]);
+    console.log("视频流状态 - 远程:", remoteStream, "本地:", localStream);
 
-  // 监听远程视频流变化，设置到video元素
-  useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) {
-      remoteVideoRef.current.srcObject = remoteStream;
+    if (remoteVideoRef.current) {
+      console.log("远程视频元素存在");
+      if (remoteStream) {
+        console.log("设置远程视频流", remoteStream.getTracks());
+        remoteVideoRef.current.srcObject = remoteStream;
+      } else {
+        console.warn("远程视频流为空");
+        remoteVideoRef.current.srcObject = null;
+      }
     }
-  }, [remoteStream]);
+
+    if (localVideoRef.current) {
+      console.log("本地视频元素存在");
+      if (localStream) {
+        console.log("设置本地视频流", localStream.getTracks());
+        localVideoRef.current.srcObject = localStream;
+      }
+    }
+  }, [remoteStream, localStream]);
 
   // 切换静音状态
   const toggleMute = () => {
