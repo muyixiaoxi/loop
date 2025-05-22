@@ -6,9 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "build": "vite build --emptyOutDir",
+    "preview": "vite preview --host"
   },
   "dependencies": {
     "@ant-design/v5-patch-for-react-19": "^1.0.3",
@@ -17,13 +17,18 @@
     "axios": "^1.8.4",
     "base-64": "^1.0.0",
     "crypto-js": "^4.2.0",
+    "dexie": "^4.0.11",
     "mobx": "^6.13.7",
     "mobx-persist-store": "^1.1.8",
     "mobx-react-lite": "^4.1.0",
+    "pinyin": "^4.0.0-alpha.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-native-webrtc": "^124.0.5",
     "react-router-dom": "^7.4.1",
-    "sass": "^1.86.0"
+    "sass": "^1.86.0",
+    "segmentit": "^2.0.3",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
@@ -32,8 +37,10 @@
     "@types/base-64": "^1.0.2",
     "@types/crypto-js": "^4.2.2",
     "@types/node": "^22.13.14",
+    "@types/pinyin": "^2.10.2",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
+    "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "eslint": "^9.21.0",
     "eslint-plugin-react-hooks": "^5.1.0",
