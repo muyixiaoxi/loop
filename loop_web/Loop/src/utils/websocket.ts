@@ -40,10 +40,10 @@ class WebSocketClient<T = unknown> {
   // 默认配置
   private readonly defaultOptions: Required<WebSocketOptions> = {
     url: "",
-    onOpen: () => { },
-    onClose: () => { },
-    onError: () => { },
-    onMessage: () => { },
+    onOpen: () => {},
+    onClose: () => {},
+    onError: () => {},
+    onMessage: () => {},
     reconnectInterval: 1000,
     reconnectAttempts: Number.MAX_VALUE,
     heartbeatInterval: 5000,
@@ -115,7 +115,7 @@ class WebSocketClient<T = unknown> {
 
           // 忽略心跳消息
           if (message.cmd === 0) return;
-          console.log(message, "心跳包外的数据");
+          // console.log(message, "心跳包外的数据");
 
           this.lastMessage = message;
           this.options.onMessage?.(message);
@@ -140,7 +140,7 @@ class WebSocketClient<T = unknown> {
     }
 
     try {
-      console.log("发送 WebSocket 消息:", message);
+      // console.log("发送 WebSocket 消息:", message);
       this.socket.send(JSON.stringify(message));
     } catch (error) {
       console.error("发送 WebSocket 消息失败:", error);

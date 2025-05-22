@@ -96,7 +96,6 @@ const Chat = observer(() => {
   };
 
   //打开视频通话
-
   const handlevideo = async () => {
     try {
       // 1. 获取本地媒体流
@@ -109,28 +108,38 @@ const Chat = observer(() => {
       // 2. 设置当前用户为呼叫方
       setIsCaller(true);
 
-      // 3. 创建PeerConnection
-      usePeerConnectionStore.createPeerConnection(
-        sendNonChatMessage,
-        stream,
-        userInfo.id,
-        Number(currentFriendId),
-        chatType
-      );
+      // 3. 创建PeerConnection (简化参数传递)
+      usePeerConnectionStore.createPeerConnection(stream);
 
-      // 4. 发送视频offer
-      await usePeerConnectionStore.sendVideoOffer(
-        sendNonChatMessage,
-        userInfo.id,
-        Number(currentFriendId),
-        chatType
-      );
+      // 4. 设置远程流处理器
+      usePeerConnectionStore.setupMediaStreamHandlers(setRemoteStream);
 
-      // 5. 显示视频弹框
+      // 5. 创建并发送Offer
+      const offer = await usePeerConnectionStore.createOffer();
+
+      // 发送Offer消息
+      const cmd = chatType === 1 ? 4 : 7; // 4:私聊视频呼叫, 7:群聊视频呼叫
+      sendNonChatMessage({
+        cmd,
+        data: {
+          sender_id: userInfo.id,
+          receiver_id: Number(currentFriendId),
+          session_description: offer,
+        },
+      });
+
+      // 6. 显示视频弹框
       setIsVideoModalVisible(true);
     } catch (error) {
       console.error("获取用户媒体或发送offer失败:", error);
       message.error("启动视频通话失败");
+
+      // 清理资源
+      if (localStream) {
+        localStream.getTracks().forEach((track) => track.stop());
+        setLocalStream(null);
+      }
+      usePeerConnectionStore.closePeerConnection();
     }
   };
 
@@ -380,13 +389,13 @@ const Chat = observer(() => {
           onStartCall={handlevideo}
           onEndCall={() => {
             // 发送结束通话的消息
-            sendNonChatMessage({
-              cmd: "end_call",
-              data: {
-                sender_id: userInfo.id,
-                receiver_id: currentFriendId,
-              },
-            });
+            // sendNonChatMessage({
+            //   cmd: "end_call",
+            //   data: {
+            //     sender_id: userInfo.id,
+            //     receiver_id: currentFriendId,
+            //   },
+            // });
           }}
         />
       </Modal>

@@ -201,12 +201,28 @@ const Home = observer(() => {
           //  打开弹窗，等待接听
           setIsCalling(true);
         } else if (cmd === 5) {
-          // 接收到 answer，设置远程描述
-          const remoteDesc = data.session_description;
-          usePeerConnectionStore.setRemoteDescription(remoteDesc);
+          console.log("cmd === 5,接收到 answer，设置远程描述:", data);
+          // 设置远程描述
+          await usePeerConnectionStore.setRemoteDescription(
+            data.session_description
+          );
+
+          // 设置ICE候选处理器
+          usePeerConnectionStore.setupIceCandidateHandler(
+            (candidate: RTCIceCandidate) => {
+              sendNonChatMessage({
+                cmd: 6, // ICE候选消息
+                data: {
+                  sender_id: userInfo.id,
+                  receiver_id: data.sender_id,
+                  candidate_init: candidate.toJSON(),
+                },
+              });
+            }
+          );
         } else if (cmd === 6) {
           // ICE候选消息
-          console.log("收到ICE候选:", data.candidate_init);
+          console.log("cmd === 6,收到ICE候选:", data.candidate_init);
           usePeerConnectionStore.addIceCandidate(data.candidate_init);
         } else {
           console.log(cmd, "cmd");
@@ -237,11 +253,18 @@ const Home = observer(() => {
   }, [token]);
 
   // 添加远程流监听
+  // 修改setupMediaStreamHandlers调用
   useEffect(() => {
     usePeerConnectionStore.setupMediaStreamHandlers(
       (remoteStream: MediaStream) => {
-        console.log("收到远程媒体流", remoteStream);
-        setRemoteStream(remoteStream);
+        console.log("收到远程媒体流----------------", remoteStream);
+        // 确保流有视频轨道
+        if (remoteStream.getVideoTracks().length > 0) {
+          console.log("远程视频轨道存在:", remoteStream.getVideoTracks());
+          setRemoteStream(new MediaStream(remoteStream)); // 创建新MediaStream实例
+        } else {
+          console.warn("远程视频流没有视频轨道");
+        }
       }
     );
   }, []);
@@ -258,46 +281,44 @@ const Home = observer(() => {
       setIsCaller(false);
 
       // 2. 创建PeerConnection
-      usePeerConnectionStore.createPeerConnection(
-        sendNonChatMessage,
-        stream,
-        userInfo.id,
-        callerInfo.sender_id,
-        currentChatInfo.type
-      );
+      usePeerConnectionStore.createPeerConnection(stream);
 
-      // 3. 设置远程描述
+      // 3. 设置远程媒体流处理器
+      usePeerConnectionStore.setupMediaStreamHandlers((remoteStream) => {
+        console.log("收到远程媒体流", remoteStream);
+        setRemoteStream(remoteStream);
+      });
+
+      // 4. 设置远程描述(Offer)
       await usePeerConnectionStore.setRemoteDescription(
         callerInfo.session_description
       );
 
-      // 4. 创建并发送answer
+      // 5. 创建并发送Answer
       const answer = await usePeerConnectionStore.createAnswer();
 
-      const sdpData: any = {
-        cmd: 5, // answer命令
+      sendNonChatMessage({
+        cmd: 5, // Answer命令
         data: {
           sender_id: userInfo.id,
           receiver_id: callerInfo.sender_id,
           session_description: answer,
         },
-      };
+      });
 
-      sendNonChatMessage(sdpData);
-      // 3. 显示视频弹框
+      // 6. 显示视频弹框
       setIsVideoModalVisible(true);
       setIsCalling(false);
-
-      // 确保ICE候选交换已启用
-      usePeerConnectionStore.setupMediaStreamHandlers(
-        (remoteStream: MediaStream) => {
-          console.log("收到远程媒体流", remoteStream);
-          setRemoteStream(remoteStream);
-        }
-      );
     } catch (error) {
       console.error("接受视频通话失败:", error);
       message.error("接受视频通话失败");
+
+      // 清理资源
+      if (localStream) {
+        localStream.getTracks().forEach((track) => track.stop());
+        setLocalStream(null);
+      }
+      usePeerConnectionStore.closePeerConnection();
     }
   };
 
@@ -305,54 +326,14 @@ const Home = observer(() => {
   const handleRejectCall = () => {
     setIsCalling(false);
     // 可以发送拒绝消息给对方
-    sendNonChatMessage({
-      cmd: 6, // 拒绝命令
-      data: {
-        sender_id: userInfo.id,
-        receiver_id: currentFriendId,
-      },
-    });
+    // sendNonChatMessage({
+    //   cmd: 6, // 拒绝命令
+    //   data: {
+    //     sender_id: userInfo.id,
+    //     receiver_id: currentFriendId,
+    //   },
+    // });
   };
-
-  // // 处理收到的视频通话邀请
-  // const handleVideoOffer = async (offer: RTCSessionDescriptionInit) => {
-  //   try {
-  //     // 1. 获取本地媒体流
-  //     const stream = await navigator.mediaDevices.getUserMedia({
-  //       video: true,
-  //       audio: true,
-  //     });
-
-  //     // 3. 创建PeerConnection
-  //     usePeerConnectionStore.createPeerConnection(
-  //       sendNonChatMessage,
-  //       stream,
-  //       userInfo.id,
-  //       Number(currentFriendId),
-  //       currentChatInfo.type
-  //     );
-
-  //     // 4. 设置远程描述
-  //     await usePeerConnectionStore.setRemoteDescription(offer);
-
-  //     // 5. 创建并发送answer
-  //     const answer = await usePeerConnectionStore.createAnswer();
-  //     sendNonChatMessage({
-  //       cmd: 5, // answer命令
-  //       data: {
-  //         sender_id: userInfo.id,
-  //         receiver_id: currentFriendId,
-  //         session_description: answer,
-  //       },
-  //     });
-
-  //     // 6. 显示视频弹框
-  //     setIsCalling(true);
-  //   } catch (error) {
-  //     console.error("处理视频邀请失败:", error);
-  //     message.error("接受视频通话失败");
-  //   }
-  // };
 
   // 添加发送消息方法
   const sendMessageWithTimeout = async (message: any) => {
@@ -443,7 +424,7 @@ const Home = observer(() => {
 
   // 发送非聊天信息
   const sendNonChatMessage = (message: any) => {
-    console.log(wsClient, "发送非聊天信息", message);
+    // console.log(wsClient, "发送非聊天信息", message);
     if (wsClient) {
       wsClient.sendMessage(message);
     } else {
@@ -610,13 +591,13 @@ const Home = observer(() => {
               }
               usePeerConnectionStore.closePeerConnection();
               // 发送结束通话消息
-              sendNonChatMessage({
-                cmd: 6,
-                data: {
-                  sender_id: userInfo.id,
-                  receiver_id: currentFriendId,
-                },
-              });
+              // sendNonChatMessage({
+              //   cmd: 7,
+              //   data: {
+              //     sender_id: userInfo.id,
+              //     receiver_id: currentFriendId,
+              //   },
+              // });
             }}
             isCaller={isCaller}
           />
