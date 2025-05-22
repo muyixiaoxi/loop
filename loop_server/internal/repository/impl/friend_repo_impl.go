@@ -64,7 +64,12 @@ func (u *friendRepoImpl) UpdateFriendRequest(ctx context.Context, req *dto.Frien
 }
 
 func (u *friendRepoImpl) creteFriendShip(ctx context.Context, tx *gorm.DB, ship *po.FriendShip) error {
-	err := tx.Create(ship).Error
+	err := tx.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "user_id"}, {Name: "friend_id"}},
+		DoUpdates: clause.Assignments(map[string]interface{}{
+			"deleted_at": gorm.Expr("NULL"),
+		}),
+	}).Create(ship).Error
 	if err != nil {
 		slog.Error("internal/repository/impl/user_repo_impl.go creteFriendShip error", err)
 	}

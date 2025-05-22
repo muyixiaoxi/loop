@@ -6,11 +6,16 @@ type AddMember struct {
 }
 
 type DeleteMember struct {
-	GroupId uint `json:"group_id"`
-	UserId  uint `json:"user_id"`
+	GroupId uint   `json:"group_id"`
+	UserIds []uint `json:"user_ids"`
 }
 
 type AddAdmin struct {
+	GroupId uint   `json:"group_id"`
+	UserIds []uint `json:"user_ids"`
+}
+
+type DeleteAdmin struct {
 	GroupId uint `json:"group_id"`
 	UserId  uint `json:"user_id"`
 }
@@ -30,5 +35,10 @@ type Member struct {
 	Signature string `json:"signature"`
 	Gender    int    `json:"gender,omitempty"`
 	Age       int    `json:"age"`
-	Role      int    `json:"role"`
+	Role      uint   `json:"role"`
+}
+
+type TransferGroupOwnerRequest struct {
+	GroupId uint `json:"group_id"`
+	UserId  uint `json:"user_id"`
 }

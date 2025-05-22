@@ -9,7 +9,7 @@ type GroupShip struct {
 	gorm.Model
 	GroupId      uint   `gorm:"type:bigint;not null;comment:群组id;uniqueIndex:idx_group_id_user_id"`
 	UserId       uint   `gorm:"type:bigint;not null;comment:用户id;uniqueIndex:idx_group_id_user_id"`
-	Role         int    `gorm:"type:tinyint;not null;comment:1-普通成员，2-管理员，3-群主"`
+	Role         uint   `gorm:"type:tinyint;not null;comment:1-普通成员，2-管理员，3-群主"`
 	Remark       string `gorm:"type:varchar(16);not null;comment:备注"`
 	GroupRemark  string `gorm:"type:varchar(16);not null;comment:群备注"`
 	LastAckSeqId string `gorm:"type:varchar(64);not null;comment:最后确认的消息id"`

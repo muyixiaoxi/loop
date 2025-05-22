@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"log/slog"
 	"loop_server/infra/consts"
 	"loop_server/internal/model/dto"
@@ -80,6 +81,16 @@ func (g *groupRepoImpl) CreateGroup(ctx context.Context, dto *dto.Group, userIds
 	return group.ConvertDto(), msg, err
 }
 
+func (g *groupRepoImpl) UpdateGroup(ctx context.Context, dt *dto.Group) (*dto.Group, error) {
+	group := po.ConvertGroupDtoToPo(dt)
+	err := g.db.WithContext(ctx).Updates(group).Error
+	if err != nil {
+		slog.Error("internal/repository/impl/group_repo_impl.go UpdateGroup err:", err)
+		return nil, err
+	}
+	return group.ConvertDto(), nil
+}
+
 func (g *groupRepoImpl) DeleteGroup(ctx context.Context, groupId uint) error {
 	tx := g.db.WithContext(ctx).Begin()
 	err := tx.Where("id = ?", groupId).Delete(&po.Group{}).Error
@@ -100,7 +111,7 @@ func (g *groupRepoImpl) DeleteGroup(ctx context.Context, groupId uint) error {
 
 func (g *groupRepoImpl) GetGroupList(ctx context.Context, userId uint) ([]*dto.Group, error) {
 	var group []*po.Group
-	err := g.db.WithContext(ctx).Model(&group).Joins("join group_ship on group_ship.group_id = group.id and group_ship.user_id = ?", userId).Find(&group).Error
+	err := g.db.WithContext(ctx).Model(&group).Joins("join group_ship on group_ship.group_id = group.id and group_ship.deleted_at is null and group_ship.user_id = ?", userId).Find(&group).Error
 	if err != nil {
 		slog.Error("internal/repository/impl/group_repo_impl.go GetGroupList err:", err)
 		return nil, err
@@ -124,7 +135,12 @@ func (g *groupRepoImpl) AddMember(ctx context.Context, ship []*dto.GroupShip) er
 	for _, s := range ship {
 		poShip = append(poShip, po.ConvertGroupShipDtoToPo(s))
 	}
-	err := g.db.WithContext(ctx).Model(&po.GroupShip{}).Create(poShip).Error
+	err := g.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "group_id"}, {Name: "user_id"}},
+		DoUpdates: clause.Assignments(map[string]interface{}{
+			"deleted_at": gorm.Expr("NULL"),
+		}),
+	}).Create(poShip).Error
 	if err != nil {
 		slog.Error("internal/repository/impl/group_repo_impl.go AddMember err:", err)
 		return err
@@ -132,8 +148,8 @@ func (g *groupRepoImpl) AddMember(ctx context.Context, ship []*dto.GroupShip) er
 	return nil
 }
 
-func (g *groupRepoImpl) DeleteMember(ctx context.Context, groupId uint, userId uint) error {
-	err := g.db.WithContext(ctx).Where("group_id = ? and user_id = ?", groupId, userId).Delete(&po.GroupShip{}).Error
+func (g *groupRepoImpl) DeleteMember(ctx context.Context, groupId uint, userIds []uint, role uint) error {
+	err := g.db.WithContext(ctx).Where("group_id = ? and role < ? and user_id in ?", groupId, role, userIds).Delete(&po.GroupShip{}).Error
 	if err != nil {
 		slog.Error("internal/repository/impl/group_repo_impl.go DeleteMember err:", err)
 		return err
@@ -179,10 +195,33 @@ func (g *groupRepoImpl) GetGroupShip(ctx context.Context, groupId uint) ([]*dto.
 	return data, nil
 }
 
-func (g *groupRepoImpl) AddAdmin(ctx context.Context, groupId, userId uint) error {
-	err := g.db.WithContext(ctx).Model(&po.GroupShip{}).Where("group_id = ? and user_id = ? and role != ?", groupId, userId, consts.GroupRoleOwner).Update("role", consts.GroupRoleAdmin).Error
+func (g *groupRepoImpl) GetGroupShipByLessRole(ctx context.Context, groupId uint, role uint) ([]*dto.GroupShip, error) {
+	var ship []*po.GroupShip
+	err := g.db.WithContext(ctx).Where("group_id = ? and role < ?", groupId, role).Find(&ship).Error
+	if err != nil {
+		slog.Error("internal/repository/impl/group_repo_impl.go GetGroupUser err:", err)
+		return nil, err
+	}
+	data := make([]*dto.GroupShip, 0, len(ship))
+	for _, groupShip := range ship {
+		data = append(data, groupShip.ConvertToDto())
+	}
+	return data, nil
+}
+
+func (g *groupRepoImpl) AddAdmin(ctx context.Context, groupId uint, userIds []uint) error {
+	err := g.db.Debug().WithContext(ctx).Model(&po.GroupShip{}).Where("group_id = ? and user_id in ?", groupId, userIds).Update("role", consts.GroupRoleAdmin).Error
 	if err != nil {
 		slog.Error("internal/repository/impl/group_repo_impl.go AddAdmin err:", err)
+		return err
+	}
+	return nil
+}
+
+func (g *groupRepoImpl) DeleteAdmin(ctx context.Context, groupId, userId uint) error {
+	err := g.db.WithContext(ctx).Model(&po.GroupShip{}).Where("group_id = ? and user_id = ?", groupId, userId).Update("role", consts.GroupRoleMember).Error
+	if err != nil {
+		slog.Error("internal/repository/impl/group_repo_impl.go DeleteAdmin err:", err)
 		return err
 	}
 	return nil
@@ -196,4 +235,28 @@ func (g *groupRepoImpl) GetGroupUserId(ctx context.Context, groupId uint) ([]uin
 		return nil, err
 	}
 	return userId, nil
+}
+
+func (g *groupRepoImpl) TransferGroupOwner(ctx context.Context, groupId uint, curOwner, userId uint) error {
+	tx := g.db.WithContext(ctx).Begin()
+	err := tx.Model(&po.GroupShip{}).Where("group_id = ? and user_id = ?", groupId, userId).Update("role", consts.GroupRoleOwner).Error
+	if err != nil {
+		slog.Error("internal/repository/impl/group_repo_impl.go TransferGroupOwner err:", err)
+		tx.Rollback()
+		return err
+	}
+	err = tx.Model(&po.GroupShip{}).Where("group_id = ? and user_id = ?", groupId, curOwner).Update("role", consts.GroupRoleMember).Error
+	if err != nil {
+		slog.Error("internal/repository/impl/group_repo_impl.go TransferGroupOwner err:", err)
+		tx.Rollback()
+		return err
+	}
+	err = tx.Model(&po.Group{}).Where("id = ?", groupId).Update("owner_id", userId).Error
+	if err != nil {
+		slog.Error("internal/repository/impl/group_repo_impl.go TransferGroupOwner err:", err)
+		tx.Rollback()
+		return err
+	}
+	tx.Commit()
+	return nil
 }

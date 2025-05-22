@@ -21,7 +21,7 @@ type GroupShip struct {
 	UpdatedAt   time.Time `json:"updated_at,omitempty"`
 	GroupId     uint      `json:"group_id"`
 	UserId      uint      `json:"user_id"`
-	Role        int       `json:"role"`
+	Role        uint      `json:"role"`
 	Remark      string    `json:"remark"`
 	GroupRemark string    `json:"group_remark"`
 }
@@ -31,4 +31,11 @@ type CreateGroupRequest struct {
 	Avatar   string `json:"avatar" binding:"required"`
 	Describe string `json:"describe"`
 	UserIds  []uint `json:"user_ids" binding:"required,min=2"` // 群成员id列表
+}
+
+type UpdateGroupRequest struct {
+	GroupId  uint   `json:"group_id" binding:"required"`
+	Name     string `json:"name" `
+	Avatar   string `json:"avatar"`
+	Describe string `json:"describe"`
 }

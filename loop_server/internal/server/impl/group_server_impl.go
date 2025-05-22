@@ -40,6 +40,25 @@ func (g *groupServerImpl) CreateGroup(c *gin.Context) {
 	return
 }
 
+func (g *groupServerImpl) UpdateGroup(c *gin.Context) {
+	p := &dto.UpdateGroupRequest{}
+	if err := c.ShouldBind(p); err != nil {
+		slog.Error("groupServerImpl.UpdateGroup ShouldBind(&group) err:", err)
+		response.Fail(c, response.CodeInvalidParam)
+		return
+	}
+	group, err := g.group.UpdateGroup(c, p)
+	if err != nil {
+		if errors.Is(err, consts.ErrNoPermission) {
+			response.Fail(c, response.CodeNoPermission)
+			return
+		}
+		response.Fail(c, response.CodeServerBusy)
+		return
+	}
+	response.Success(c, group)
+}
+
 func (g *groupServerImpl) DeleteGroup(c *gin.Context) {
 	p := &param.DeleteGroup{}
 	if err := c.ShouldBind(p); err != nil {
@@ -76,7 +95,7 @@ func (g *groupServerImpl) DeleteMember(c *gin.Context) {
 		response.Fail(c, response.CodeInvalidParam)
 		return
 	}
-	err := g.group.DeleteMember(c, input.GroupId, input.UserId)
+	err := g.group.DeleteMember(c, input.GroupId, input.UserIds)
 	if err != nil {
 		if errors.Is(err, consts.ErrNoPermission) {
 			response.Fail(c, response.CodeNoPermission)
@@ -123,7 +142,26 @@ func (g *groupServerImpl) AddAdmin(c *gin.Context) {
 		response.Fail(c, response.CodeInvalidParam)
 		return
 	}
-	err := g.group.AddAdmin(c, input.GroupId, input.UserId)
+	err := g.group.AddAdmin(c, input.GroupId, input.UserIds)
+	if err != nil {
+		if errors.Is(err, consts.ErrNoPermission) {
+			response.Fail(c, response.CodeNoPermission)
+			return
+		}
+		response.Fail(c, response.CodeServerBusy)
+		return
+	}
+	response.Success(c, nil)
+}
+
+func (g *groupServerImpl) DeleteAdmin(c *gin.Context) {
+	input := &param.DeleteAdmin{}
+	if err := c.ShouldBind(input); err != nil {
+		slog.Error("groupServerImpl.DeleteAdmin c.ShouldBind(&param) err:", err)
+		response.Fail(c, response.CodeInvalidParam)
+		return
+	}
+	err := g.group.DeleteAdmin(c, input.GroupId, input.UserId)
 	if err != nil {
 		if errors.Is(err, consts.ErrNoPermission) {
 			response.Fail(c, response.CodeNoPermission)
@@ -163,6 +201,20 @@ func (g *groupServerImpl) GetGroupMemberList(c *gin.Context) {
 	response.Success(c, members)
 }
 
+func (g *groupServerImpl) GetGroupMemberListByLessRole(c *gin.Context) {
+	input := &param.GroupId{}
+	if err := c.ShouldBind(input); err != nil {
+		response.Fail(c, response.CodeInvalidParam)
+		return
+	}
+	members, err := g.group.GetGroupMemberListByLessRole(c, input.GroupId)
+	if err != nil {
+		response.Fail(c, response.CodeServerBusy)
+		return
+	}
+	response.Success(c, members)
+}
+
 func (g *groupServerImpl) ExitGroup(c *gin.Context) {
 	input := &param.GroupId{}
 	if err := c.ShouldBind(input); err != nil {
@@ -170,6 +222,20 @@ func (g *groupServerImpl) ExitGroup(c *gin.Context) {
 		return
 	}
 	err := g.group.ExitGroup(c, input.GroupId)
+	if err != nil {
+		response.Fail(c, response.CodeServerBusy)
+		return
+	}
+	response.Success(c, nil)
+}
+
+func (g *groupServerImpl) TransferGroupOwner(c *gin.Context) {
+	input := &param.TransferGroupOwnerRequest{}
+	if err := c.ShouldBind(input); err != nil {
+		response.Fail(c, response.CodeInvalidParam)
+		return
+	}
+	err := g.group.TransferGroupOwner(c, input.GroupId, input.UserId)
 	if err != nil {
 		response.Fail(c, response.CodeServerBusy)
 		return
