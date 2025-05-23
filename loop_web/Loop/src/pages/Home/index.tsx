@@ -211,10 +211,11 @@ const Home = observer(() => {
           );
           await usePeerConnectionStore.createAnswer()
           // 开始监听 ICE 候选者
+          
           usePeerConnectionStore.setupIceCandidateListener(
             (candidate) => {
               console.log('收到 ICE 候选者111:', candidate);
-              sendNonChatMessage({
+              client.sendMessage({
                 cmd: 6, // ICE 候选者消息
                 data: {
                   sender_id: userInfo.id, // 发送者 ID
@@ -446,7 +447,7 @@ const Home = observer(() => {
   const sendNonChatMessage = (message: any) => {
     console.log(wsClient, "发送非聊天信息", message);
     if (wsClient) {
-      wsClient.sendMessage(message);
+      wsClient.sendMessage (message);
     } else {
       console.error("WebSocket未连接");
     }
