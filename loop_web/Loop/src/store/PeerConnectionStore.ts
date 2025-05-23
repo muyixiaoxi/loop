@@ -46,6 +46,8 @@ class PeerConnectionStore {
       addIceCandidate: action,
       setupMediaStreamHandlers: action,
       setupDataChannel: action,
+      // 新增方法加入可观察动作
+      setupIceCandidateListener: action
     });
   }
 
@@ -57,6 +59,7 @@ class PeerConnectionStore {
    */
   createPeerConnection(localStream: MediaStream) {
     // 使用Google的公共STUN服务器和备用TURN服务器
+    console.log("创建PeerConnection");
     const config = {
       iceServers: [
         {
@@ -73,6 +76,7 @@ class PeerConnectionStore {
 
     // 设置基础事件处理器（不包含ICE候选处理器）
     this._setupBasicEventHandlers();
+    console.log("PeerConnection创建完成");
   }
 
   /**
@@ -132,8 +136,8 @@ class PeerConnectionStore {
     await this.peerConnection.setLocalDescription(desc);
     console.log("本地描述设置完成:", desc.type);
 
-    // 设置本地描述后激活ICE候选收集
-    this._activateIceCandidateHandler();
+    // // 设置本地描述后激活ICE候选收集
+    // this._activateIceCandidateHandler();
   }
 
   /**
@@ -238,45 +242,45 @@ class PeerConnectionStore {
     };
   }
 
-  // 激活ICE候选处理器
-  private _activateIceCandidateHandler() {
-    if (!this.peerConnection) return;
+  // // 激活ICE候选处理器
+  // private _activateIceCandidateHandler() {
+  //   if (!this.peerConnection) return;
 
-    // 临时存储ICE候选的队列
-    const iceCandidateQueue: RTCIceCandidate[] = [];
-    let isProcessing = false;
+  //   // 临时存储ICE候选的队列
+  //   const iceCandidateQueue: RTCIceCandidate[] = [];
+  //   let isProcessing = false;
 
-    this.peerConnection.onicecandidate = (event) => {
-      if (event.candidate) {
-        console.log("收集到ICE候选:", event.candidate);
-        iceCandidateQueue.push(event.candidate);
+  //   this.peerConnection.onicecandidate = (event) => {
+  //     if (event.candidate) {
+  //       console.log("收集到ICE候选:", event.candidate);
+  //       iceCandidateQueue.push(event.candidate);
 
-        // 处理队列中的候选
-        if (!isProcessing) {
-          isProcessing = true; // 标记为正在处理
-          this._processIceCandidateQueue(iceCandidateQueue, () => {
-            isProcessing = false; // 处理完成后重置状态
-          });
-        }
-      } else {
-        console.log("ICE候选收集完成");
-      }
-    };
-  }
+  //       // 处理队列中的候选
+  //       if (!isProcessing) {
+  //         isProcessing = true; // 标记为正在处理
+  //         this._processIceCandidateQueue(iceCandidateQueue, () => {
+  //           isProcessing = false; // 处理完成后重置状态
+  //         });
+  //       }
+  //     } else {
+  //       console.log("ICE候选收集完成");
+  //     }
+  //   };
+  // }
 
-  // 处理ICE候选队列
-  private _processIceCandidateQueue(
-    queue: RTCIceCandidate[],
-    onComplete: () => void
-  ) {
-    // 实际项目中这里应该实现发送ICE候选的逻辑
-    console.log("处理ICE候选队列:", queue.length);
-    setTimeout(() => {
-      console.log("处理ICE候选队列:", queue.length);
-      queue.length = 0; // 清空队列
-      onComplete(); // 通知处理完成
-    }, 0);
-  }
+  // // 处理ICE候选队列
+  // private _processIceCandidateQueue(
+  //   queue: RTCIceCandidate[],
+  //   onComplete: () => void
+  // ) {
+  //   // 实际项目中这里应该实现发送ICE候选的逻辑
+  //   console.log("处理ICE候选队列:", queue.length);
+  //   setTimeout(() => {
+  //     console.log("处理ICE候选队列:", queue.length);
+  //     queue.length = 0; // 清空队列
+  //     onComplete(); // 通知处理完成
+  //   }, 0);
+  // }
 
   // 设置数据通道处理器
   private _setupChannelHandlers(handlers: {
@@ -304,6 +308,8 @@ class PeerConnectionStore {
    * @param onCandidate 候选处理器回调
    */
   setupIceCandidateHandler(onCandidate: (candidate: RTCIceCandidate) => void) {
+    console.log('开始监听ICE候选');
+    
     if (!this.peerConnection) return;
   
     this.peerConnection.onicecandidate = (event) => {
@@ -312,6 +318,33 @@ class PeerConnectionStore {
         onCandidate(event.candidate);
       } else {
         console.log("ICE候选收集完成");
+      }
+    };
+    console.log('ICE候选处理器设置完成');
+    
+  }
+
+  /**
+   * 监听ICE候选者
+   * @param onCandidate 当收集到ICE候选者时调用的回调函数
+   * @param onComplete 当ICE候选者收集完成时调用的回调函数
+   */
+  setupIceCandidateListener(
+    onCandidate: (candidate: RTCIceCandidate) => void,
+    onComplete: () => void
+  ) {
+    if (!this.peerConnection) {
+      console.error('PeerConnection 未初始化，无法监听 ICE 候选者');
+      return;
+    }
+
+    this.peerConnection.onicecandidate = (event) => {
+      if (event.candidate) {
+        console.log('收集到 ICE 候选者:', event.candidate);
+        onCandidate(event.candidate);
+      } else {
+        console.log('ICE 候选者收集完成');
+        onComplete();
       }
     };
   }
