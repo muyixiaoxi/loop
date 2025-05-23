@@ -195,30 +195,50 @@ const Home = observer(() => {
         } else if (cmd === 4) {
           // 单聊发送的offer
           console.log("单聊发送的offer", data);
+          
+          // 获取本地媒体流
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true,
+          });
+          console.log(1);
+          // 创建 PeerConnection
+          usePeerConnectionStore.createPeerConnection(stream);
+          console.log(1);
+          // 设置远程描述
+          await usePeerConnectionStore.setRemoteDescription(
+            data.session_description
+          );
+          await usePeerConnectionStore.createAnswer()
+          // 开始监听 ICE 候选者
+          usePeerConnectionStore.setupIceCandidateListener(
+            (candidate) => {
+              console.log('收到 ICE 候选者111:', candidate);
+              sendNonChatMessage({
+                cmd: 6, // ICE 候选者消息
+                data: {
+                  sender_id: userInfo.id, // 发送者 ID
+                  receiver_id: data.sender_id, // 接收者 ID
+                  candidate_init: candidate // 候选者信息
+                }, 
+              })
+            },
+            () => {
+              console.log('ICE 候选者收集完成');
+            }
+          );
+          console.log(1);
+          
 
           // 设置呼叫者数据，用于接听
           setCallerInfo(data);
-          //  打开弹窗，等待接听
+          // 打开弹窗，等待接听
           setIsCalling(true);
         } else if (cmd === 5) {
           console.log("cmd === 5,接收到 answer，设置远程描述:", data);
           // 设置远程描述
           await usePeerConnectionStore.setRemoteDescription(
             data.session_description
-          );
-
-          // 设置ICE候选处理器
-          usePeerConnectionStore.setupIceCandidateHandler(
-            (candidate: RTCIceCandidate) => {
-              sendNonChatMessage({
-                cmd: 6, // ICE候选消息
-                data: {
-                  sender_id: userInfo.id,
-                  receiver_id: data.sender_id,
-                  candidate_init: candidate.toJSON(),
-                },
-              });
-            }
           );
         } else if (cmd === 6) {
           // ICE候选消息
@@ -424,7 +444,7 @@ const Home = observer(() => {
 
   // 发送非聊天信息
   const sendNonChatMessage = (message: any) => {
-    // console.log(wsClient, "发送非聊天信息", message);
+    console.log(wsClient, "发送非聊天信息", message);
     if (wsClient) {
       wsClient.sendMessage(message);
     } else {
