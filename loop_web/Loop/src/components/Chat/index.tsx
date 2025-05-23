@@ -127,6 +127,23 @@ const Chat = observer(() => {
           session_description: offer,
         },
       });
+      //发送ICE
+      usePeerConnectionStore.setupIceCandidateListener(
+        (candidate) => {
+          console.log('收到 ICE 候选者111:', candidate);
+          sendNonChatMessage({
+            cmd: 6, // ICE 候选者消息
+            data: {
+              sender_id: userInfo.id, // 发送者 ID
+              receiver_id: Number(currentFriendId), // 接收者 ID
+              candidate_init: candidate // 候选者信息
+            }, 
+          })
+        },
+        () => {
+          console.log('ICE 候选者收集完成');
+        }
+      );
 
       // 6. 显示视频弹框
       setIsVideoModalVisible(true);
