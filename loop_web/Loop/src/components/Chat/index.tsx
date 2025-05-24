@@ -98,11 +98,35 @@ const Chat = observer(() => {
   //打开视频通话
   const handlevideo = async () => {
     try {
-      // 1. 获取本地媒体流
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
+      // 1. 先检查设备可用性
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const hasVideo = devices.some((device) => device.kind === "videoinput");
+      const hasAudio = devices.some((device) => device.kind === "audioinput");
+
+      if (!hasVideo || !hasAudio) {
+        throw new Error("未检测到可用的摄像头或麦克风");
+      }
+
+      // 2. 获取媒体流时添加错误处理
+      const stream = await navigator.mediaDevices
+        .getUserMedia({
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: true,
+        })
+        .catch((err) => {
+          console.error("获取媒体设备失败:", err);
+          message.error("无法访问摄像头/麦克风，请检查设备连接和权限设置");
+          throw err;
+        });
+
+      // 3. 添加设备状态检查
+      if (!stream.getVideoTracks().length || !stream.getAudioTracks().length) {
+        throw new Error("获取的媒体流中没有视频或音频轨道");
+      }
+
       setLocalStream(stream);
 
       // 2. 设置当前用户为呼叫方
@@ -118,9 +142,9 @@ const Chat = observer(() => {
       const offer = await usePeerConnectionStore.createOffer();
 
       // 发送Offer消息
-      const cmd = chatType === 1 ? 4 : 7; // 4:私聊视频呼叫, 7:群聊视频呼叫
+      // const cmd = chatType === 1 ? 4 : 7; // 4:私聊视频呼叫, 7:群聊视频呼叫
       sendNonChatMessage({
-        cmd,
+        cmd: 4,
         data: {
           sender_id: userInfo.id,
           receiver_id: Number(currentFriendId),
@@ -130,18 +154,19 @@ const Chat = observer(() => {
       //发送ICE
       usePeerConnectionStore.setupIceCandidateListener(
         (candidate) => {
-          console.log('收到 ICE 候选者111:', candidate);
+          console.log("收到 ICE 候选者111:", candidate);
+          //  // 这个回调会在设置本地描述后触发
           sendNonChatMessage({
             cmd: 6, // ICE 候选者消息
             data: {
               sender_id: userInfo.id, // 发送者 ID
               receiver_id: Number(currentFriendId), // 接收者 ID
-              candidate_init: candidate // 候选者信息
-            }, 
-          })
+              candidate_init: candidate, // 候选者信息
+            },
+          });
         },
         () => {
-          console.log('ICE 候选者收集完成');
+          console.log("ICE 候选者收集完成");
         }
       );
 
