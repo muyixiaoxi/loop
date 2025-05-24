@@ -193,43 +193,22 @@ const Home = observer(() => {
           // 更新消息状态为成功;
           handleUpdateMessageStatus(data, "success");
         } else if (cmd === 4) {
-          // 单聊发送的offer
+          // // 单聊发送的offer
           console.log("单聊发送的offer", data);
-          
-          // 获取本地媒体流
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true,
-          });
-          console.log(1);
-          // 创建 PeerConnection
-          usePeerConnectionStore.createPeerConnection(stream);
-          console.log(1);
-          // 设置远程描述
-          await usePeerConnectionStore.setRemoteDescription(
-            data.session_description
-          );
-          await usePeerConnectionStore.createAnswer()
-          // 开始监听 ICE 候选者
-          
-          usePeerConnectionStore.setupIceCandidateListener(
-            (candidate) => {
-              console.log('收到 ICE 候选者111:', candidate);
-              client.sendMessage({
-                cmd: 6, // ICE 候选者消息
-                data: {
-                  sender_id: userInfo.id, // 发送者 ID
-                  receiver_id: data.sender_id, // 接收者 ID
-                  candidate_init: candidate // 候选者信息
-                }, 
-              })
-            },
-            () => {
-              console.log('ICE 候选者收集完成');
-            }
-          );
-          console.log(1);
-          
+
+          // // 获取本地媒体流
+          // const stream = await navigator.mediaDevices.getUserMedia({
+          //   video: true,
+          //   audio: true,
+          // });
+          // console.log(1);
+          // // 创建 PeerConnection
+          // usePeerConnectionStore.createPeerConnection(stream);
+          // // 设置远程描述
+          // await usePeerConnectionStore.setRemoteDescription(
+          //   data.session_description
+          // );
+          // await usePeerConnectionStore.createAnswer();
 
           // 设置呼叫者数据，用于接听
           setCallerInfo(data);
@@ -241,6 +220,27 @@ const Home = observer(() => {
           await usePeerConnectionStore.setRemoteDescription(
             data.session_description
           );
+
+          // usePeerConnectionStore.setupIceCandidateListener(
+          //   (candidate) => {
+          //     console.log("收到 ICE 候选者111:", candidate);
+          //     client.sendMessage({
+          //       cmd: 6, // ICE 候选者消息
+          //       data: {
+          //         sender_id: userInfo.id, // 发送者 ID
+          //         receiver_id: data.sender_id, // 接收者 ID
+          //         candidate_init: candidate, // 候选者信息
+          //       },
+          //     });
+          //   },
+          //   () => {
+          //     console.log("ICE 候选者收集完成");
+          //   }
+          // );
+
+          // 开始监听 ICE 候选者
+
+          console.log(1);
         } else if (cmd === 6) {
           // ICE候选消息
           console.log("cmd === 6,收到ICE候选:", data.candidate_init);
@@ -330,6 +330,22 @@ const Home = observer(() => {
       // 6. 显示视频弹框
       setIsVideoModalVisible(true);
       setIsCalling(false);
+
+      // 7. 设置ICE候选监听器（此时不会立即发送ICE）
+      usePeerConnectionStore.setupIceCandidateListener(
+        (candidate) => {
+          // 这个回调会在设置本地描述后触发
+          sendNonChatMessage({
+            cmd: 6,
+            data: {
+              sender_id: userInfo.id,
+              receiver_id: callerInfo.sender_id,
+              candidate_init: candidate,
+            },
+          });
+        },
+        () => console.log("ICE收集完成")
+      );
     } catch (error) {
       console.error("接受视频通话失败:", error);
       message.error("接受视频通话失败");
@@ -447,7 +463,7 @@ const Home = observer(() => {
   const sendNonChatMessage = (message: any) => {
     console.log(wsClient, "发送非聊天信息", message);
     if (wsClient) {
-      wsClient.sendMessage (message);
+      wsClient.sendMessage(message);
     } else {
       console.error("WebSocket未连接");
     }
