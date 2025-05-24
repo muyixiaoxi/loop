@@ -196,20 +196,6 @@ const Home = observer(() => {
           // // 单聊发送的offer
           console.log("单聊发送的offer", data);
 
-          // // 获取本地媒体流
-          // const stream = await navigator.mediaDevices.getUserMedia({
-          //   video: true,
-          //   audio: true,
-          // });
-          // console.log(1);
-          // // 创建 PeerConnection
-          // usePeerConnectionStore.createPeerConnection(stream);
-          // // 设置远程描述
-          // await usePeerConnectionStore.setRemoteDescription(
-          //   data.session_description
-          // );
-          // await usePeerConnectionStore.createAnswer();
-
           // 设置呼叫者数据，用于接听
           setCallerInfo(data);
           // 打开弹窗，等待接听
@@ -221,30 +207,16 @@ const Home = observer(() => {
             data.session_description
           );
 
-          // usePeerConnectionStore.setupIceCandidateListener(
-          //   (candidate) => {
-          //     console.log("收到 ICE 候选者111:", candidate);
-          //     client.sendMessage({
-          //       cmd: 6, // ICE 候选者消息
-          //       data: {
-          //         sender_id: userInfo.id, // 发送者 ID
-          //         receiver_id: data.sender_id, // 接收者 ID
-          //         candidate_init: candidate, // 候选者信息
-          //       },
-          //     });
-          //   },
-          //   () => {
-          //     console.log("ICE 候选者收集完成");
-          //   }
-          // );
-
-          // 开始监听 ICE 候选者
-
+          // 设置远程描述后开始发送ICE候选;
+          await usePeerConnectionStore.startSendingIceCandidates(); // 开始发送 ICE 候选
           console.log(1);
         } else if (cmd === 6) {
           // ICE候选消息
           console.log("cmd === 6,收到ICE候选:", data.candidate_init);
-          usePeerConnectionStore.addIceCandidate(data.candidate_init);
+          await usePeerConnectionStore.addIceCandidate(data.candidate_init);
+
+          // 收到ICE后开始发送自己的ICE候选;
+          await usePeerConnectionStore.startSendingIceCandidates(); // 开始发送 ICE 候选
         } else {
           console.log(cmd, "cmd");
           console.log(data, "data");
