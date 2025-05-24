@@ -344,6 +344,8 @@ class PeerConnectionStore {
 
     this.iceCandidateHandler = onCandidate;
 
+    console.log("设置监听ICE候选");
+
     this.peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
         // 先存入队列，不立即发送
@@ -361,6 +363,7 @@ class PeerConnectionStore {
    */
   startSendingIceCandidates() {
     if (!this.remoteDescriptionSet) return;
+    console.log("开始发送ICE候选");
 
     // 发送队列中的所有ICE候选
     while (this.iceCandidateQueue.length > 0 && this.iceCandidateHandler) {
@@ -383,7 +386,7 @@ class PeerConnectionStore {
     console.log("远程描述设置完成:", desc.type);
 
     // 设置远程描述后开始发送ICE候选
-    this.startSendingIceCandidates();
+    // this.startSendingIceCandidates();
   }
 }
 
