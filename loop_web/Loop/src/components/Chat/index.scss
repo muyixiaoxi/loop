@@ -235,6 +235,20 @@
         background-color: transparent;
       }
     }
+    // 定义闪烁光标的样式
+    .blinking-cursor {
+      animation: blink 1s step-end infinite;
+      margin-left: 2px; // 光标与文本之间的间距
+    }
+
+    @keyframes blink {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0;
+      }
+    }
   }
 }
 
