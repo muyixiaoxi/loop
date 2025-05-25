@@ -15,8 +15,8 @@ import { AIchat } from "@/api/chat";
 
 // 自定义 Tooltip 样式
 const customTooltipStyle = {
-  backgroundColor: '#fff',
-  color: '#000',
+  backgroundColor: "#fff",
+  color: "#000",
 };
 
 // 假设 submitOfflineType 定义在 chat.ts 中，这里可以不用重复定义
@@ -52,11 +52,11 @@ const Chat = observer(() => {
 
   // 在组件状态中添加远程视频流状态
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
-  const [isCaller, setIsCaller] = useState(false); // 是否是呼叫方
+
   // 新增：管理 SSE 加载状态
   const [isAILoading, setIsAILoading] = useState(false);
   // 将 showCursor 状态提升到组件顶层
-  const [showCursor, setShowCursor] = useState(false); 
+  const [showCursor, setShowCursor] = useState(false);
 
   /**
    * 发送消息
@@ -78,8 +78,6 @@ const Chat = observer(() => {
         sender_avatar: userInfo.avatar,
       },
     };
-
-    console.log(currentFriendName, currentFriendAvatar);
 
     // 先添加到本地存储（乐观更新）
     await db.upsertConversation(userInfo.id, {
@@ -146,22 +144,19 @@ const Chat = observer(() => {
 
       setLocalStream(stream);
 
-      // 2. 设置当前用户为呼叫方
-      setIsCaller(true);
-
-      // 3. 创建PeerConnection (简化参数传递)
+      // 4. 创建PeerConnection (简化参数传递)
       usePeerConnectionStore.createPeerConnection(stream);
 
-      // 4. 设置远程流处理器
+      // 5. 设置远程流处理器
       usePeerConnectionStore.setupMediaStreamHandlers(setRemoteStream);
 
-      // 5. 创建并发送Offer
+      // 6. 创建并发送Offer
       const offer = await usePeerConnectionStore.createOffer();
 
       // 发送Offer消息
-      // const cmd = chatType === 1 ? 4 : 7; // 4:私聊视频呼叫, 7:群聊视频呼叫
+      const cmd = chatType === 1 ? 4 : 7; // 4:私聊视频呼叫, 7:群聊视频呼叫
       sendNonChatMessage({
-        cmd: 4,
+        cmd,
         data: {
           sender_id: userInfo.id,
           receiver_id: Number(currentFriendId),
@@ -171,13 +166,14 @@ const Chat = observer(() => {
       //发送ICE
       usePeerConnectionStore.setupIceCandidateListener(
         (candidate) => {
-          console.log("收到 ICE 候选者111:", candidate);
-          //  // 这个回调会在设置本地描述后触发
+          // 这个回调会在设置本地描述后触发
           sendNonChatMessage({
             cmd: 6, // ICE 候选者消息
             data: {
               sender_id: userInfo.id, // 发送者 ID
               receiver_id: Number(currentFriendId), // 接收者 ID
+              name: userInfo.nickname, // 发送者名称
+              avatar: userInfo.avatar, // 发送者头像
               candidate_init: candidate, // 候选者信息
             },
           });
@@ -285,26 +281,26 @@ const Chat = observer(() => {
   // 处理 AI 回复的函数
   const handleAIReply = async (messageContent: string) => {
     const data: { prompt: string } = {
-      prompt: messageContent
+      prompt: messageContent,
     };
     setIsAILoading(true);
     const wordQueue: string[] = [];
-  
+
     const processWordQueue = async () => {
       setShowCursor(true); // 开始处理词队列时显示光标
       while (wordQueue.length > 0) {
         const word = wordQueue.shift()!;
         setInputValue((prev) => prev + word);
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
       setShowCursor(false); // 处理完成后隐藏光标
     };
-  
+
     try {
       await AIchat(
-        data as any, 
+        data as any,
         (message) => {
-          const words = message.split(/(\s+)/); 
+          const words = message.split(/(\s+)/);
           words.forEach((word) => {
             wordQueue.push(word);
           });
@@ -313,14 +309,14 @@ const Chat = observer(() => {
           }
         },
         (error) => {
-          console.error('调用 AIchat 失败:', error);
-          message.error('获取 AI 回复失败');
+          console.error("调用 AIchat 失败:", error);
+          message.error("获取 AI 回复失败");
           setIsAILoading(false);
         }
       );
     } catch (error) {
-      console.error('调用 AIchat 过程中出错:', error);
-      message.error('获取 AI 回复失败');
+      console.error("调用 AIchat 过程中出错:", error);
+      message.error("获取 AI 回复失败");
     } finally {
       setIsAILoading(false);
     }
@@ -386,7 +382,10 @@ const Chat = observer(() => {
                 overlay={
                   <div>
                     <div>这是好友发送的消息</div>
-                    <Button type="primary" onClick={() => handleAIReply(message.content)}>
+                    <Button
+                      type="primary"
+                      onClick={() => handleAIReply(message.content)}
+                    >
                       AI 回复
                     </Button>
                   </div>
@@ -425,7 +424,10 @@ const Chat = observer(() => {
                   overlay={
                     <div>
                       <div>这是好友发送的消息</div>
-                      <Button type="primary" onClick={() => handleAIReply(message.content)}>
+                      <Button
+                        type="primary"
+                        onClick={() => handleAIReply(message.content)}
+                      >
                         AI 回复
                       </Button>
                     </div>
@@ -469,7 +471,7 @@ const Chat = observer(() => {
           {showCursor && <span className="blinking-cursor">|</span>}
         </div>
         {isAILoading && (
-          <div style={{ textAlign: 'right', marginTop: '8px' }}>
+          <div style={{ textAlign: "right", marginTop: "8px" }}>
             <Spin />
           </div>
         )}
@@ -499,15 +501,7 @@ const Chat = observer(() => {
       <Modal
         open={isVideoModalVisible}
         closable={false}
-        onCancel={() => {
-          setIsVideoModalVisible(false);
-          if (localStream) {
-            localStream.getTracks().forEach((track) => track.stop());
-          }
-          usePeerConnectionStore.closePeerConnection();
-          setLocalStream(null);
-          setRemoteStream(null);
-        }}
+        maskClosable={false}
         footer={null}
         width={800}
         destroyOnClose
@@ -520,19 +514,18 @@ const Chat = observer(() => {
             if (localStream) {
               localStream.getTracks().forEach((track) => track.stop());
             }
-            usePeerConnectionStore.closePeerConnection();
-          }}
-          isCaller={isCaller}
-          onStartCall={handlevideo}
-          onEndCall={() => {
+            setLocalStream(null);
+            setRemoteStream(null);
             // 发送结束通话的消息
-            // sendNonChatMessage({
-            //   cmd: "end_call",
-            //   data: {
-            //     sender_id: userInfo.id,
-            //     receiver_id: currentFriendId,
-            //   },
-            // });
+            sendNonChatMessage({
+              cmd: "7",
+              data: {
+                sender_id: userInfo.id,
+                receiver_id: Number(currentFriendId),
+              },
+            });
+            message.success("已取消呼叫,通话结束");
+            usePeerConnectionStore.closePeerConnection();
           }}
         />
       </Modal>

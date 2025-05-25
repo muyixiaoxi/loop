@@ -35,13 +35,7 @@ export const WebSocketContext = createContext<{
 // observer 将组件变成响应式组件
 const Home = observer(() => {
   const { token, userInfo } = userStore; // 获取用户信息
-  const {
-    currentFriendId,
-    setCurrentChatList,
-    setCurrentMessages,
-    currentChatInfo,
-  } = chatStore; // 获取发送消息的函数
-
+  const { currentFriendId, setCurrentChatList, setCurrentMessages } = chatStore; // 获取发送消息的函数
   const db = getChatDB(userInfo.id); // 连接数据库
   const {
     isShowUserAmend,
@@ -64,7 +58,6 @@ const Home = observer(() => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
-  const [isCaller, setIsCaller] = useState(false);
   const [callerInfo, setCallerInfo] = useState<any>({});
 
   // 视频呼叫相关状态
@@ -121,6 +114,25 @@ const Home = observer(() => {
 
     await submitOfflineMessage(processedData);
   };
+
+  useEffect(() => {
+    // 视频链接状态变化
+    if (usePeerConnectionStore.isVideoChatStarted) {
+      // 视频已经挂断
+      setIsVideoModalVisible(false);
+      // 可以发送拒绝消息给对方
+      sendNonChatMessage({
+        cmd: 7, // 拒绝命令
+        data: {
+          sender_id: userInfo.id,
+          receiver_id: callerInfo.sender_id,
+        },
+      });
+
+      // 关闭连接
+      usePeerConnectionStore.closePeerConnection();
+    }
+  }, [usePeerConnectionStore.isVideoChatStarted]);
 
   useEffect(() => {
     LocalTime(); // 调用获取当前时间的函数
@@ -193,43 +205,35 @@ const Home = observer(() => {
           // 更新消息状态为成功;
           handleUpdateMessageStatus(data, "success");
         } else if (cmd === 4) {
-          // // 单聊发送的offer
-          console.log("单聊发送的offer", data);
-
+          // 单聊发送的offer
           // 设置呼叫者数据，用于接听
           setCallerInfo(data);
           // 打开弹窗，等待接听
           setIsCalling(true);
         } else if (cmd === 5) {
-          console.log("cmd === 5,接收到 answer，设置远程描述:", data);
           // 设置远程描述
           await usePeerConnectionStore.setRemoteDescription(
             data.session_description
           );
-
-          // 设置远程描述后开始发送ICE候选;
-          await usePeerConnectionStore.startSendingIceCandidates(); // 开始发送 ICE 候选
-          console.log(1);
+          await usePeerConnectionStore.flushIceCandidates(); // 开始发送 ICE 候选
         } else if (cmd === 6) {
           // ICE候选消息
-          console.log("cmd === 6,收到ICE候选:", data.candidate_init);
           await usePeerConnectionStore.addIceCandidate(data.candidate_init);
 
           // 收到ICE后开始发送自己的ICE候选;
-          await usePeerConnectionStore.startSendingIceCandidates(); // 开始发送 ICE 候选
+          await usePeerConnectionStore.flushIceCandidates(); // 开始发送 ICE 候选
+        } else if (cmd === 7) {
+          // 接收到挂断消息
+          // 关闭所有视频弹窗
+          setIsVideoModalVisible(false);
+          setIsCalling(false);
+          // 关闭连接
+          usePeerConnectionStore.closePeerConnection();
+          message.success("对方已结束通话");
         } else {
           console.log(cmd, "cmd");
           console.log(data, "data");
         }
-        // else if (cmd === 8) {
-        //   // 接收到 answer，设置远程描述
-        //   const remoteDesc = data.session_description;
-        //   usePeerConnectionStore.setRemoteDescription(remoteDesc);
-        // } else if (cmd === 9) {
-        //   // 接收到 ICE 候选
-        //   const candidate = data.candidate;
-        //   usePeerConnectionStore.addIceCandidate(candidate);
-        // }
       },
     });
 
@@ -245,23 +249,6 @@ const Home = observer(() => {
     };
   }, [token]);
 
-  // 添加远程流监听
-  // 修改setupMediaStreamHandlers调用
-  useEffect(() => {
-    usePeerConnectionStore.setupMediaStreamHandlers(
-      (remoteStream: MediaStream) => {
-        console.log("收到远程媒体流----------------", remoteStream);
-        // 确保流有视频轨道
-        if (remoteStream.getVideoTracks().length > 0) {
-          console.log("远程视频轨道存在:", remoteStream.getVideoTracks());
-          setRemoteStream(new MediaStream(remoteStream)); // 创建新MediaStream实例
-        } else {
-          console.warn("远程视频流没有视频轨道");
-        }
-      }
-    );
-  }, []);
-
   // 处理接受视频通话
   const handleAcceptCall = async () => {
     try {
@@ -271,14 +258,12 @@ const Home = observer(() => {
         audio: true,
       });
       setLocalStream(stream);
-      setIsCaller(false);
 
       // 2. 创建PeerConnection
       usePeerConnectionStore.createPeerConnection(stream);
 
       // 3. 设置远程媒体流处理器
       usePeerConnectionStore.setupMediaStreamHandlers((remoteStream) => {
-        console.log("收到远程媒体流", remoteStream);
         setRemoteStream(remoteStream);
       });
 
@@ -321,12 +306,12 @@ const Home = observer(() => {
     } catch (error) {
       console.error("接受视频通话失败:", error);
       message.error("接受视频通话失败");
-
       // 清理资源
       if (localStream) {
         localStream.getTracks().forEach((track) => track.stop());
         setLocalStream(null);
       }
+      // 关闭视频
       usePeerConnectionStore.closePeerConnection();
     }
   };
@@ -334,14 +319,18 @@ const Home = observer(() => {
   // 处理拒绝视频通话
   const handleRejectCall = () => {
     setIsCalling(false);
+    // 关闭视频
+    usePeerConnectionStore.closePeerConnection();
+
     // 可以发送拒绝消息给对方
-    // sendNonChatMessage({
-    //   cmd: 6, // 拒绝命令
-    //   data: {
-    //     sender_id: userInfo.id,
-    //     receiver_id: currentFriendId,
-    //   },
-    // });
+    sendNonChatMessage({
+      cmd: 7, // 拒绝命令
+      data: {
+        sender_id: userInfo.id,
+        receiver_id: callerInfo.sender_id,
+      },
+    });
+    message.success("已取消通话");
   };
 
   // 添加发送消息方法
@@ -433,7 +422,6 @@ const Home = observer(() => {
 
   // 发送非聊天信息
   const sendNonChatMessage = (message: any) => {
-    console.log(wsClient, "发送非聊天信息", message);
     if (wsClient) {
       wsClient.sendMessage(message);
     } else {
@@ -579,13 +567,7 @@ const Home = observer(() => {
         <Modal
           open={isVideoModalVisible}
           closable={false}
-          onCancel={() => {
-            setIsVideoModalVisible(false);
-            if (localStream) {
-              localStream.getTracks().forEach((track) => track.stop());
-            }
-            usePeerConnectionStore.closePeerConnection();
-          }}
+          maskClosable={false}
           footer={null}
           width={800}
           destroyOnClose
@@ -600,15 +582,15 @@ const Home = observer(() => {
               }
               usePeerConnectionStore.closePeerConnection();
               // 发送结束通话消息
-              // sendNonChatMessage({
-              //   cmd: 7,
-              //   data: {
-              //     sender_id: userInfo.id,
-              //     receiver_id: currentFriendId,
-              //   },
-              // });
+              sendNonChatMessage({
+                cmd: 7,
+                data: {
+                  sender_id: userInfo.id,
+                  receiver_id: callerInfo.sender_id,
+                },
+              });
+              message.success("已结束通话");
             }}
-            isCaller={isCaller}
           />
         </Modal>
 

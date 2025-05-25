@@ -24,8 +24,18 @@ class PeerConnectionStore {
   isAudioStreamAdded: boolean = false;
   isVideoStreamAdded: boolean = false;
 
-  // 数据通道
-  dataChannel: RTCDataChannel | null = null;
+  // 视频聊天状态跟踪
+  isVideoChatStarted: boolean = false;
+
+  /**
+   * 监听ICE候选者
+   * @param onCandidate 当收集到ICE候选者时调用的回调函数
+   * @param onComplete 当ICE候选者收集完成时调用的回调函数
+   */
+  // 添加ICE候选队列
+  private iceCandidateQueue: RTCIceCandidate[] = [];
+  private iceCandidateHandler: ((candidate: RTCIceCandidate) => void) | null =
+    null;
 
   constructor() {
     makeObservable(this, {
@@ -35,6 +45,7 @@ class PeerConnectionStore {
       isWebRTCConnected: observable,
       isAudioStreamAdded: observable,
       isVideoStreamAdded: observable,
+      isVideoChatStarted: observable,
 
       // 操作方法
       createPeerConnection: action,
@@ -45,8 +56,6 @@ class PeerConnectionStore {
       setRemoteDescription: action,
       addIceCandidate: action,
       setupMediaStreamHandlers: action,
-      setupDataChannel: action,
-      // 新增方法加入可观察动作
       setupIceCandidateListener: action,
     });
   }
@@ -59,11 +68,15 @@ class PeerConnectionStore {
    */
   createPeerConnection(localStream: MediaStream) {
     // 使用Google的公共STUN服务器和备用TURN服务器
-    console.log("创建PeerConnection");
+
     const config = {
       iceServers: [
+        { urls: import.meta.env.VITE_STUN_SERVER_1 },
+        { urls: import.meta.env.VITE_STUN_SERVER_2 },
         {
-          urls: "stun:stun.l.google.com:19302",
+          urls: import.meta.env.VITE_TURN_SERVER,
+          username: import.meta.env.VITE_TURN_USERNAME,
+          credential: import.meta.env.VITE_TURN_CREDENTIAL,
         },
       ],
     };
@@ -76,7 +89,6 @@ class PeerConnectionStore {
 
     // 设置基础事件处理器（不包含ICE候选处理器）
     this._setupBasicEventHandlers();
-    console.log("PeerConnection创建完成");
   }
 
   /**
@@ -88,19 +100,16 @@ class PeerConnectionStore {
       this.peerConnection = null;
     }
 
-    if (this.dataChannel) {
-      this.dataChannel.close();
-      this.dataChannel = null;
-    }
-
     this._resetConnectionState();
   }
 
-  /* ========== 信令处理 ========== */
+  // region 信令处理
+  // ================================= 信令交换 =================================
 
   /**
-   * 创建Offer并设置本地描述
-   * @returns 创建的Offer
+   * 创建并返回 Offer 信令
+   * @returns 包含 SDP 信息的 Offer 对象
+   * @throws 当连接未初始化时抛出错误
    */
   async createOffer(): Promise<RTCSessionDescriptionInit> {
     if (!this.peerConnection) {
@@ -113,8 +122,9 @@ class PeerConnectionStore {
   }
 
   /**
-   * 创建Answer并设置本地描述
-   * @returns 创建的Answer
+   * 创建并返回 Answer 信令
+   * @returns 包含 SDP 信息的 Answer 对象
+   * @throws 当连接未初始化时抛出错误
    */
   async createAnswer(): Promise<RTCSessionDescriptionInit> {
     if (!this.peerConnection) {
@@ -134,25 +144,71 @@ class PeerConnectionStore {
     if (!this.peerConnection) return;
 
     await this.peerConnection.setLocalDescription(desc);
-    console.log("本地描述设置完成:", desc.type);
-
-    // // 设置本地描述后激活ICE候选收集
-    // this._activateIceCandidateHandler();
   }
 
-  // /**
-  //  * 设置远程描述
-  //  * @param desc 要设置的远程描述(Offer/Answer)
-  //  */
-  // async setRemoteDescription(desc: RTCSessionDescriptionInit) {
-  //   if (!this.peerConnection) return;
+  /**
+   * 设置远程描述
+   * @param desc 要设置的远程描述(Offer/Answer)
+   */
+  async setRemoteDescription(desc: RTCSessionDescriptionInit) {
+    if (!this.peerConnection) return;
 
-  //   await this.peerConnection.setRemoteDescription(
-  //     new RTCSessionDescription(desc)
-  //   );
-  //   this.remoteDescriptionSet = true;
-  //   console.log("远程描述设置完成:", desc.type);
-  // }
+    await this.peerConnection.setRemoteDescription(
+      new RTCSessionDescription(desc)
+    );
+    this.remoteDescriptionSet = true;
+  }
+
+  // region ICE 管理
+  // ================================ ICE 候选管理 ================================
+  /**
+   * 初始化 ICE 候选监听
+   * @param onCandidate - 候选收集回调
+   * @param onComplete - 收集完成回调
+   */
+  setupIceCandidateListener(
+    onCandidate: (candidate: RTCIceCandidate) => void,
+    onComplete: () => void
+  ) {
+    if (!this.peerConnection) return;
+
+    this.iceCandidateHandler = onCandidate;
+
+    this.peerConnection.onicecandidate = (event) => {
+      if (event.candidate) {
+        // 先存入队列，不立即发送
+        this.iceCandidateQueue.push(event.candidate);
+      } else {
+        // ICE 候选者收集完成
+        onComplete();
+      }
+    };
+  }
+
+  /**
+   * 处理并发送缓存的ICE候选
+   *
+   * 工作机制：
+   * 1. 检查远程描述是否已设置（必要条件）
+   * 2. 按先进先出顺序处理候选队列
+   * 3. 通过注册的回调函数发送候选
+   *
+   * 注意：需在设置远程描述后调用
+   */
+  flushIceCandidates() {
+    if (!this.remoteDescriptionSet) {
+      console.warn("[ICE] 无法发送候选：远程描述未设置");
+      return;
+    }
+
+    // 发送队列中的所有ICE候选
+    while (this.iceCandidateQueue.length > 0 && this.iceCandidateHandler) {
+      const candidate = this.iceCandidateQueue.shift();
+      if (candidate) {
+        this.iceCandidateHandler(candidate);
+      }
+    }
+  }
 
   /**
    * 添加ICE候选
@@ -162,11 +218,10 @@ class PeerConnectionStore {
     if (!this.peerConnection || !this.remoteDescriptionSet) return;
 
     await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-    console.log("ICE候选添加完成:", candidate);
   }
 
-  /* ========== 媒体和数据通道 ========== */
-
+  // region 媒体处理
+  // ================================ 媒体流管理 ================================
   /**
    * 设置远程媒体流处理器
    * @param callback 远程流回调函数
@@ -186,27 +241,8 @@ class PeerConnectionStore {
     };
   }
 
-  /**
-   * 创建数据通道
-   * @param label 通道标签
-   * @param handlers 通道事件处理器
-   */
-  setupDataChannel(
-    label: string,
-    handlers: {
-      onOpen: () => void;
-      onMessage: (event: MessageEvent) => void;
-      onClose: () => void;
-    }
-  ) {
-    if (!this.peerConnection) return;
-
-    this.dataChannel = this.peerConnection.createDataChannel(label);
-    this._setupChannelHandlers(handlers);
-  }
-
-  /* ========== 私有方法 ========== */
-
+  // region 私有工具方法
+  // ================================ 内部方法 ================================
   // 添加本地媒体流
   private _addLocalStream(localStream: MediaStream) {
     localStream.getTracks().forEach((track) => {
@@ -225,7 +261,7 @@ class PeerConnectionStore {
     // ICE连接状态变化
     this.peerConnection.oniceconnectionstatechange = () => {
       const state = this.peerConnection?.iceConnectionState;
-      console.log("ICE连接状态:", state);
+      // console.log("ICE连接状态:", state);
 
       // 更新连接状态
       this.isWebRTCConnected = state === "connected" || state === "completed";
@@ -234,65 +270,11 @@ class PeerConnectionStore {
     // 连接状态变化
     this.peerConnection.onconnectionstatechange = () => {
       const state = this.peerConnection?.connectionState;
-      console.log("连接状态:", state);
-
+      this.isVideoChatStarted = state === "disconnected";
       if (state === "disconnected") {
         this.closePeerConnection();
       }
     };
-  }
-
-  // // 激活ICE候选处理器
-  // private _activateIceCandidateHandler() {
-  //   if (!this.peerConnection) return;
-
-  //   // 临时存储ICE候选的队列
-  //   const iceCandidateQueue: RTCIceCandidate[] = [];
-  //   let isProcessing = false;
-
-  //   this.peerConnection.onicecandidate = (event) => {
-  //     if (event.candidate) {
-  //       console.log("收集到ICE候选:", event.candidate);
-  //       iceCandidateQueue.push(event.candidate);
-
-  //       // 处理队列中的候选
-  //       if (!isProcessing) {
-  //         isProcessing = true; // 标记为正在处理
-  //         this._processIceCandidateQueue(iceCandidateQueue, () => {
-  //           isProcessing = false; // 处理完成后重置状态
-  //         });
-  //       }
-  //     } else {
-  //       console.log("ICE候选收集完成");
-  //     }
-  //   };
-  // }
-
-  // // 处理ICE候选队列
-  // private _processIceCandidateQueue(
-  //   queue: RTCIceCandidate[],
-  //   onComplete: () => void
-  // ) {
-  //   // 实际项目中这里应该实现发送ICE候选的逻辑
-  //   console.log("处理ICE候选队列:", queue.length);
-  //   setTimeout(() => {
-  //     console.log("处理ICE候选队列:", queue.length);
-  //     queue.length = 0; // 清空队列
-  //     onComplete(); // 通知处理完成
-  //   }, 0);
-  // }
-
-  // 设置数据通道处理器
-  private _setupChannelHandlers(handlers: {
-    onOpen: () => void;
-    onMessage: (event: MessageEvent) => void;
-    onClose: () => void;
-  }) {
-    if (!this.dataChannel) return;
-
-    this.dataChannel.onopen = handlers.onOpen;
-    this.dataChannel.onmessage = handlers.onMessage;
-    this.dataChannel.onclose = handlers.onClose;
   }
 
   // 重置连接状态
@@ -301,92 +283,6 @@ class PeerConnectionStore {
     this.isWebRTCConnected = false;
     this.isAudioStreamAdded = false;
     this.isVideoStreamAdded = false;
-  }
-
-  /**
-   * 设置ICE候选处理器
-   * @param onCandidate 候选处理器回调
-   */
-  setupIceCandidateHandler(onCandidate: (candidate: RTCIceCandidate) => void) {
-    console.log("开始监听ICE候选");
-
-    if (!this.peerConnection) return;
-
-    this.peerConnection.onicecandidate = (event) => {
-      if (event.candidate) {
-        console.log("收集到ICE候选:", event.candidate);
-        onCandidate(event.candidate);
-      } else {
-        console.log("ICE候选收集完成");
-      }
-    };
-    console.log("ICE候选处理器设置完成");
-  }
-
-  /**
-   * 监听ICE候选者
-   * @param onCandidate 当收集到ICE候选者时调用的回调函数
-   * @param onComplete 当ICE候选者收集完成时调用的回调函数
-   */
-  // 添加ICE候选队列
-  private iceCandidateQueue: RTCIceCandidate[] = [];
-  private iceCandidateHandler: ((candidate: RTCIceCandidate) => void) | null =
-    null;
-
-  /**
-   * 设置ICE候选监听器
-   */
-  setupIceCandidateListener(
-    onCandidate: (candidate: RTCIceCandidate) => void,
-    onComplete: () => void
-  ) {
-    if (!this.peerConnection) return;
-
-    this.iceCandidateHandler = onCandidate;
-
-    console.log("设置监听ICE候选");
-
-    this.peerConnection.onicecandidate = (event) => {
-      if (event.candidate) {
-        // 先存入队列，不立即发送
-        this.iceCandidateQueue.push(event.candidate);
-        console.log("ICE候选已存入队列:", event.candidate);
-      } else {
-        console.log("ICE 候选者收集完成");
-        onComplete();
-      }
-    };
-  }
-
-  /**
-   * 开始发送ICE候选
-   */
-  startSendingIceCandidates() {
-    if (!this.remoteDescriptionSet) return;
-    console.log("开始发送ICE候选");
-
-    // 发送队列中的所有ICE候选
-    while (this.iceCandidateQueue.length > 0 && this.iceCandidateHandler) {
-      const candidate = this.iceCandidateQueue.shift();
-      if (candidate) {
-        console.log("从队列发送ICE候选:", candidate);
-        this.iceCandidateHandler(candidate);
-      }
-    }
-  }
-
-  // 修改setRemoteDescription方法
-  async setRemoteDescription(desc: RTCSessionDescriptionInit) {
-    if (!this.peerConnection) return;
-
-    await this.peerConnection.setRemoteDescription(
-      new RTCSessionDescription(desc)
-    );
-    this.remoteDescriptionSet = true;
-    console.log("远程描述设置完成:", desc.type);
-
-    // 设置远程描述后开始发送ICE候选
-    // this.startSendingIceCandidates();
   }
 }
 

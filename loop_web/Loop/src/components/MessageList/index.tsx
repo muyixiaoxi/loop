@@ -36,9 +36,7 @@ const MessageList = observer(() => {
       // 使用引入的接口获取好友列表
       const friends: any = await getFriendList();
       setFriendsList(friends.data);
-      console.log(friends.data, "好友列表");
     } catch (error) {
-      console.error("获取好友列表失败:", error);
       message.error("获取好友列表失败，请重试");
     }
   };
