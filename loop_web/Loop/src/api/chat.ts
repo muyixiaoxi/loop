@@ -59,21 +59,15 @@ export const AIchat = async (
       while (true) {
         const { done, value } = await reader.read();
         if (done) {
+          // 处理最后剩余的缓冲区内容
+          processBuffer(buffer, onMessage);
           break;
         }
         const decodedChunk = decoder.decode(value, { stream: true });
         buffer += decodedChunk;
-
-        const eventPattern = /^event:\s*message\s*\n\s*data:\s*(.*?)(?:\n\n|$)/gms;
-        let match;
-        while ((match = eventPattern.exec(buffer))) {
-          let message = match[1].trimEnd();
-          if (message === "event:message") {
-            message = ' ';
-          }
-          onMessage(message);
-        }
-        buffer = buffer.slice(eventPattern.lastIndex);
+        processBuffer(buffer, onMessage);
+        // 清除已经处理过的部分
+        buffer = buffer.slice(getLastMatchIndex(buffer));
       }
     }
   } catch (error) {
@@ -82,3 +76,37 @@ export const AIchat = async (
     }
   }
 };
+
+/**
+ * 处理缓冲区中的消息
+ * @param buffer 缓冲区内容
+ * @param onMessage 消息处理回调函数
+ */
+function processBuffer(buffer: string, onMessage: (message: string) => void) {
+  const eventPattern = /^event:\s*message\s*\n\s*data:\s*(.*?)(?:\n\n|$)/gms;
+  let match;
+  while ((match = eventPattern.exec(buffer))) {
+    let message = match[1].trimEnd();
+    console.log(message);
+    
+    if (message === "event:message") {
+      message = ' ';
+    }
+    onMessage(message);
+  }
+}
+
+/**
+ * 获取正则表达式最后一次匹配的索引
+ * @param buffer 缓冲区内容
+ * @returns 最后一次匹配的索引
+ */
+function getLastMatchIndex(buffer: string): number {
+  const eventPattern = /^event:\s*message\s*\n\s*data:\s*(.*?)(?:\n\n|$)/gms;
+  let lastIndex = 0;
+  let match;
+  while ((match = eventPattern.exec(buffer))) {
+    lastIndex = eventPattern.lastIndex;
+  }
+  return lastIndex;
+}
