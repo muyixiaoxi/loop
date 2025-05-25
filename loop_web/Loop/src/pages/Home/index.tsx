@@ -712,7 +712,7 @@ const Home = observer(() => {
                   content: "对方已挂断，通话结束",
                 },
               });
-              message.success("对方已挂断");
+              message.success("通话结束");
             }}
           />
         </Modal>

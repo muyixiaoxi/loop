@@ -2,8 +2,8 @@ import "./index.scss";
 import { observer } from "mobx-react-lite";
 import { v4 as uuidv4 } from "uuid";
 import { useState, useContext, useRef, useEffect } from "react";
-
-import { Input, Drawer, message, Button, Spin,Dropdown } from "antd"; // 引入 Spin 组件
+import {OpenAIOutlined } from "@ant-design/icons"; // 引入 OpenAIOutlined 图标
+import { Input, Drawer, message, Button, Spin, Dropdown, Modal } from "antd"; // 引入 Modal 组件
 import type { MenuProps } from "antd"; // 引入 MenuProps 类型
 
 import { WebSocketContext } from "@/pages/Home";
@@ -45,6 +45,10 @@ const Chat = observer((props: ChatProps) => {
   const [isAILoading, setIsAILoading] = useState(false);
   const [showCursor, setShowCursor] = useState(false);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
+
+  // 新增：管理模态框状态和内容
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [modalContent, setModalContent] = useState("");
 
   const handleSendMessage = async () => {
     const messageId = uuidv4();
@@ -166,33 +170,22 @@ const Chat = observer((props: ChatProps) => {
       prompt: messageContent,
     };
     setIsAILoading(true);
+    setIsModalVisible(true);
+    setModalContent("");
+  
+    // 用于标记是否是首次收到消息
+    let isFirstMessage = true;
 
     try {
       await AIchat(
         data as any,
         (message) => {
-          setInputValue((prev) => {
-            const newText = prev + message;
-            setShowCursor(true); // 显示光标
-
-            // 确保 DOM 更新后设置光标位置
-            setTimeout(() => {
-              const textArea = textAreaRef.current;
-              if (textArea instanceof HTMLTextAreaElement) {
-                textArea.focus();
-                // 计算新添加内容的结束位置
-                const endPos = newText.length;
-                textArea.setSelectionRange(endPos, endPos);
-              }
-            }, 0);
-
-            // 短暂延迟后隐藏光标
-            setTimeout(() => {
-              setShowCursor(false);
-            }, 500); // 可以调整延迟时间，让光标闪烁更自然
-
-            return newText;
-          });
+          if (isFirstMessage) {
+            // 首次收到消息时，取消加载状态
+            setIsAILoading(false);
+            isFirstMessage = false;
+          }
+          setModalContent((prev) => prev + message);
         },
         (error) => {
           console.error('调用 AIchat 失败:', error);
@@ -204,8 +197,17 @@ const Chat = observer((props: ChatProps) => {
       console.error('调用 AIchat 过程中出错:', error);
       message.error('获取 AI 回复失败');
     } finally {
-      setIsAILoading(false);
+      // 如果在整个过程中都没有收到消息，才在最后取消加载状态
+      if (isFirstMessage) {
+        setIsAILoading(false);
+      }
     }
+  };
+
+  // 新增应用按钮处理函数
+  const handleApplyReply = () => {
+    setInputValue((prev) => prev + modalContent);
+    setIsModalVisible(false);
   };
 
   return (
@@ -259,60 +261,78 @@ const Chat = observer((props: ChatProps) => {
               {
                 key: 'ai-reply',
                 label: (
-                  <Button type="primary" onClick={() => handleAIReply(message.content)}>
-                    AI 回复
-                  </Button>
+                  <a
+                    onClick={() => handleAIReply(message.content)}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      width: '100%'
+                    }}
+                  >
+                    <span>AI 回复</span>
+                    <OpenAIOutlined style={{ marginLeft: 4 }} />
+                  </a>
                 ),
               },
             ],
           };
 
-          return (
-            <Dropdown key={message.id} menu={menu} trigger={["hover"]}>
-              <div
-                className={`message ${
-                  message.sendId === userInfo.id ? "sent" : "received"
-                }`}
-              >
-                {/* 信息是好友发的，展示好友头像 */}
-                {message.sendId !== userInfo.id && (
-                  <img
-                    src={message.sender_avatar}
-                    alt="avatar"
-                    className="message-avatar"
-                  />
+          // 判断是否是好友消息，仅好友消息添加下拉框
+          const isFriendMessage = message.sendId !== userInfo.id;
+
+          const messageElement = (
+            <div
+              className={`message ${
+                message.sendId === userInfo.id ? "sent" : "received"
+              }`}
+            >
+              {/* 信息是好友发的，展示好友头像 */}
+              {isFriendMessage && (
+                <img
+                  src={message.sender_avatar}
+                  alt="avatar"
+                  className="message-avatar"
+                />
+              )}
+              <div className="message-content">
+                {/* 添加状态指示器 */}
+                {!isFriendMessage && (
+                  <div className="message-status">
+                    {message.status === "sending" && (
+                      <div className="status-sending">
+                        <div className="loading-circle"></div>
+                      </div>
+                    )}
+                    {message.status === "failed" && (
+                      <div
+                        className="status-failed"
+                        onClick={() => handleResendMessage(message)}
+                      >
+                        <div className="exclamation-mark">!</div>
+                      </div>
+                    )}
+                  </div>
                 )}
-                <div className="message-content">
-                  {/* 添加状态指示器 */}
-                  {message.sendId === userInfo.id && (
-                    <div className="message-status">
-                      {message.status === "sending" && (
-                        <div className="status-sending">
-                          <div className="loading-circle"></div>
-                        </div>
-                      )}
-                      {message.status === "failed" && (
-                        <div
-                          className="status-failed"
-                          onClick={() => handleResendMessage(message)}
-                        >
-                          <div className="exclamation-mark">!</div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  <div className="message-text">{message.content}</div>
-                </div>
-                {/* 信息是自己发的，展示自身头像 */}
-                {message.sendId === userInfo.id && (
-                  <img
-                    src={userInfo.avatar}
-                    alt="avatar"
-                    className="message-avatar"
-                  />
-                )}
+                <div className="message-text">{message.content}</div>
               </div>
+              {/* 信息是自己发的，展示自身头像 */}
+              {!isFriendMessage && (
+                <img
+                  src={userInfo.avatar}
+                  alt="avatar"
+                  className="message-avatar"
+                />
+              )}
+            </div>
+          );
+
+          return isFriendMessage ? (
+            <Dropdown key={message.id} menu={menu} trigger={["hover"]}>
+              {messageElement}
             </Dropdown>
+          ) : (
+            messageElement
           );
         })}
         <div ref={messagesEndRef} />
@@ -333,13 +353,9 @@ const Chat = observer((props: ChatProps) => {
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleTextAreaKeyDown}
         />
-        {/* 移除多余的光标显示逻辑 */}
-        {isAILoading && (
-          <div style={{ textAlign: "right", marginTop: "8px" }}>
-            <Spin />
-          </div>
-        )}
+        {/* 移除输入框的加载状态 */}
       </div>
+
       <Drawer
         title="聊天信息"
         placement="right"
@@ -350,7 +366,28 @@ const Chat = observer((props: ChatProps) => {
         <ChatInfo />
       </Drawer>
 
-      
+      {/* 修改模态框 */}
+      <Modal
+        title="AI 回复"
+        visible={isModalVisible}
+        onCancel={() => setIsModalVisible(false)}
+        footer={[
+          <Button key="apply" type="primary" onClick={handleApplyReply}>
+            应用
+          </Button>,
+          <Button key="cancel" onClick={() => setIsModalVisible(false)}>
+            取消
+          </Button>,
+        ]}
+      >
+        {isAILoading ? (
+          <div style={{ textAlign: "center" }}>
+            <Spin />
+          </div>
+        ) : (
+          <p>{modalContent}</p>
+        )}
+      </Modal>
     </div>
   );
 });
