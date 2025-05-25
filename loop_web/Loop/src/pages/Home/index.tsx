@@ -283,6 +283,10 @@ const Home = observer(() => {
   //作为发送者开启视频通话
   const initiateVideoCall = async () => {
     try {
+      if (isCalling || isVideoModalVisible) {
+        // 已经处于呼叫或被呼叫状态，直接返回
+        return;
+      }
       // 1. 先检查设备可用性
       const devices = await navigator.mediaDevices.enumerateDevices();
       const hasVideo = devices.some((device) => device.kind === "videoinput");
