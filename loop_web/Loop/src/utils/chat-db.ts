@@ -91,7 +91,7 @@ class ChatDB extends Dexie {
       .toArray();
 
     // 按置顶状态和最后发送时间排序
-    return conversations.sort((a: any, b: any) => {
+    return conversations.sort((a, b) => {
       // 如果a是置顶而b不是，a排在前面
       if (a.isPinned && !b.isPinned) return -1;
       // 如果b是置顶而a不是，b排在前面

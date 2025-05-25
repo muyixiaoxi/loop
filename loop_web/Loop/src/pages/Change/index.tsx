@@ -63,7 +63,6 @@ const Change = () => {
     }
 
     try {
-      console.log(selectedUser.phone, decryptData(selectedUser.phone));
       const { code, data, msg }: any = await LoginPost({
         phone: decryptData(selectedUser.phone),
         password: decryptData(selectedUser.password),

@@ -54,7 +54,6 @@ const FirendList = observer(() => {
     const res: any = await searchNewfriend();
     if (res.code === 1000) {
       setNewFriendList(res.data);
-      console.log(res);
     }
   };
 
@@ -114,24 +113,18 @@ const FirendList = observer(() => {
     }));
 
     setFriendList(friendsWithType);
-
-    console.log(res, "----");
   };
 
   const getGroupListData = async () => {
     try {
-      const res = await getGroupList();
-      // 假设接口返回的数据结构是 { data: [...] }
+      const res: any = await getGroupList();
       if (res.data && Array.isArray(res.data)) {
         setGroupList(res.data);
-        console.log("群聊列表:", res.data);
       } else {
         console.error("群聊数据格式不正确");
-        message.error("获取群聊列表出错，请稍后重试");
       }
     } catch (error) {
       console.error("获取群聊列表出错:", error);
-      message.error("获取群聊列表出错，请稍后重试");
     }
   };
 
@@ -158,7 +151,6 @@ const FirendList = observer(() => {
     setSearchStatus("loading");
     try {
       const res: any = await searchUser(phone);
-      console.log("搜索结果:", res);
 
       if (res.code === 1000) {
         if (res.data) {

@@ -6,8 +6,8 @@ interface ChatVideoAcceptorProps {
     name: string;
     avatar: string;
   };
-  onAccept: () => void;
-  onReject: () => void;
+  onAccept: () => void; // 接受按钮回调
+  onReject: () => void; // 拒绝按钮回调
   visible: boolean;
   timeout?: number; // 超时自动拒绝时间(毫秒)
 }

@@ -114,7 +114,6 @@ const ChatInfo = (props: ChatInfoProps) => {
   const handleGroupMemberList = async () => {
     try {
       const res: any = await getGroupMemberList(friendId);
-      console.log("群成员列表:", res.data);
       setGroupMemberList(res.data);
     } catch (error) {
       console.error("获取群成员列表失败:", error);
@@ -127,7 +126,7 @@ const ChatInfo = (props: ChatInfoProps) => {
   const handleGroupInfo = async () => {
     try {
       const res: any = await getGroupInfo(friendId);
-      console.log("群信息:", res.data);
+
       setGroupInfo(res.data);
     } catch (error) {
       console.error("获取群信息失败:", error);
@@ -193,7 +192,6 @@ const ChatInfo = (props: ChatInfoProps) => {
     const res: any = await getNotInGroupUserList(friendId);
     setNotInGroupUserList(res.data);
     setIsModalOpen(true);
-    console.log("未在群中的用户列表", res);
   };
 
   /**
@@ -272,7 +270,6 @@ const ChatInfo = (props: ChatInfoProps) => {
         avatar: editGroupInfo.avatar,
         describe: editGroupInfo.describe,
       };
-      console.log("修改群信息:", Params, editGroupInfo);
       const res: any = await updateGroupInfo(Params);
       setGroupInfo(res.data); // 更新群信息
       setShowEditGroupDrawer(false);

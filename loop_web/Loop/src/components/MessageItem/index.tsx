@@ -56,7 +56,6 @@ const FriendItem = (props: FriendItemProps) => {
       Number(chatType)
     ); // 获取会话数据
     setCurrentMessages(res?.messages); // 设置当前消息
-    console.log(chatType, "chatType取会话数据");
     setCurrentChatInfo({ type: Number(chatType) }); // 设置当前聊天信息
 
     console.log(res, "获取会话数据");
