@@ -2,7 +2,7 @@ import "./index.scss";
 import { observer } from "mobx-react-lite";
 import { v4 as uuidv4 } from "uuid";
 import { useState, useContext, useRef, useEffect } from "react";
-import { Input, Drawer, Modal, message } from "antd"; // 引入 Modal 组件
+import { Input, Drawer, Modal, message, Tooltip, Button, Spin } from "antd"; // 引入 Spin 组件
 import { WebSocketContext } from "@/pages/Home";
 import chatStore from "@/store/chat";
 import userStore from "@/store/user";
@@ -11,6 +11,19 @@ import { getChatDB } from "@/utils/chat-db";
 import { usePeerConnectionStore } from "@/store/PeerConnectionStore"; // 导入 PeerConnectionStore
 import ChatInfo from "@/components/ChatInfo"; // 导入 ChatInfo 组件
 import ChatPrivateVideo from "@/components/ChatPrivateVideo";
+import { AIchat } from "@/api/chat";
+
+// 自定义 Tooltip 样式
+const customTooltipStyle = {
+  backgroundColor: "#fff",
+  color: "#000",
+};
+
+// 假设 submitOfflineType 定义在 chat.ts 中，这里可以不用重复定义
+// 如果没有全局定义，需要在这里定义
+interface submitOfflineType {
+  prompt: string;
+}
 
 const Chat = observer(() => {
   const { userInfo } = userStore;
@@ -39,6 +52,11 @@ const Chat = observer(() => {
 
   // 在组件状态中添加远程视频流状态
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+
+  // 新增：管理 SSE 加载状态
+  const [isAILoading, setIsAILoading] = useState(false);
+  // 将 showCursor 状态提升到组件顶层
+  const [showCursor, setShowCursor] = useState(false);
 
   /**
    * 发送消息
@@ -260,6 +278,50 @@ const Chat = observer(() => {
     }
   };
 
+  // 处理 AI 回复的函数
+  const handleAIReply = async (messageContent: string) => {
+    const data: { prompt: string } = {
+      prompt: messageContent,
+    };
+    setIsAILoading(true);
+    const wordQueue: string[] = [];
+
+    const processWordQueue = async () => {
+      setShowCursor(true); // 开始处理词队列时显示光标
+      while (wordQueue.length > 0) {
+        const word = wordQueue.shift()!;
+        setInputValue((prev) => prev + word);
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+      setShowCursor(false); // 处理完成后隐藏光标
+    };
+
+    try {
+      await AIchat(
+        data as any,
+        (message) => {
+          const words = message.split(/(\s+)/);
+          words.forEach((word) => {
+            wordQueue.push(word);
+          });
+          if (wordQueue.length === words.length) {
+            processWordQueue();
+          }
+        },
+        (error) => {
+          console.error("调用 AIchat 失败:", error);
+          message.error("获取 AI 回复失败");
+          setIsAILoading(false);
+        }
+      );
+    } catch (error) {
+      console.error("调用 AIchat 过程中出错:", error);
+      message.error("获取 AI 回复失败");
+    } finally {
+      setIsAILoading(false);
+    }
+  };
+
   return (
     <div className="chat-container">
       <div className="chat-header">
@@ -314,13 +376,28 @@ const Chat = observer(() => {
               message.sendId === userInfo.id ? "sent" : "received"
             }`}
           >
-            {/* 信息是好友发的，展示好友头像 */}
+            {/* 信息是好友发的，展示好友头像并添加自定义 Tooltip */}
             {message.sendId !== userInfo.id && (
-              <img
-                src={message.sender_avatar}
-                alt="avatar"
-                className="message-avatar"
-              />
+              <Tooltip
+                overlay={
+                  <div>
+                    <div>这是好友发送的消息</div>
+                    <Button
+                      type="primary"
+                      onClick={() => handleAIReply(message.content)}
+                    >
+                      AI 回复
+                    </Button>
+                  </div>
+                }
+                overlayStyle={customTooltipStyle}
+              >
+                <img
+                  src={message.sender_avatar}
+                  alt="avatar"
+                  className="message-avatar"
+                />
+              </Tooltip>
             )}
             <div className="message-content">
               {/* 添加状态指示器 */}
@@ -341,7 +418,27 @@ const Chat = observer(() => {
                   )}
                 </div>
               )}
-              <div className="message-text">{message.content}</div>
+              {/* 信息是好友发的，消息内容添加自定义 Tooltip */}
+              {message.sendId !== userInfo.id ? (
+                <Tooltip
+                  overlay={
+                    <div>
+                      <div>这是好友发送的消息</div>
+                      <Button
+                        type="primary"
+                        onClick={() => handleAIReply(message.content)}
+                      >
+                        AI 回复
+                      </Button>
+                    </div>
+                  }
+                  overlayStyle={customTooltipStyle}
+                >
+                  <div className="message-text">{message.content}</div>
+                </Tooltip>
+              ) : (
+                <div className="message-text">{message.content}</div>
+              )}
             </div>
             {/* 信息是自己发的，展示自身头像 */}
             {message.sendId === userInfo.id && (
@@ -371,8 +468,13 @@ const Chat = observer(() => {
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleTextAreaKeyDown}
           />
+          {showCursor && <span className="blinking-cursor">|</span>}
         </div>
-        {/* 移除发送群聊消息的按钮 */}
+        {isAILoading && (
+          <div style={{ textAlign: "right", marginTop: "8px" }}>
+            <Spin />
+          </div>
+        )}
       </div>
 
       <Drawer
