@@ -2,14 +2,15 @@ import "./index.scss";
 import { observer } from "mobx-react-lite";
 import { v4 as uuidv4 } from "uuid";
 import { useState, useContext, useRef, useEffect } from "react";
-import { Input, Drawer, Modal, message, Tooltip, Button, Spin } from "antd"; // 引入 Spin 组件
+import { Input, Drawer, Modal, message,  Button, Spin, Dropdown } from "antd";
+import type { MenuProps } from "antd"; // 引入 MenuProps 类型
 import { WebSocketContext } from "@/pages/Home";
 import chatStore from "@/store/chat";
 import userStore from "@/store/user";
 import globalStore from "@/store/global";
 import { getChatDB } from "@/utils/chat-db";
-import { usePeerConnectionStore } from "@/store/PeerConnectionStore"; // 导入 PeerConnectionStore
-import ChatInfo from "@/components/ChatInfo"; // 导入 ChatInfo 组件
+import { usePeerConnectionStore } from "@/store/PeerConnectionStore";
+import ChatInfo from "@/components/ChatInfo";
 import ChatPrivateVideo from "@/components/ChatPrivateVideo";
 import { AIchat } from "@/api/chat";
 
@@ -27,8 +28,7 @@ interface submitOfflineType {
 
 const Chat = observer(() => {
   const { userInfo } = userStore;
-  const { sendMessageWithTimeout, sendNonChatMessage } =
-    useContext<any>(WebSocketContext); // 使用WebSocket上下文
+  const { sendMessageWithTimeout, sendNonChatMessage } = useContext<any>(WebSocketContext);
   const {
     currentFriendId,
     currentFriendName,
@@ -37,40 +37,29 @@ const Chat = observer(() => {
     setCurrentMessages,
     currentChatInfo,
   } = chatStore;
-  const { timeDifference } = globalStore; // 引入时间差函数
-  const db = getChatDB(userInfo.id); // 连接数据库
+  const { timeDifference } = globalStore;
+  const db = getChatDB(userInfo.id);
 
   const chatType = currentChatInfo.type;
 
-  const { TextArea } = Input; // 使用TextArea组件
-  const [inputValue, setInputValue] = useState(""); // 输入框的值
-  const [openDrawer, setOpenDrawer] = useState(false); // 是否打开抽屉
-  // 新增：管理视频弹框的显示状态
+  const { TextArea } = Input;
+  const [inputValue, setInputValue] = useState("");
+  const [openDrawer, setOpenDrawer] = useState(false);
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
-  // 新增：管理本地视频流
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-
-  // 在组件状态中添加远程视频流状态
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
-
-  // 新增：管理 SSE 加载状态
   const [isAILoading, setIsAILoading] = useState(false);
-  // 将 showCursor 状态提升到组件顶层
   const [showCursor, setShowCursor] = useState(false);
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
-  /**
-   * 发送消息
-   */
   const handleSendMessage = async () => {
-    const messageId = uuidv4(); // 生成唯一的消息ID
-
-    // 在这里处理发送消息的逻辑，例如发送到服务器或WebSocket服务器
+    const messageId = uuidv4();
     const message = {
       cmd: chatType,
       data: {
         seq_id: messageId,
         sender_id: userInfo.id,
-        receiver_id: currentFriendId, // 单聊使用好友 ID，群聊使用群聊 ID
+        receiver_id: currentFriendId,
         content: inputValue,
         send_time: Date.now() + timeDifference,
         type: 0,
@@ -79,7 +68,6 @@ const Chat = observer(() => {
       },
     };
 
-    // 先添加到本地存储（乐观更新）
     await db.upsertConversation(userInfo.id, {
       targetId: currentFriendId,
       type: chatType,
@@ -102,18 +90,13 @@ const Chat = observer(() => {
       ],
     });
 
-    // 更新聊天记录
     handleNewConversation();
-
-    // 发送消息到服务器
     sendMessageWithTimeout(message);
-    setInputValue(""); // 清空输入框
+    setInputValue("");
   };
 
-  //打开视频通话
   const handlevideo = async () => {
     try {
-      // 1. 先检查设备可用性
       const devices = await navigator.mediaDevices.enumerateDevices();
       const hasVideo = devices.some((device) => device.kind === "videoinput");
       const hasAudio = devices.some((device) => device.kind === "audioinput");
@@ -122,7 +105,6 @@ const Chat = observer(() => {
         throw new Error("未检测到可用的摄像头或麦克风");
       }
 
-      // 2. 获取媒体流时添加错误处理
       const stream = await navigator.mediaDevices
         .getUserMedia({
           video: {
@@ -137,44 +119,35 @@ const Chat = observer(() => {
           throw err;
         });
 
-      // 3. 添加设备状态检查
       if (!stream.getVideoTracks().length || !stream.getAudioTracks().length) {
         throw new Error("获取的媒体流中没有视频或音频轨道");
       }
 
       setLocalStream(stream);
-
-      // 4. 创建PeerConnection (简化参数传递)
       usePeerConnectionStore.createPeerConnection(stream);
-
-      // 5. 设置远程流处理器
       usePeerConnectionStore.setupMediaStreamHandlers(setRemoteStream);
-
-      // 6. 创建并发送Offer
       const offer = await usePeerConnectionStore.createOffer();
 
-      // 发送Offer消息
-      const cmd = chatType === 1 ? 4 : 7; // 4:私聊视频呼叫, 7:群聊视频呼叫
+      const cmd = chatType === 1 ? 4 : 7;
       sendNonChatMessage({
         cmd,
         data: {
           sender_id: userInfo.id,
           receiver_id: Number(currentFriendId),
           session_description: offer,
+          sender_nickname: userInfo.nickname,
+          sender_avatar: userInfo.avatar,
         },
       });
-      //发送ICE
+
       usePeerConnectionStore.setupIceCandidateListener(
         (candidate) => {
-          // 这个回调会在设置本地描述后触发
           sendNonChatMessage({
-            cmd: 6, // ICE 候选者消息
+            cmd: 6,
             data: {
-              sender_id: userInfo.id, // 发送者 ID
-              receiver_id: Number(currentFriendId), // 接收者 ID
-              name: userInfo.nickname, // 发送者名称
-              avatar: userInfo.avatar, // 发送者头像
-              candidate_init: candidate, // 候选者信息
+              sender_id: userInfo.id,
+              receiver_id: Number(currentFriendId),
+              candidate_init: candidate,
             },
           });
         },
@@ -183,13 +156,11 @@ const Chat = observer(() => {
         }
       );
 
-      // 6. 显示视频弹框
       setIsVideoModalVisible(true);
     } catch (error) {
       console.error("获取用户媒体或发送offer失败:", error);
       message.error("启动视频通话失败");
 
-      // 清理资源
       if (localStream) {
         localStream.getTracks().forEach((track) => track.stop());
         setLocalStream(null);
@@ -198,12 +169,11 @@ const Chat = observer(() => {
     }
   };
 
-  // 重新发送
   const handleResendMessage = async (failedMessage: any) => {
     const message = {
       cmd: chatType,
       data: {
-        seq_id: uuidv4(), // 生成新的消息ID
+        seq_id: uuidv4(),
         sender_id: userInfo.id,
         receiver_id: failedMessage.targetId,
         content: failedMessage.content,
@@ -214,7 +184,6 @@ const Chat = observer(() => {
       },
     };
 
-    // 更新本地存储状态为发送中
     await db.upsertConversation(userInfo.id, {
       targetId: failedMessage.targetId,
       type: chatType,
@@ -237,43 +206,35 @@ const Chat = observer(() => {
       ],
     });
 
-    // 更新聊天记录
     handleNewConversation();
-
-    // 发送信息到服务器
-    sendMessageWithTimeout(message); // 重新发送消息
+    sendMessageWithTimeout(message);
   };
 
-  // 获取当前好友聊天记录
   const handleNewConversation = async () => {
-    // 点击获取新的会话好友数据
     const res: any = await db.getConversation(
       userInfo.id,
       Number(currentFriendId),
       chatType
-    ); // 获取会话数据
-    setCurrentMessages(res?.messages); // 设置当前消息
+    );
+    setCurrentMessages(res?.messages);
   };
 
-  const messagesEndRef = useRef<HTMLDivElement>(null); // 消息列表的最后一个元素
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // 自动滚动到底部的效果
   useEffect(() => {
     scrollToBottom();
   }, [currentMessages]);
 
   const handleTextAreaKeyDown = async (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.ctrlKey) {
-      e.preventDefault(); // 阻止默认换行行为
-      // 发送信息
+      e.preventDefault();
       handleSendMessage();
     }
     if (e.key === "Enter" && e.ctrlKey) {
-      // 允许换行
       setInputValue((prev) => prev + "\n");
     }
   };
@@ -284,39 +245,43 @@ const Chat = observer(() => {
       prompt: messageContent,
     };
     setIsAILoading(true);
-    const wordQueue: string[] = [];
-
-    const processWordQueue = async () => {
-      setShowCursor(true); // 开始处理词队列时显示光标
-      while (wordQueue.length > 0) {
-        const word = wordQueue.shift()!;
-        setInputValue((prev) => prev + word);
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      }
-      setShowCursor(false); // 处理完成后隐藏光标
-    };
 
     try {
       await AIchat(
         data as any,
         (message) => {
-          const words = message.split(/(\s+)/);
-          words.forEach((word) => {
-            wordQueue.push(word);
+          setInputValue((prev) => {
+            const newText = prev + message;
+            setShowCursor(true); // 显示光标
+
+            // 确保 DOM 更新后设置光标位置
+            setTimeout(() => {
+              const textArea = textAreaRef.current;
+              if (textArea instanceof HTMLTextAreaElement) {
+                textArea.focus();
+                // 计算新添加内容的结束位置
+                const endPos = newText.length;
+                textArea.setSelectionRange(endPos, endPos);
+              }
+            }, 0);
+
+            // 短暂延迟后隐藏光标
+            setTimeout(() => {
+              setShowCursor(false);
+            }, 500); // 可以调整延迟时间，让光标闪烁更自然
+
+            return newText;
           });
-          if (wordQueue.length === words.length) {
-            processWordQueue();
-          }
         },
         (error) => {
-          console.error("调用 AIchat 失败:", error);
-          message.error("获取 AI 回复失败");
+          console.error('调用 AIchat 失败:', error);
+          message.error('获取 AI 回复失败');
           setIsAILoading(false);
         }
       );
     } catch (error) {
-      console.error("调用 AIchat 过程中出错:", error);
-      message.error("获取 AI 回复失败");
+      console.error('调用 AIchat 过程中出错:', error);
+      message.error('获取 AI 回复失败');
     } finally {
       setIsAILoading(false);
     }
@@ -333,7 +298,6 @@ const Chat = observer(() => {
         </div>
         <div className="chat-header-right">
           <div className="more-video" onClick={handlevideo}>
-            {/* 视频 */}
             <svg
               fill="#E46342"
               height="34px"
@@ -350,7 +314,6 @@ const Chat = observer(() => {
               setOpenDrawer(true);
             }}
           >
-            {/* 更多 */}
             <svg
               fill="#E46342"
               height="28px"
@@ -369,167 +332,119 @@ const Chat = observer(() => {
       </div>
 
       <div className="chat-center">
-        {currentMessages?.map((message: any) => (
-          <div
-            key={message.id}
-            className={`message ${
-              message.sendId === userInfo.id ? "sent" : "received"
-            }`}
-          >
-            {/* 信息是好友发的，展示好友头像并添加自定义 Tooltip */}
-            {message.sendId !== userInfo.id && (
-              <Tooltip
-                overlay={
-                  <div>
-                    <div>这是好友发送的消息</div>
-                    <Button
-                      type="primary"
-                      onClick={() => handleAIReply(message.content)}
-                    >
-                      AI 回复
-                    </Button>
-                  </div>
-                }
-                overlayStyle={customTooltipStyle}
+        {currentMessages?.map((message: any) => {
+          const menu: MenuProps = {
+            items: [
+              {
+                key: 'ai-reply',
+                label: (
+                  <Button type="primary" onClick={() => handleAIReply(message.content)}>
+                    AI 回复
+                  </Button>
+                ),
+              },
+            ],
+          };
+
+          return (
+            <Dropdown key={message.id} menu={menu} trigger={["hover"]}>
+              <div
+                className={`message ${
+                  message.sendId === userInfo.id ? "sent" : "received"
+                }`}
               >
-                <img
-                  src={message.sender_avatar}
-                  alt="avatar"
-                  className="message-avatar"
-                />
-              </Tooltip>
-            )}
-            <div className="message-content">
-              {/* 添加状态指示器 */}
-              {message.sendId === userInfo.id && (
-                <div className="message-status">
-                  {message.status === "sending" && (
-                    <div className="status-sending">
-                      <div className="loading-circle"></div>
+                {/* 信息是好友发的，展示好友头像 */}
+                {message.sendId !== userInfo.id && (
+                  <img
+                    src={message.sender_avatar}
+                    alt="avatar"
+                    className="message-avatar"
+                  />
+                )}
+                <div className="message-content">
+                  {/* 添加状态指示器 */}
+                  {message.sendId === userInfo.id && (
+                    <div className="message-status">
+                      {message.status === "sending" && (
+                        <div className="status-sending">
+                          <div className="loading-circle"></div>
+                        </div>
+                      )}
+                      {message.status === "failed" && (
+                        <div
+                          className="status-failed"
+                          onClick={() => handleResendMessage(message)}
+                        >
+                          <div className="exclamation-mark">!</div>
+                        </div>
+                      )}
                     </div>
                   )}
-                  {message.status === "failed" && (
-                    <div
-                      className="status-failed"
-                      onClick={() => handleResendMessage(message)}
-                    >
-                      <div className="exclamation-mark">!</div>
-                    </div>
-                  )}
-                </div>
-              )}
-              {/* 信息是好友发的，消息内容添加自定义 Tooltip */}
-              {message.sendId !== userInfo.id ? (
-                <Tooltip
-                  overlay={
-                    <div>
-                      <div>这是好友发送的消息</div>
-                      <Button
-                        type="primary"
-                        onClick={() => handleAIReply(message.content)}
-                      >
-                        AI 回复
-                      </Button>
-                    </div>
-                  }
-                  overlayStyle={customTooltipStyle}
-                >
                   <div className="message-text">{message.content}</div>
-                </Tooltip>
-              ) : (
-                <div className="message-text">{message.content}</div>
-              )}
-            </div>
-            {/* 信息是自己发的，展示自身头像 */}
-            {message.sendId === userInfo.id && (
-              <img
-                src={userInfo.avatar}
-                alt="avatar"
-                className="message-avatar"
-              />
-            )}
-          </div>
-        ))}
+                </div>
+                {/* 信息是自己发的，展示自身头像 */}
+                {message.sendId === userInfo.id && (
+                  <img
+                    src={userInfo.avatar}
+                    alt="avatar"
+                    className="message-avatar"
+                  />
+                )}
+              </div>
+            </Dropdown>
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
 
       <div className="chat-input">
-        <div className="chat-input-textarea">
-          <TextArea
-            placeholder="按 Ctrl + Enter 换行，按 Enter 发送"
-            rows={4}
-            className="textarea"
-            style={{
-              lineHeight: "1.1",
-              scrollbarWidth: "thin",
-              scrollbarColor: "rgba(0, 0, 0, 0.2) transparent",
-            }}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleTextAreaKeyDown}
-          />
-          {showCursor && <span className="blinking-cursor">|</span>}
-        </div>
+        <TextArea
+          ref={textAreaRef}
+          placeholder="按 Ctrl + Enter 换行，按 Enter 发送"
+          rows={4}
+          className="textarea"
+          style={{
+            lineHeight: "1.1",
+            scrollbarWidth: "thin",
+            scrollbarColor: "rgba(0, 0, 0, 0.2) transparent",
+          }}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleTextAreaKeyDown}
+        />
+        {/* 移除多余的光标显示逻辑 */}
         {isAILoading && (
           <div style={{ textAlign: "right", marginTop: "8px" }}>
             <Spin />
           </div>
         )}
       </div>
-
       <Drawer
         title="聊天信息"
         placement="right"
-        styles={{
-          mask: { background: "transparent" },
-        }}
-        onClose={() => setOpenDrawer(false)}
         open={openDrawer}
-        style={{ position: "absolute", overflowX: "hidden" }}
-        maskClosable={true}
+        onClose={() => setOpenDrawer(false)}
         className="chatInfo-drawer"
       >
-        <ChatInfo
-          friendId={Number(currentFriendId)}
-          setOpenDrawer={setOpenDrawer}
-          openDrawer={openDrawer}
-          refreshConversation={handleNewConversation}
-        />
+        <ChatInfo />
       </Drawer>
-
-      {/* 新增：视频弹框 */}
       <Modal
-        open={isVideoModalVisible}
-        closable={false}
-        maskClosable={false}
-        footer={null}
-        width={800}
-        destroyOnClose
-      >
-        <ChatPrivateVideo
-          localStream={localStream}
-          remoteStream={remoteStream}
-          onClose={() => {
-            setIsVideoModalVisible(false);
-            if (localStream) {
-              localStream.getTracks().forEach((track) => track.stop());
-            }
+        title="视频通话"
+        visible={isVideoModalVisible}
+        onCancel={() => {
+          setIsVideoModalVisible(false);
+          if (localStream) {
+            localStream.getTracks().forEach((track) => track.stop());
             setLocalStream(null);
-            setRemoteStream(null);
-            // 发送结束通话的消息
-            sendNonChatMessage({
-              cmd: "7",
-              data: {
-                sender_id: userInfo.id,
-                receiver_id: Number(currentFriendId),
-              },
-            });
-            message.success("已取消呼叫,通话结束");
-            usePeerConnectionStore.closePeerConnection();
-          }}
-        />
+          }
+          usePeerConnectionStore.closePeerConnection();
+        }}
+        footer={null}
+      >
+        <ChatPrivateVideo localStream={localStream} remoteStream={remoteStream} />
       </Modal>
     </div>
   );
 });
+
 export default Chat;

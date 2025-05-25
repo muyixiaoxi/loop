@@ -595,7 +595,9 @@ const Home = observer(() => {
         </Modal>
 
         <ChatVideoAcceptor
-          callerInfo={callerInfo}
+          callerInfo={{
+            name:callerInfo.sender_nickname, avatar:callerInfo.sender_avatar
+          }}
           onAccept={() => handleAcceptCall()}
           onReject={handleRejectCall}
           visible={isCalling}
