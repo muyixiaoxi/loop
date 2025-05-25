@@ -35,7 +35,12 @@ export const WebSocketContext = createContext<{
 // observer 将组件变成响应式组件
 const Home = observer(() => {
   const { token, userInfo } = userStore; // 获取用户信息
-  const { currentFriendId, setCurrentChatList, setCurrentMessages } = chatStore; // 获取发送消息的函数
+  const {
+    currentFriendId,
+    setCurrentChatList,
+    setCurrentMessages,
+    currentChatInfo,
+  } = chatStore; // 获取发送消息的函数
   const db = getChatDB(userInfo.id); // 连接数据库
   const {
     isShowUserAmend,
@@ -118,6 +123,7 @@ const Home = observer(() => {
   useEffect(() => {
     // 视频链接状态变化
     if (usePeerConnectionStore.isVideoChatStarted) {
+      console.log("检测到视频已经挂断");
       // 视频已经挂断
       setIsVideoModalVisible(false);
       // 可以发送拒绝消息给对方
@@ -150,8 +156,8 @@ const Home = observer(() => {
 
     const client = new WebSocketClient<string>({
       url: `ws://47.93.85.12:8080/api/v1/im?token=${token}`,
-      onMessage: async (message: any) => {
-        const { cmd, data } = message;
+      onMessage: async (wsMessage: any) => {
+        const { cmd, data } = wsMessage;
         if (cmd === 1) {
           // 私聊消息
           handleNewStorage(data, 1);
@@ -224,12 +230,22 @@ const Home = observer(() => {
           await usePeerConnectionStore.flushIceCandidates(); // 开始发送 ICE 候选
         } else if (cmd === 7) {
           // 接收到挂断消息
-          // 关闭所有视频弹窗
+          // 先关闭连接
+          usePeerConnectionStore.closePeerConnection();
+
+          // 确保媒体流被清理
+          if (localStream) {
+            localStream.getTracks().forEach((track) => track.stop());
+            setLocalStream(null);
+          }
+          setRemoteStream(null);
+
+          // 最后更新状态
           setIsVideoModalVisible(false);
           setIsCalling(false);
-          // 关闭连接
-          usePeerConnectionStore.closePeerConnection();
-          message.success("对方已结束通话");
+
+          // 显示挂断消息
+          message.success("对方已挂断，通话结束");
         } else {
           console.log(cmd, "cmd");
           console.log(data, "data");
@@ -249,7 +265,95 @@ const Home = observer(() => {
     };
   }, [token]);
 
-  // 处理接受视频通话
+  //作为发送者开启视频通话
+  const initiateVideoCall = async () => {
+    try {
+      // 1. 先检查设备可用性
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const hasVideo = devices.some((device) => device.kind === "videoinput");
+      const hasAudio = devices.some((device) => device.kind === "audioinput");
+
+      if (!hasVideo || !hasAudio) {
+        throw new Error("未检测到可用的摄像头或麦克风");
+      }
+
+      // 2. 获取媒体流时添加错误处理
+      const stream = await navigator.mediaDevices
+        .getUserMedia({
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: true,
+        })
+        .catch((err) => {
+          console.error("获取媒体设备失败:", err);
+          message.error("无法访问摄像头/麦克风，请检查设备连接和权限设置");
+          throw err;
+        });
+
+      // 3. 添加设备状态检查
+      if (!stream.getVideoTracks().length || !stream.getAudioTracks().length) {
+        throw new Error("获取的媒体流中没有视频或音频轨道");
+      }
+
+      setLocalStream(stream);
+
+      // 4. 创建PeerConnection (简化参数传递)
+      usePeerConnectionStore.createPeerConnection(stream);
+
+      // 5. 设置远程流处理器
+      usePeerConnectionStore.setupMediaStreamHandlers(setRemoteStream);
+
+      // 6. 创建并发送Offer
+      const offer = await usePeerConnectionStore.createOffer();
+
+      // 发送Offer消息
+      const cmd = currentChatInfo.type === 1 ? 4 : 7; // 4:私聊视频呼叫, 7:群聊视频呼叫
+      sendNonChatMessage({
+        cmd,
+        data: {
+          sender_id: userInfo.id,
+          receiver_id: Number(currentFriendId),
+          session_description: offer,
+          sender_nickname: userInfo.nickname,
+          sender_avatar: userInfo.avatar,
+        },
+      });
+      //发送ICE
+      usePeerConnectionStore.setupIceCandidateListener(
+        (candidate) => {
+          // 这个回调会在设置本地描述后触发
+          sendNonChatMessage({
+            cmd: 6, // ICE 候选者消息
+            data: {
+              sender_id: userInfo.id, // 发送者 ID
+              receiver_id: Number(currentFriendId), // 接收者 ID
+              candidate_init: candidate, // 候选者信息
+            },
+          });
+        },
+        () => {
+          console.log("ICE 候选者收集完成");
+        }
+      );
+
+      // 6. 显示视频弹框
+      setIsVideoModalVisible(true);
+    } catch (error) {
+      console.error("获取用户媒体或发送offer失败:", error);
+      message.error("启动视频通话失败");
+
+      // 清理资源
+      if (localStream) {
+        localStream.getTracks().forEach((track) => track.stop());
+        setLocalStream(null);
+      }
+      usePeerConnectionStore.closePeerConnection();
+    }
+  };
+
+  // 作为接收者处理接受视频通话
   const handleAcceptCall = async () => {
     try {
       // 1. 获取本地媒体流
@@ -316,7 +420,7 @@ const Home = observer(() => {
     }
   };
 
-  // 处理拒绝视频通话
+  // 作为接收者处理拒绝视频通话
   const handleRejectCall = () => {
     setIsCalling(false);
     // 关闭视频
@@ -334,10 +438,10 @@ const Home = observer(() => {
   };
 
   // 添加发送消息方法
-  const sendMessageWithTimeout = async (message: any) => {
+  const sendMessageWithTimeout = async (msg: any) => {
     if (!wsClient) return;
 
-    const messageId = message.data.seq_id;
+    const messageId = msg.data.seq_id;
     const maxRetries = 5;
     const retryInterval = 2000;
 
@@ -348,7 +452,7 @@ const Home = observer(() => {
     }
 
     // 初始发送
-    wsClient.sendMessage(message);
+    wsClient.sendMessage(msg);
 
     // 设置重试逻辑
     retryTimersRef.current[messageId] = {
@@ -359,7 +463,7 @@ const Home = observer(() => {
 
         if (current.count < maxRetries) {
           current.count++;
-          wsClient.sendMessage(message);
+          wsClient.sendMessage(msg);
         } else {
           // 只在没有收到ACK时才标记为失败
           if (retryTimersRef.current[messageId]) {
@@ -371,9 +475,9 @@ const Home = observer(() => {
               if (prev[messageId]) {
                 handleUpdateMessageStatus(
                   {
-                    ...message.data,
-                    receiver_id: message.data.sender_id,
-                    sender_id: message.data.receiver_id,
+                    ...msg.data,
+                    receiver_id: msg.data.sender_id,
+                    sender_id: msg.data.receiver_id,
                   },
                   "failed"
                 );
@@ -404,9 +508,9 @@ const Home = observer(() => {
             // 更换发送者和接收者，正确更是聊天数据
             handleUpdateMessageStatus(
               {
-                ...message.data,
-                receiver_id: message.data.sender_id,
-                sender_id: message.data.receiver_id,
+                ...msg.data,
+                receiver_id: msg.data.sender_id,
+                sender_id: msg.data.receiver_id,
               },
               "failed"
             );
@@ -559,11 +663,13 @@ const Home = observer(() => {
             ) : null}
           </div>
           <div className="main-layout-content-right">
-            {currentFriendId && <Chat />}
+            {currentFriendId && (
+              <Chat onInitiateVideoCall={initiateVideoCall} />
+            )}
           </div>
         </div>
 
-        {/* 添加视频元素 */}
+        {/* 视频通话元素 */}
         <Modal
           open={isVideoModalVisible}
           closable={false}
@@ -594,14 +700,19 @@ const Home = observer(() => {
           />
         </Modal>
 
+        {/* 右下角弹窗 */}
         <ChatVideoAcceptor
-          callerInfo={callerInfo}
+          callerInfo={{
+            name: callerInfo.sender_nickname,
+            avatar: callerInfo.sender_avatar,
+          }}
           onAccept={() => handleAcceptCall()}
           onReject={handleRejectCall}
           visible={isCalling}
           timeout={30000}
         />
 
+        {/* 查看用户信息 */}
         {isShowUserAmend ? (
           <Modal
             open={isShowUserAmend}

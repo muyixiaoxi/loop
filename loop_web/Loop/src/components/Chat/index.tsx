@@ -2,15 +2,13 @@ import "./index.scss";
 import { observer } from "mobx-react-lite";
 import { v4 as uuidv4 } from "uuid";
 import { useState, useContext, useRef, useEffect } from "react";
-import { Input, Drawer, Modal, message, Tooltip, Button, Spin } from "antd"; // 引入 Spin 组件
+import { Input, Drawer, message, Tooltip, Button, Spin } from "antd"; // 引入 Spin 组件
 import { WebSocketContext } from "@/pages/Home";
 import chatStore from "@/store/chat";
 import userStore from "@/store/user";
 import globalStore from "@/store/global";
 import { getChatDB } from "@/utils/chat-db";
-import { usePeerConnectionStore } from "@/store/PeerConnectionStore"; // 导入 PeerConnectionStore
 import ChatInfo from "@/components/ChatInfo"; // 导入 ChatInfo 组件
-import ChatPrivateVideo from "@/components/ChatPrivateVideo";
 import { AIchat } from "@/api/chat";
 
 // 自定义 Tooltip 样式
@@ -19,16 +17,15 @@ const customTooltipStyle = {
   color: "#000",
 };
 
-// 假设 submitOfflineType 定义在 chat.ts 中，这里可以不用重复定义
-// 如果没有全局定义，需要在这里定义
-interface submitOfflineType {
-  prompt: string;
+// 定义组件props类型
+interface ChatProps {
+  onInitiateVideoCall?: () => Promise<void>; // 新增：视频通话回调函数
 }
 
-const Chat = observer(() => {
+const Chat = observer((props: ChatProps) => {
+  const { onInitiateVideoCall } = props; // 解构传入的回调函数
   const { userInfo } = userStore;
-  const { sendMessageWithTimeout, sendNonChatMessage } =
-    useContext<any>(WebSocketContext); // 使用WebSocket上下文
+  const { sendMessageWithTimeout } = useContext<any>(WebSocketContext); // 使用WebSocket上下文
   const {
     currentFriendId,
     currentFriendName,
@@ -45,13 +42,6 @@ const Chat = observer(() => {
   const { TextArea } = Input; // 使用TextArea组件
   const [inputValue, setInputValue] = useState(""); // 输入框的值
   const [openDrawer, setOpenDrawer] = useState(false); // 是否打开抽屉
-  // 新增：管理视频弹框的显示状态
-  const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
-  // 新增：管理本地视频流
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-
-  // 在组件状态中添加远程视频流状态
-  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
 
   // 新增：管理 SSE 加载状态
   const [isAILoading, setIsAILoading] = useState(false);
@@ -108,94 +98,6 @@ const Chat = observer(() => {
     // 发送消息到服务器
     sendMessageWithTimeout(message);
     setInputValue(""); // 清空输入框
-  };
-
-  //打开视频通话
-  const handlevideo = async () => {
-    try {
-      // 1. 先检查设备可用性
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const hasVideo = devices.some((device) => device.kind === "videoinput");
-      const hasAudio = devices.some((device) => device.kind === "audioinput");
-
-      if (!hasVideo || !hasAudio) {
-        throw new Error("未检测到可用的摄像头或麦克风");
-      }
-
-      // 2. 获取媒体流时添加错误处理
-      const stream = await navigator.mediaDevices
-        .getUserMedia({
-          video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
-          audio: true,
-        })
-        .catch((err) => {
-          console.error("获取媒体设备失败:", err);
-          message.error("无法访问摄像头/麦克风，请检查设备连接和权限设置");
-          throw err;
-        });
-
-      // 3. 添加设备状态检查
-      if (!stream.getVideoTracks().length || !stream.getAudioTracks().length) {
-        throw new Error("获取的媒体流中没有视频或音频轨道");
-      }
-
-      setLocalStream(stream);
-
-      // 4. 创建PeerConnection (简化参数传递)
-      usePeerConnectionStore.createPeerConnection(stream);
-
-      // 5. 设置远程流处理器
-      usePeerConnectionStore.setupMediaStreamHandlers(setRemoteStream);
-
-      // 6. 创建并发送Offer
-      const offer = await usePeerConnectionStore.createOffer();
-
-      // 发送Offer消息
-      const cmd = chatType === 1 ? 4 : 7; // 4:私聊视频呼叫, 7:群聊视频呼叫
-      sendNonChatMessage({
-        cmd,
-        data: {
-          sender_id: userInfo.id,
-          receiver_id: Number(currentFriendId),
-          session_description: offer,
-        },
-      });
-      //发送ICE
-      usePeerConnectionStore.setupIceCandidateListener(
-        (candidate) => {
-          // 这个回调会在设置本地描述后触发
-          sendNonChatMessage({
-            cmd: 6, // ICE 候选者消息
-            data: {
-              sender_id: userInfo.id, // 发送者 ID
-              receiver_id: Number(currentFriendId), // 接收者 ID
-              name: userInfo.nickname, // 发送者名称
-              avatar: userInfo.avatar, // 发送者头像
-              candidate_init: candidate, // 候选者信息
-            },
-          });
-        },
-        () => {
-          console.log("ICE 候选者收集完成");
-        }
-      );
-
-      // 6. 显示视频弹框
-      setIsVideoModalVisible(true);
-    } catch (error) {
-      console.error("获取用户媒体或发送offer失败:", error);
-      message.error("启动视频通话失败");
-
-      // 清理资源
-      if (localStream) {
-        localStream.getTracks().forEach((track) => track.stop());
-        setLocalStream(null);
-      }
-      usePeerConnectionStore.closePeerConnection();
-    }
   };
 
   // 重新发送
@@ -332,7 +234,7 @@ const Chat = observer(() => {
           <div className="firend-name">{currentFriendName}</div>
         </div>
         <div className="chat-header-right">
-          <div className="more-video" onClick={handlevideo}>
+          <div className="more-video" onClick={onInitiateVideoCall}>
             {/* 视频 */}
             <svg
               fill="#E46342"
@@ -498,7 +400,7 @@ const Chat = observer(() => {
       </Drawer>
 
       {/* 新增：视频弹框 */}
-      <Modal
+      {/* <Modal
         open={isVideoModalVisible}
         closable={false}
         maskClosable={false}
@@ -528,7 +430,7 @@ const Chat = observer(() => {
             usePeerConnectionStore.closePeerConnection();
           }}
         />
-      </Modal>
+      </Modal> */}
     </div>
   );
 });
