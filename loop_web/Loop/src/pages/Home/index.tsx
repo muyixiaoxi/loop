@@ -132,6 +132,7 @@ const Home = observer(() => {
         data: {
           sender_id: userInfo.id,
           receiver_id: callerInfo.sender_id,
+          content: "对方已挂断，通话结束",
         },
       });
 
@@ -212,10 +213,23 @@ const Home = observer(() => {
           handleUpdateMessageStatus(data, "success");
         } else if (cmd === 4) {
           // 单聊发送的offer
-          // 设置呼叫者数据，用于接听
-          setCallerInfo(data);
-          // 打开弹窗，等待接听
-          setIsCalling(true);
+          if (isCalling || isVideoModalVisible) {
+            // 已经处于呼叫或被呼叫状态，直接拒绝
+            const data: any = {
+              cmd: 7, // 拒绝命令
+              data: {
+                content: "对方通话中，请稍后再拨",
+                sender_id: userInfo.id,
+                receiver_id: callerInfo.sender_id,
+              },
+            };
+            client.sendMessage(data);
+          } else {
+            // 设置呼叫者数据，用于接听
+            setCallerInfo(data);
+            // 打开弹窗，等待接听
+            setIsCalling(true);
+          }
         } else if (cmd === 5) {
           // 设置远程描述
           await usePeerConnectionStore.setRemoteDescription(
@@ -229,6 +243,7 @@ const Home = observer(() => {
           // 收到ICE后开始发送自己的ICE候选;
           await usePeerConnectionStore.flushIceCandidates(); // 开始发送 ICE 候选
         } else if (cmd === 7) {
+          console.log(data, "挂断");
           // 接收到挂断消息
           // 先关闭连接
           usePeerConnectionStore.closePeerConnection();
@@ -245,7 +260,7 @@ const Home = observer(() => {
           setIsCalling(false);
 
           // 显示挂断消息
-          message.success("对方已挂断，通话结束");
+          message.success(data.content);
         } else {
           console.log(cmd, "cmd");
           console.log(data, "data");
@@ -432,6 +447,7 @@ const Home = observer(() => {
       data: {
         sender_id: userInfo.id,
         receiver_id: callerInfo.sender_id,
+        content: "对方已拒绝",
       },
     });
     message.success("已取消通话");
@@ -693,9 +709,10 @@ const Home = observer(() => {
                 data: {
                   sender_id: userInfo.id,
                   receiver_id: callerInfo.sender_id,
+                  content: "对方已挂断，通话结束",
                 },
               });
-              message.success("已结束通话");
+              message.success("对方已挂断");
             }}
           />
         </Modal>

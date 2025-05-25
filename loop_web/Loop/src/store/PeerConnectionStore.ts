@@ -96,11 +96,20 @@ class PeerConnectionStore {
    */
   closePeerConnection() {
     if (this.peerConnection) {
+      // 停止所有媒体轨道
+      this.peerConnection.getSenders().forEach((sender) => {
+        if (sender.track) {
+          sender.track.stop();
+        }
+      });
       this.peerConnection.close();
       this.peerConnection = null;
     }
 
     this._resetConnectionState();
+    // 重置媒体流状态
+    this.isAudioStreamAdded = false;
+    this.isVideoStreamAdded = false;
   }
 
   // region 信令处理
