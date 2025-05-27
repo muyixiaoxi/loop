@@ -5,5 +5,5 @@ import (
 )
 
 type LLMApp interface {
-	GenerateFromSinglePrompt(ctx context.Context, prompt string) (chan []byte, error)
+	GenerateFromSinglePrompt(ctx context.Context, prompt string) (chan []byte, context.CancelFunc)
 }

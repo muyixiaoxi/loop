@@ -41,7 +41,7 @@ func (i *imAppImpl) HandleMessage(ctx context.Context, curUserId uint, msgByte [
 		return i.handlerAck(ctx, msg)
 	case consts.WsMessageCmdGroupMessage:
 		return i.handlerGroupMessage(ctx, msg)
-	case consts.WsMessageCmdPrivateOffer, consts.WsMessageCmdPrivateAnswer, consts.WsMessageCmdPrivateIce:
+	case consts.WsMessageCmdPrivateOffer, consts.WsMessageCmdPrivateAnswer, consts.WsMessageCmdPrivateIce, consts.WsMessageCmdPrivateHangUp:
 		return i.handlerPrivateOffer(ctx, msg)
 	case consts.WsMessageCmdGroupInitiatorOffer:
 		return i.handlerGroupOffer(ctx, msg)

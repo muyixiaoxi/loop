@@ -5,5 +5,5 @@ import (
 )
 
 type LLMDomain interface {
-	GenerateFromSinglePrompt(ctx context.Context, prompt string) chan []byte
+	GenerateFromSinglePrompt(ctx context.Context, prompt string) (chan []byte, context.CancelFunc)
 }

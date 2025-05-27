@@ -15,6 +15,6 @@ func NewLLMAppImpl(llm domain.LLMDomain) *llmAppImpl {
 	}
 }
 
-func (llm *llmAppImpl) GenerateFromSinglePrompt(ctx context.Context, prompt string) (chan []byte, error) {
-	return llm.llm.GenerateFromSinglePrompt(ctx, prompt), nil
+func (llm *llmAppImpl) GenerateFromSinglePrompt(ctx context.Context, prompt string) (chan []byte, context.CancelFunc) {
+	return llm.llm.GenerateFromSinglePrompt(ctx, prompt)
 }
