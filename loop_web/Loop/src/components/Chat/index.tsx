@@ -42,7 +42,6 @@ const Chat = observer((props: ChatProps) => {
 
   // 新增：管理 SSE 加载状态
   const [isAILoading, setIsAILoading] = useState(false);
-  const [showCursor, setShowCursor] = useState(false);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
   // 新增：管理模态框状态和内容
@@ -368,7 +367,13 @@ const Chat = observer((props: ChatProps) => {
 
       {/* 修改模态框 */}
       <Modal
-        title="AI 回复"
+        // 修改标题，添加图标
+        title={
+          <span style={{ display: 'flex', alignItems: 'center' }}>
+            <OpenAIOutlined style={{ marginRight: 8 }} />
+            AI 回复
+          </span>
+        }
         visible={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         footer={[
