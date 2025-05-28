@@ -1,10 +1,10 @@
 import "./index.scss";
 import { createContext, useState, useEffect, useRef } from "react";
-import { Modal, message } from "antd";
+import { Modal, message, Button } from "antd";
 import { observer } from "mobx-react-lite";
 import globalStore from "@/store/global";
 import SideNavigation from "@/components/SideNavigation";
-import FirendList from "@/components/FriendList";
+import FirendList from "@/components/FriendList"; // 推测此处可能是拼写错误，应为 FriendList
 import EditUser from "@/components/EditUser"; // 导入 EditUser 组件
 import Chat from "@/components/Chat"; // 导入 Chat 组件
 import MessageList from "@/components/MessageList/index";
@@ -12,6 +12,7 @@ import WebSocketClient from "@/utils/websocket";
 import userStore from "@/store/user";
 import chatStore from "@/store/chat";
 import { getChatDB } from "@/utils/chat-db";
+import { getGroupMemberList } from "@/api/group";
 import {
   getLocalTime,
   getOfflineMessage,
@@ -20,6 +21,7 @@ import {
 import ChatPrivateVideo from "@/components/ChatPrivateVideo";
 import ChatVideoAcceptor from "@/components/ChatVideoAcceptor";
 import { usePeerConnectionStore } from "@/store/PeerConnectionStore"; // 确保导入
+import { useGroupPeerConnectionStore } from "@/store/GroupPeer";
 
 // 创建WebSocket上下文
 export const WebSocketContext = createContext<{
@@ -27,9 +29,9 @@ export const WebSocketContext = createContext<{
   sendNonChatMessage?: (message: any) => void;
   disconnect?: () => void;
 }>({
-  sendMessageWithTimeout: () => {},
-  sendNonChatMessage: () => {},
-  disconnect: () => {},
+  sendMessageWithTimeout: () => { },
+  sendNonChatMessage: () => { },
+  disconnect: () => { },
 });
 
 // observer 将组件变成响应式组件
@@ -64,9 +66,23 @@ const Home = observer(() => {
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
   const [callerInfo, setCallerInfo] = useState<any>({});
+  // 添加状态来控制模态框的显示与隐藏
+  const [isMemberModalVisible, setIsMemberModalVisible] = useState(false);
+  // 添加状态来存储群成员列表
+  const [groupMembers, setGroupMembers] = useState<any[]>([]);
+  // 添加状态来存储选中成员的信息数组，包含 user_id 和 avatar
+  const [selectedMemberInfo, setSelectedMemberInfo] = useState<{ user_id: number; avatar: string }[]>([]);
+  // 添加一个 ref 来跟踪 selectedMemberInfo 的最新值
+  const selectedMemberInfoRef = useRef<{ user_id: number; avatar: string }[]>([]);
+  // 用于存储选择成员的 Promise 解析函数
+  const resolveSelectMembersRef = useRef<((value: void | PromiseLike<void>) => void) | null>(null);
+
+  // 标记是否是点击确定触发的更新
+  const isOkButtonClickedRef = useRef(false);
 
   // 视频呼叫相关状态
   const [isCalling, setIsCalling] = useState(false); // 是否正在呼叫
+
 
   // 获取与服务器时间差
   const LocalTime = async () => {
@@ -150,13 +166,17 @@ const Home = observer(() => {
   useEffect(() => {
     currentFriendIdRef.current = currentFriendId;
   }, [currentFriendId]);
+  // 保持 ref 与 state 同步
+  useEffect(() => {
+    selectedMemberInfoRef.current = selectedMemberInfo;
+  }, [selectedMemberInfo]);
 
   useEffect(() => {
     if (!token) return;
     const userId = userInfo.id;
 
     const client = new WebSocketClient<string>({
-      url: `ws://47.93.85.12:8080/api/v1/im?token=${token}`,
+      url: `ws://yangchengxi.a1.luyouxia.net:23914/api/v1/im?token=${token}`,
       onMessage: async (wsMessage: any) => {
         const { cmd, data } = wsMessage;
         if (cmd === 1) {
@@ -261,9 +281,16 @@ const Home = observer(() => {
 
           // 显示挂断消息
           message.success(data.content);
-        } else {
-          console.log(cmd, "cmd");
-          console.log(data, "data");
+        } else if(cmd===9){          
+          // 设置远程描述
+          await useGroupPeerConnectionStore.setRemoteDescription(
+            data.session_description
+          );
+          await useGroupPeerConnectionStore.flushIceCandidates(); // 开始发送 ICE 候选
+          
+        }else if(cmd===10){
+          // ICE候选消息
+          await useGroupPeerConnectionStore.addIceCandidate(data.candidate);
         }
       },
     });
@@ -279,7 +306,45 @@ const Home = observer(() => {
       client.disconnect();
     };
   }, [token]);
+  // 修改 handleMemberSelect
+  const handleMemberSelect = (userId: number, avatar: string, checked: boolean) => {
+    if (checked) {
+      setSelectedMemberInfo([...selectedMemberInfo, { user_id: userId, avatar }]);
+    } else {
+      setSelectedMemberInfo(selectedMemberInfo.filter(info => info.user_id !== userId));
+    }
+  };
+  // 修改 handleMemberModalOk
+  const handleMemberModalOk = async () => {
+    console.log('选择的群成员信息数组:', selectedMemberInfo);
+    isOkButtonClickedRef.current = true;
+    setIsMemberModalVisible(false);
 
+    // 确保状态更新完成
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    if (resolveSelectMembersRef.current) {
+      resolveSelectMembersRef.current();
+      resolveSelectMembersRef.current = null;
+    }
+  };
+
+
+  useEffect(() => {
+    if (resolveSelectMembersRef.current) {
+      resolveSelectMembersRef.current();
+      resolveSelectMembersRef.current = null;
+    }
+
+  }, [isOkButtonClickedRef.current]);
+  // 处理取消按钮点击事件
+  const handleMemberModalCancel = () => {
+    setIsMemberModalVisible(false);
+    if (resolveSelectMembersRef.current) {
+      resolveSelectMembersRef.current();
+      resolveSelectMembersRef.current = null;
+    }
+  };
   //作为发送者开启视频通话
   const initiateVideoCall = async () => {
     try {
@@ -317,8 +382,60 @@ const Home = observer(() => {
       }
 
       setLocalStream(stream);
+       
+      if(currentChatInfo.type === 2){
+        // 4. 创建PeerConnection (简化参数传递)
+        useGroupPeerConnectionStore.createPeerConnection(stream);
 
-      // 4. 创建PeerConnection (简化参数传递)
+        // 5. 设置远程流处理器
+        useGroupPeerConnectionStore.setupMediaStreamHandlers(setRemoteStream);
+
+        // 6. 创建并发送Offer
+        const offer = await useGroupPeerConnectionStore.createOffer();
+          // 调用监听 ICE 候选的方法
+          await useGroupPeerConnectionStore.setupIceCandidateListenerWithLogging();
+        const receiverIdList = await getGroupMemberList(Number(currentFriendId));
+        setGroupMembers(receiverIdList.data);
+        setIsMemberModalVisible(true);
+
+        // 等待用户选择完成
+        await new Promise<void>((resolve) => {
+          resolveSelectMembersRef.current = resolve;
+        });
+
+        // 使用 ref 中的最新值
+        const offerData = {
+          sender_id: userInfo.id,
+          receiver_id: Number(currentFriendId),
+          session_description: offer,
+          sender_nickname: userInfo.nickname,
+          sender_avatar: userInfo.avatar,
+          receiver_list: selectedMemberInfoRef.current, // 使用 ref 中的最新值
+        };
+
+        sendNonChatMessage({
+          cmd: 8,
+          data: offerData
+        });
+         //发送ICE
+         useGroupPeerConnectionStore.setupIceCandidateListener(
+          (candidate) => {
+            // 这个回调会在设置本地描述后触发
+            sendNonChatMessage({
+              cmd: 10, // ICE 候选者消息
+              data: {
+                sender_id: userInfo.id, // 发送者 ID
+                receiver_id: Number(currentFriendId), // 接收者 ID
+                candidate_init: candidate, // 候选者信息
+              },
+            });
+          },
+          () => {
+            console.log("ICE 候选者收集完成");
+          }
+        );
+      }else{
+         // 4. 创建PeerConnection (简化参数传递)
       usePeerConnectionStore.createPeerConnection(stream);
 
       // 5. 设置远程流处理器
@@ -326,36 +443,38 @@ const Home = observer(() => {
 
       // 6. 创建并发送Offer
       const offer = await usePeerConnectionStore.createOffer();
-
-      // 发送Offer消息
-      const cmd = currentChatInfo.type === 1 ? 4 : 7; // 4:私聊视频呼叫, 7:群聊视频呼叫
+       // 准备发送的数据
+       const offerData = {
+        sender_id: userInfo.id,
+        receiver_id: Number(currentFriendId),
+        session_description: offer,
+        sender_nickname: userInfo.nickname,
+        sender_avatar: userInfo.avatar,
+      };
       sendNonChatMessage({
-        cmd,
-        data: {
-          sender_id: userInfo.id,
-          receiver_id: Number(currentFriendId),
-          session_description: offer,
-          sender_nickname: userInfo.nickname,
-          sender_avatar: userInfo.avatar,
-        },
+        cmd: 4,
+        data: offerData
       });
-      //发送ICE
-      usePeerConnectionStore.setupIceCandidateListener(
-        (candidate) => {
-          // 这个回调会在设置本地描述后触发
-          sendNonChatMessage({
-            cmd: 6, // ICE 候选者消息
-            data: {
-              sender_id: userInfo.id, // 发送者 ID
-              receiver_id: Number(currentFriendId), // 接收者 ID
-              candidate_init: candidate, // 候选者信息
-            },
-          });
-        },
-        () => {
-          console.log("ICE 候选者收集完成");
-        }
-      );
+        //发送ICE
+        usePeerConnectionStore.setupIceCandidateListener(
+          (candidate) => {
+            // 这个回调会在设置本地描述后触发
+            sendNonChatMessage({
+              cmd: 6, // ICE 候选者消息
+              data: {
+                sender_id: userInfo.id, // 发送者 ID
+                receiver_id: Number(currentFriendId), // 接收者 ID
+                candidate_init: candidate, // 候选者信息
+              },
+            });
+          },
+          () => {
+            console.log("ICE 候选者收集完成");
+          }
+        );
+      }
+
+    
 
       // 6. 显示视频弹框
       setIsVideoModalVisible(true);
@@ -719,6 +838,34 @@ const Home = observer(() => {
               message.success("通话结束");
             }}
           />
+        </Modal>
+        {/* 群成员模态框 */}
+        <Modal
+          title="群成员列表"
+          visible={isMemberModalVisible}
+          onCancel={handleMemberModalCancel}
+          footer={[
+            <Button key="ok" onClick={handleMemberModalOk} type="primary">
+              确定
+            </Button>,
+            <Button key="cancel" onClick={handleMemberModalCancel} type="primary">
+              取消
+            </Button>,
+          ]}
+        >
+          <div>
+            {groupMembers.map((member) => (
+              <div key={member.user_id} style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+                <input
+                  type="checkbox"
+                  checked={selectedMemberInfo.some(info => info.user_id === member.user_id)}
+                  onChange={(e) => handleMemberSelect(member.user_id, member.avatar, e.target.checked)}
+                />
+                <img src={member.avatar} alt={member.nickname} style={{ width: 40, height: 40, borderRadius: '50%', marginLeft: 10, marginRight: 10 }} />
+                <span>{member.nickname}</span>
+              </div>
+            ))}
+          </div>
         </Modal>
 
         {/* 右下角弹窗 */}
