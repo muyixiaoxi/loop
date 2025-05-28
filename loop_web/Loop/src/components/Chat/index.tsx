@@ -2,7 +2,7 @@ import "./index.scss";
 import { observer } from "mobx-react-lite";
 import { v4 as uuidv4 } from "uuid";
 import { useState, useContext, useRef, useEffect } from "react";
-import {OpenAIOutlined } from "@ant-design/icons"; // 引入 OpenAIOutlined 图标
+import { OpenAIOutlined } from "@ant-design/icons"; // 引入 OpenAIOutlined 图标
 import { Input, Drawer, message, Button, Spin, Dropdown, Modal } from "antd"; // 引入 Modal 组件
 import type { MenuProps } from "antd"; // 引入 MenuProps 类型
 
@@ -13,7 +13,6 @@ import globalStore from "@/store/global";
 import { getChatDB } from "@/utils/chat-db";
 import ChatInfo from "@/components/ChatInfo"; // 导入 ChatInfo 组件
 import { AIchat } from "@/api/chat";
-
 
 // 定义组件props类型
 interface ChatProps {
@@ -172,7 +171,7 @@ const Chat = observer((props: ChatProps) => {
     setIsAILoading(true);
     setIsModalVisible(true);
     setModalContent("");
-  
+
     // 用于标记是否是首次收到消息
     let isFirstMessage = true;
 
@@ -188,14 +187,14 @@ const Chat = observer((props: ChatProps) => {
           setModalContent((prev) => prev + message);
         },
         (error) => {
-          console.error('调用 AIchat 失败:', error);
-          message.error('获取 AI 回复失败');
+          console.error("调用 AIchat 失败:", error);
+          message.error("获取 AI 回复失败");
           setIsAILoading(false);
         }
       );
     } catch (error) {
-      console.error('调用 AIchat 过程中出错:', error);
-      message.error('获取 AI 回复失败');
+      console.error("调用 AIchat 过程中出错:", error);
+      message.error("获取 AI 回复失败");
     } finally {
       // 如果在整个过程中都没有收到消息，才在最后取消加载状态
       if (isFirstMessage) {
@@ -259,15 +258,15 @@ const Chat = observer((props: ChatProps) => {
           const menu: MenuProps = {
             items: [
               {
-                key: 'ai-reply',
+                key: "ai-reply",
                 label: (
                   <a
                     onClick={() => handleAIReply(message.content)}
                     style={{
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      width: '100%'
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      width: "100%",
                     }}
                   >
                     <span>AI 回复</span>
@@ -286,6 +285,7 @@ const Chat = observer((props: ChatProps) => {
               className={`message ${
                 message.sendId === userInfo.id ? "sent" : "received"
               }`}
+              key={message.id}
             >
               {/* 信息是好友发的，展示好友头像 */}
               {isFriendMessage && (

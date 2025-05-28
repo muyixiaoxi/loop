@@ -156,7 +156,7 @@ const Home = observer(() => {
     const userId = userInfo.id;
 
     const client = new WebSocketClient<string>({
-      url: `ws://47.93.85.12:8080/api/v1/im?token=${token}`,
+      url: `ws://yangchengxi.a1.luyouxia.net:23914/api/v1/im?token=${token}`,
       onMessage: async (wsMessage: any) => {
         const { cmd, data } = wsMessage;
         if (cmd === 1) {
