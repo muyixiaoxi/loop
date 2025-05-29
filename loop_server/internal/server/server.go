@@ -33,6 +33,7 @@ func (s *server) InitRouter() {
 	{
 		r.POST("/register", s.user.Register)
 		r.POST("/login", s.user.Login)
+		r.POST("/refresh", s.user.RefreshToken)
 	}
 
 	user := r.Group("/user")

@@ -18,28 +18,27 @@ func NewSfuAppImpl(imDomain domain.ImDomain) *sfuAppImpl {
 	return &sfuAppImpl{imDomain: imDomain}
 }
 
-func (s *sfuAppImpl) SetOfferGetAnswer(ctx context.Context, groupId uint, senderNickname, senderAvatar string, receiverIdList []uint, receiverAvatarList []string, mediaType uint, offer *webrtc.SessionDescription) (*webrtc.SessionDescription, error) {
+func (s *sfuAppImpl) SetOfferGetAnswer(ctx context.Context, groupId uint, senderNickname, senderAvatar string, receiverList []*dto.Receiver, mediaType uint, offer *webrtc.SessionDescription) (*webrtc.SessionDescription, error) {
 	userId := request.GetCurrentUser(ctx)
-	isInitiator := len(receiverIdList) > 0
+	isInitiator := len(receiverList) > 0
 	var initiator func()
 	if isInitiator {
 		initiator = func() {
 			// 发送通知
-			for _, id := range receiverIdList {
-				s.imDomain.SendMessage(ctx, consts.WsMessageCmdCallInvitation, id, &dto.WebRTCMessage{
-					SenderId:           request.GetCurrentUser(ctx),
-					SenderNickname:     senderNickname,
-					SenderAvatar:       senderAvatar,
-					ReceiverId:         id,
-					ReceiverIdList:     receiverIdList,
-					ReceiverAvatarList: receiverAvatarList,
-					Content:            senderNickname + consts.WsMessageGroupCallMessageTemplate,
-					MediaType:          mediaType,
-					GroupId:            groupId,
+			for _, receiver := range receiverList {
+				s.imDomain.SendMessage(ctx, consts.WsMessageCmdCallInvitation, receiver.Id, &dto.WebRTCMessage{
+					SenderId:       request.GetCurrentUser(ctx),
+					SenderNickname: senderNickname,
+					SenderAvatar:   senderAvatar,
+					ReceiverId:     groupId,
+					ReceiverList:   receiverList,
+					Content:        senderNickname + consts.WsMessageGroupCallMessageTemplate,
+					MediaType:      mediaType,
 				})
 			}
 		}
 	}
+	// 如何是发起者，webrtc连接成功后，通知其他人
 	participant, err := vars.Sfu.CreateOrGetParticipant(groupId, isInitiator, userId, initiator)
 	if err != nil {
 		return nil, err
@@ -72,28 +71,26 @@ func (s *sfuAppImpl) SetOfferGetAnswer(ctx context.Context, groupId uint, sender
 	return answer, nil
 }
 
-func (s *sfuAppImpl) SetIceCandidateInit(ctx context.Context, groupId uint, senderNickname, senderAvatar string, receiverIdList []uint, receiverAvatarList []string, mediaType uint, init *webrtc.ICECandidateInit) error {
-	isInitiator := len(receiverIdList) > 0
+func (s *sfuAppImpl) SetIceCandidateInit(ctx context.Context, groupId uint, senderNickname, senderAvatar string, receiverList []*dto.Receiver, mediaType uint, init *webrtc.ICECandidateInit) error {
+	isInitiator := len(receiverList) > 0
 	var initiator func()
 	if isInitiator {
 		initiator = func() {
 			// 发送通知
-			for _, id := range receiverIdList {
-				s.imDomain.SendMessage(ctx, consts.WsMessageCmdCallInvitation, id, &dto.WebRTCMessage{
-					SenderId:           request.GetCurrentUser(ctx),
-					SenderNickname:     senderNickname,
-					SenderAvatar:       senderAvatar,
-					ReceiverId:         id,
-					ReceiverIdList:     receiverIdList,
-					ReceiverAvatarList: receiverAvatarList,
-					Content:            senderNickname + consts.WsMessageGroupCallMessageTemplate,
-					MediaType:          mediaType,
-					GroupId:            groupId,
+			for _, receiver := range receiverList {
+				s.imDomain.SendMessage(ctx, consts.WsMessageCmdCallInvitation, receiver.Id, &dto.WebRTCMessage{
+					SenderId:       request.GetCurrentUser(ctx),
+					SenderNickname: senderNickname,
+					SenderAvatar:   senderAvatar,
+					ReceiverId:     groupId,
+					ReceiverList:   receiverList,
+					Content:        senderNickname + consts.WsMessageGroupCallMessageTemplate,
+					MediaType:      mediaType,
 				})
 			}
 		}
 	}
-	participant, err := vars.Sfu.CreateOrGetParticipant(groupId, len(receiverIdList) > 0, request.GetCurrentUser(ctx), initiator)
+	participant, err := vars.Sfu.CreateOrGetParticipant(groupId, len(receiverList) > 0, request.GetCurrentUser(ctx), initiator)
 	if err != nil || participant == nil {
 		return err
 	}

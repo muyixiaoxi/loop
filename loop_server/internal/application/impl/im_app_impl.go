@@ -135,7 +135,12 @@ func (i *imAppImpl) handlePrivateMessage(ctx context.Context, msg *dto.Message) 
 
 	// 在线
 	if i.imDomain.IsOnline(ctx, pMsg.ReceiverId) {
-		return i.imDomain.HandleOnlinePrivateMessage(ctx, pMsg)
+		ok, err := i.imDomain.HandleOnlinePrivateMessage(ctx, pMsg)
+		if !ok {
+			i.RemoveOnlineUser(ctx, pMsg.ReceiverId)
+			return i.handleOfflinePrivateMessage(ctx, pMsg)
+		}
+		return err
 	}
 
 	return i.handleOfflinePrivateMessage(ctx, pMsg)
@@ -261,9 +266,13 @@ func (i *imAppImpl) handlerGroupOffer(ctx context.Context, msg *dto.Message) err
 		slog.Error("handlerGroupOffer unmarshal err:", err)
 		return err
 	}
+	if len(sdpMessage.ReceiverList) == 0 {
+		return nil
+	}
+
 	userId := sdpMessage.SenderId
 	answer, err := i.sfuApp.SetOfferGetAnswer(ctx, sdpMessage.ReceiverId, sdpMessage.SenderNickname, sdpMessage.SenderAvatar,
-		sdpMessage.ReceiverIdList, sdpMessage.ReceiverAvatarList, sdpMessage.MediaType, sdpMessage.SessionDescription)
+		sdpMessage.ReceiverList, sdpMessage.MediaType, sdpMessage.SessionDescription)
 	if err != nil {
 		return err
 	}
@@ -281,7 +290,7 @@ func (i *imAppImpl) handlerGroupIce(ctx context.Context, msg *dto.Message) error
 		return err
 	}
 	return i.sfuApp.SetIceCandidateInit(ctx, sdpMessage.ReceiverId, sdpMessage.SenderNickname, sdpMessage.SenderAvatar,
-		sdpMessage.ReceiverIdList, sdpMessage.ReceiverAvatarList, sdpMessage.MediaType, sdpMessage.CandidateInit)
+		sdpMessage.ReceiverList, sdpMessage.MediaType, sdpMessage.CandidateInit)
 }
 
 func (i *imAppImpl) SubmitOfflineMessage(ctx context.Context, userId uint, seqIdList []*dto.Ack) error {

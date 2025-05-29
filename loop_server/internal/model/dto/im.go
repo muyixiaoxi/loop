@@ -42,19 +42,22 @@ type Ack struct {
 }
 
 type WebRTCMessage struct {
-	SenderId           uint                       `json:"sender_id"`                      // 发送者Id
-	SenderNickname     string                     `json:"sender_nickname,omitempty"`      // 发送者昵称
-	SenderAvatar       string                     `json:"sender_avatar,omitempty"`        // 发送者头像
-	ReceiverId         uint                       `json:"receiver_id,omitempty"`          // 接收者Id
-	ReceiverIdList     []uint                     `json:"receiver_id_list,omitempty"`     // 接收者Id列表
-	ReceiverAvatarList []string                   `json:"receiver_avatar_list,omitempty"` // 接收者头像列表
-	Content            string                     `json:"content"`                        // 消息内容
-	IsInitiator        bool                       `json:"is_initiator,omitempty"`         // 是否为发起者
-	MediaType          uint                       `json:"media_type"`                     // 媒体类型:0-音频，1-视频
-	GroupId            uint                       `json:"group_id,omitempty"`             // 群组Id
-	SessionDescription *webrtc.SessionDescription `json:"session_description,omitempty"`  // sdp信息
-	CandidateInit      *webrtc.ICECandidateInit   `json:"candidate_init,omitempty"`       // ice信息
-	Candidate          *webrtc.ICECandidate       `json:"candidate,omitempty"`            // ice信息
+	SenderId           uint                       `json:"sender_id"`                     // 发送者Id
+	SenderNickname     string                     `json:"sender_nickname,omitempty"`     // 发送者昵称
+	SenderAvatar       string                     `json:"sender_avatar,omitempty"`       // 发送者头像
+	ReceiverId         uint                       `json:"receiver_id,omitempty"`         // 接收者Id
+	ReceiverList       []*Receiver                `json:"receiver_list,omitempty"`       // 接收者Id列表
+	Content            string                     `json:"content"`                       // 消息内容
+	IsInitiator        bool                       `json:"is_initiator,omitempty"`        // 是否为发起者
+	MediaType          uint                       `json:"media_type"`                    // 媒体类型:0-音频，1-视频
+	SessionDescription *webrtc.SessionDescription `json:"session_description,omitempty"` // sdp信息
+	CandidateInit      *webrtc.ICECandidateInit   `json:"candidate_init,omitempty"`      // ice信息
+	Candidate          *webrtc.ICECandidate       `json:"candidate,omitempty"`           // ice信息
+}
+
+type Receiver struct {
+	Id     uint   `json:"id"`
+	Avatar string `json:"avatar"`
 }
 
 type Message struct {

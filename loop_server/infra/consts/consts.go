@@ -25,7 +25,6 @@ const (
 	WsMessageCmdGroupAnswer                    // 群聊answer
 	WsMessageCmdGroupIce                       // 群聊ice
 	WsMessageCmdCallInvitation                 // 呼叫邀请
-	WsMessageCmdGroupAck                       //群聊应答
 	WsMessageCmdRemind              = 100      //提醒
 )
 

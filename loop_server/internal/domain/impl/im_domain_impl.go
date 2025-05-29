@@ -37,11 +37,11 @@ func (i *imDomainImpl) HandleHeartbeat(ctx context.Context, curUserId uint, msgB
 	return nil
 }
 
-func (i *imDomainImpl) HandleOnlinePrivateMessage(ctx context.Context, pMsg *dto.PrivateMessage) error {
+func (i *imDomainImpl) HandleOnlinePrivateMessage(ctx context.Context, pMsg *dto.PrivateMessage) (bool, error) {
 	pMsgByte, err := json.Marshal(pMsg)
 	if err != nil {
 		slog.Error("internal/domain/impl/im_domain_impl.go json.Marshal(pMsg) err:", err)
-		return err
+		return false, err
 	}
 
 	msg := &dto.Message{
@@ -51,15 +51,19 @@ func (i *imDomainImpl) HandleOnlinePrivateMessage(ctx context.Context, pMsg *dto
 	msgByte, err := json.Marshal(msg)
 	if err != nil {
 		slog.Error("internal/domain/impl/im_domain_impl.go json.Marshal(msg) err:", err)
-		return err
+		return false, err
 	}
 
-	err = vars.Ws.Get(pMsg.ReceiverId).Conn.WriteMessage(websocket.TextMessage, msgByte)
-	if err != nil {
-		slog.Error("internal/domain/impl/im_domain_impl.go HandleOnlinePrivateMessage write message err:", err)
-		return err
+	if client := vars.Ws.Get(pMsg.ReceiverId); client != nil {
+		err = client.Conn.WriteMessage(websocket.TextMessage, msgByte)
+		if err != nil {
+			slog.Error("internal/domain/impl/im_domain_impl.go write message err:", err)
+			return false, err
+		}
+		return true, nil
 	}
-	return nil
+
+	return false, nil
 }
 
 func (i *imDomainImpl) HandleOfflinePrivateMessage(ctx context.Context, pMsg *dto.PrivateMessage) error {

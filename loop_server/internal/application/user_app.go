@@ -11,4 +11,5 @@ type UserApp interface {
 	QueryUser(ctx context.Context, user *dto.QueryUserRequest) (*dto.UserInfo, error)
 	UpdateUserInfo(ctx context.Context, user *dto.User) (*dto.User, error)
 	UpdateUserPassword(ctx context.Context, old string, new string) (bool, error)
+	RefreshToken(ctx context.Context, refreshToken string) (string, error)
 }

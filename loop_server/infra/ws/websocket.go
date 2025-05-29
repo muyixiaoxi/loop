@@ -47,6 +47,9 @@ func (s *Server) Get(key uint) *Client {
 func (s *Server) Delete(key uint) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if client, ok := s.clients[key]; ok {
+		client.Conn.Close()
+	}
 	delete(s.clients, key)
 }
 

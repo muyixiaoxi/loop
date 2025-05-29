@@ -7,85 +7,69 @@ import (
 )
 
 const (
-	accessTokenExpireDuration  = time.Hour * 1      // Access Token有效期1小时
-	refreshTokenExpireDuration = time.Hour * 24 * 7 // Refresh Token有效期7天
+	AccessTokenExpire  = time.Hour * 2      // Access Token 有效期 2 小时
+	RefreshTokenExpire = time.Hour * 24 * 7 // Refresh Token 有效期 7 天
 )
 
 var (
-	CustomSecret  = []byte("loop")
-	RefreshSecret = []byte("loop-refresh") // 单独的Refresh Token密钥
+	AccessTokenSecret  = []byte("loop-access")
+	RefreshTokenSecret = []byte("loop-refresh")
 )
 
 type UserClaims struct {
-	// 可根据需要自行添加字段
-	ID uint `json:"id"`
+	ID uint `json:"id"` // 用户ID
 }
+
+type tokenType int
+
+const (
+	AccessToken  tokenType = 0
+	RefreshToken tokenType = 1
+)
 
 type CustomClaims struct {
 	UserClaims
-	jwt.RegisteredClaims // 内嵌标准的声明
+	jwt.RegisteredClaims
 }
 
-// TokenPair 包含Access Token和Refresh Token
-type TokenPair struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-}
-
-// GenToken 生成双Token
-func GenToken(Id uint) (*TokenPair, error) {
-	user := UserClaims{
-		ID: Id,
+// 生成双 Token
+func GenerateTokens(userID uint) (accessToken, refreshToken string, err error) {
+	// 1. 生成 Access Token
+	accessToken, err = GenerateToken(userID, AccessTokenExpire, AccessToken)
+	if err != nil {
+		return "", "", err
 	}
 
-	// 生成Access Token
-	accessClaims := CustomClaims{
-		user,
-		jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(accessTokenExpireDuration)),
-			Issuer:    "my-project",
+	// 2. 生成 Refresh Token（单独用途，不包含用户敏感信息）
+	refreshToken, err = GenerateToken(userID, RefreshTokenExpire, RefreshToken)
+	return
+}
+
+// GenerateToken 生成单个 Token tokenType: 0-accessToken,1-refreshToken
+func GenerateToken(userID uint, expireDuration time.Duration, tokenType tokenType) (string, error) {
+	claims := CustomClaims{
+		UserClaims: UserClaims{ID: userID},
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expireDuration)),
+			Issuer:    "my-im-system",
 		},
 	}
-	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
-	accessTokenStr, err := accessToken.SignedString(CustomSecret)
-	if err != nil {
-		return nil, err
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	customSecret := AccessTokenSecret
+	if tokenType == 1 {
+		customSecret = RefreshTokenSecret
 	}
-
-	// 生成Refresh Token
-	refreshClaims := CustomClaims{
-		user,
-		jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(refreshTokenExpireDuration)),
-			Issuer:    "my-project-refresh",
-		},
-	}
-	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
-	refreshTokenStr, err := refreshToken.SignedString(RefreshSecret)
-	if err != nil {
-		return nil, err
-	}
-
-	return &TokenPair{
-		AccessToken:  accessTokenStr,
-		RefreshToken: refreshTokenStr,
-	}, nil
+	return token.SignedString(customSecret)
 }
 
-// ParseAccessToken 解析Access Token
-func ParseAccessToken(tokenString string) (*CustomClaims, error) {
-	return parseToken(tokenString, CustomSecret)
-}
-
-// ParseRefreshToken 解析Refresh Token
-func ParseRefreshToken(tokenString string) (*CustomClaims, error) {
-	return parseToken(tokenString, RefreshSecret)
-}
-
-// 解析Token的通用方法
-func parseToken(tokenString string, secret []byte) (*CustomClaims, error) {
+// 解析 Token
+func ParseToken(tokenString string, tokenType tokenType) (*CustomClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return secret, nil
+		customSecret := AccessTokenSecret
+		if tokenType == 1 {
+			customSecret = RefreshTokenSecret
+		}
+		return customSecret, nil
 	})
 	if err != nil {
 		return nil, err
@@ -94,29 +78,17 @@ func parseToken(tokenString string, secret []byte) (*CustomClaims, error) {
 	if claims, ok := token.Claims.(*CustomClaims); ok && token.Valid {
 		return claims, nil
 	}
-
 	return nil, errors.New("invalid token")
 }
 
-// 需要Refresh的错误判断
-func NeedTokenRefresh(err error) bool {
-	if ve, ok := err.(*jwt.ValidationError); ok {
-		// 检查是否是Expired签名错误
-		if ve.Errors&jwt.ValidationErrorExpired != 0 {
-			return true
-		}
-	}
-	return false
-}
-
-// RefreshToken 刷新Token
-func RefreshToken(refreshTokenStr string) (*TokenPair, error) {
-	// 解析Refresh Token
-	claims, err := ParseRefreshToken(refreshTokenStr)
+// 刷新 Access Token（校验 Refresh Token 后生成新 Access Token）
+func RefreshAccessToken(refreshToken string) (newAccessToken string, err error) {
+	// 1. 校验 Refresh Token 有效性
+	claims, err := ParseToken(refreshToken, RefreshToken)
 	if err != nil {
-		return nil, err
+		return "", errors.New("invalid refresh token")
 	}
 
-	// 生成新的Token对
-	return GenToken(claims.UserClaims.ID)
+	// 2. 生成新 Access Token
+	return GenerateToken(claims.UserClaims.ID, AccessTokenExpire, AccessToken)
 }
