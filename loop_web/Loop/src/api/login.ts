@@ -29,3 +29,8 @@ interface RegisterParams {
 export const RegisterPost = (registerData: RegisterParams) => {
   return http.post<User>("/api/v1/register", registerData);
 };
+
+// 刷新token
+export const RefreshToken = (refreshToken: string) => {
+  return http.post("/api/v1/refresh", { refresh_token: refreshToken });
+};

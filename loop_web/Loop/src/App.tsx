@@ -9,6 +9,12 @@ function App() {
   // 初始化HTTP导航
   useEffect(() => {
     setHttpNavigate(navigate);
+    // 禁用右键菜单
+    const handleContextMenu = (e: MouseEvent) => e.preventDefault();
+    document.addEventListener("contextmenu", handleContextMenu);
+    return () => {
+      document.removeEventListener("contextmenu", handleContextMenu);
+    };
   }, [navigate]);
 
   return (

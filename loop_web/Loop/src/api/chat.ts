@@ -42,7 +42,7 @@ export const AIchat = async (
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${userStore.token}`,
+        Authorization: `Bearer ${userStore.access_token}`,
       },
       body: JSON.stringify(data),
     });
@@ -88,9 +88,9 @@ function processBuffer(buffer: string, onMessage: (message: string) => void) {
   while ((match = eventPattern.exec(buffer))) {
     let message = match[1].trimEnd();
     console.log(message);
-    
+
     if (message === "event:message") {
-      message = ' ';
+      message = " ";
     }
     onMessage(message);
   }

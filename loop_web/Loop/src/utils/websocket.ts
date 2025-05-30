@@ -1,4 +1,6 @@
 // 定义 WebSocket 消息类型
+import userStore from "@/store/user";
+
 interface WebSocketMessage<T = unknown> {
   cmd: number; // 消息类型,  0-心跳，1-私聊，2-群聊，3-在线应答
   data: T; // 消息内容（泛型）
@@ -44,7 +46,7 @@ class WebSocketClient<T = unknown> {
     onClose: () => {},
     onError: () => {},
     onMessage: () => {},
-    reconnectInterval: 1000,
+    reconnectInterval: 5000,
     reconnectAttempts: Number.MAX_VALUE,
     heartbeatInterval: 5000,
   };
@@ -60,8 +62,16 @@ class WebSocketClient<T = unknown> {
     this.status = "connecting";
     this.clearTimers();
 
+    // 先关闭之前的连接
+    if (this.socket) {
+      this.socket.close();
+      this.socket = null;
+    }
+    const { access_token } = userStore; // 获取用户信息
+
     try {
-      this.socket = new WebSocket(this.options.url);
+      const url = this.options.url + `?token=${access_token}`;
+      this.socket = new WebSocket(url);
 
       this.socket.onopen = () => {
         console.log("WebSocket 连接成功");
@@ -84,7 +94,7 @@ class WebSocketClient<T = unknown> {
       };
 
       this.socket.onclose = (event) => {
-        console.log(`WebSocket 连接关闭，代码: ${event.code}`);
+        console.log(`WebSocket 连接关闭 ${event}，代码: ${event.code}`);
         this.status = "disconnected";
         this.options.onClose?.(event);
         this.clearTimers();

@@ -14,6 +14,13 @@ import {
   message,
 } from "antd";
 import {
+  UsergroupAddOutlined,
+  UsergroupDeleteOutlined,
+  ArrowLeftOutlined,
+  MinusCircleOutlined,
+  PlusCircleOutlined,
+} from "@ant-design/icons";
+import {
   getGroupMemberList,
   getGroupInfo,
   getNotInGroupUserList,
@@ -62,6 +69,7 @@ const ChatInfo = (props: ChatInfoProps) => {
   const { currentChatInfo, setCurrentFriendData, setCurrentChatList } =
     chatStore;
   const chatType = currentChatInfo.type;
+  console.log(chatType, "chatType");
   const { userInfo } = userStore;
   const db = getChatDB(userInfo.id); // 获取数据库连接
   const { handleUpload } = useOSSUpload(); // 上传图片到OSS
@@ -525,20 +533,7 @@ const ChatInfo = (props: ChatInfoProps) => {
     <div className="drawer-header">
       <div className="header-title">
         <div className="back-icon" onClick={onBack}>
-          <svg
-            viewBox="0 0 1024 1024"
-            version="1.1"
-            xmlns="http://www.w3.org/2000/svg"
-            p-id="3219"
-            width="23"
-            height="23"
-          >
-            <path
-              d="M862.485 481.154H234.126l203.3-203.3c12.497-12.497 12.497-32.758 0-45.255s-32.758-12.497-45.255 0L135.397 489.373c-12.497 12.497-12.497 32.758 0 45.254l256.774 256.775c6.249 6.248 14.438 9.372 22.627 9.372s16.379-3.124 22.627-9.372c12.497-12.497 12.497-32.759 0-45.255l-203.3-203.301h628.36c17.036 0 30.846-13.81 30.846-30.846s-13.81-30.846-30.846-30.846z"
-              fill="#707579"
-              p-id="3220"
-            ></path>
-          </svg>
+          <ArrowLeftOutlined style={{ fontSize: "20px", color: "#707579" }} />
         </div>
         <h3>
           {title}
@@ -584,9 +579,8 @@ const ChatInfo = (props: ChatInfoProps) => {
                   onClick={() => handleAddMember()}
                 >
                   <div className="chat-list-img">
-                    <img
-                      src="https://loopavatar.oss-cn-beijing.aliyuncs.com/1747388461586_下载.png"
-                      alt="新增成员"
+                    <UsergroupAddOutlined
+                      style={{ fontSize: "50px", color: "#999" }}
                     />
                   </div>
                 </div>
@@ -602,9 +596,8 @@ const ChatInfo = (props: ChatInfoProps) => {
                     }}
                   >
                     <div className="chat-list-img">
-                      <img
-                        src="https://loopavatar.oss-cn-beijing.aliyuncs.com/1747748036213_下载 (1).png"
-                        alt="删除成员"
+                      <UsergroupDeleteOutlined
+                        style={{ fontSize: "50px", color: "#999" }}
                       />
                     </div>
                   </div>
@@ -720,245 +713,242 @@ const ChatInfo = (props: ChatInfoProps) => {
             </Popconfirm>
           </div>
         </div>
+        {/* 群聊相关弹窗 */}
+        {chatType === 2 && (
+          <>
+            {/* 修改抽屉容器，展示管理群成员 */}
+            <div className={`member_drawer ${showMemberDrawer ? "show" : ""}`}>
+              {/* 标题头部 */}
+              {renderDrawerHeader({
+                title: "群成员",
+                count: groupMemberList?.length,
+                onBack: () => {
+                  setShowMemberDrawer(false);
+                  setIsDeleteMode(false);
+                  setSelectedMembers([]);
+                },
+                showActionButton: isDeleteMode,
+                actionButtonText: `删除(${selectedMembers.length})`,
+                onAction: handleDeleteMembers,
+                actionDisabled: selectedMembers.length === 0,
+              })}
 
-        {/* 修改抽屉容器，展示管理群成员 */}
-        <div className={`member_drawer ${showMemberDrawer ? "show" : ""}`}>
-          {/* 标题头部 */}
-          {renderDrawerHeader({
-            title: "群成员",
-            count: groupMemberList.length,
-            onBack: () => {
-              setShowMemberDrawer(false);
-              setIsDeleteMode(false);
-              setSelectedMembers([]);
-            },
-            showActionButton: isDeleteMode,
-            actionButtonText: `删除(${selectedMembers.length})`,
-            onAction: handleDeleteMembers,
-            actionDisabled: selectedMembers.length === 0,
-          })}
-
-          {/* 展示内容  */}
-          <div className="member-list">
-            {isDeleteMode ? (
-              <>
-                {/* 删除成员 */}
-                {lowerLevelMembers
-                  .sort((a, b) => b.role - a.role) // 按角色降序排序(群主3 > 管理员2 > 普通成员1)
-                  .map((member) => renderMemberItem(member, true))}
-              </>
-            ) : (
-              <>
-                {/* 查看群成员 */}
-                {groupMemberList
-                  .sort((a, b) => b.role - a.role) // 按角色降序排序(群主3 > 管理员2 > 普通成员1)
-                  .map((member) => renderMemberItem(member))}
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* 群管理内容展示抽屉 */}
-        <div className={`manager_drawer ${showManagerDrawer ? "show" : ""}`}>
-          {renderDrawerHeader({
-            title: "群管理",
-            onBack: () => setShowManagerDrawer(false),
-          })}
-
-          <div className="manager-list">
-            {userInfo?.id === groupInfo?.owner_id && (
-              <div
-                className="manager-item"
-                onClick={() => {
-                  setShowTransferDrawer(true);
-                }}
-              >
-                <div className="manager-item-center">群主管理权转让</div>
-              </div>
-            )}
-
-            <div className="manager-item">
-              <div className="manager-item-title"> 群主\管理员</div>
-              <div className="manager-item-list">
-                {groupMemberList
-                  .filter((member: any) => member.role > 1) // 只显示管理员和群主
-                  .sort((a, b) => b.role - a.role) // 按角色降序排序
-                  .map((member: any) => {
-                    return (
-                      <div
-                        className="manager-item-list-item"
-                        key={member.user_id}
-                      >
-                        <div style={{ display: "flex", alignItems: "center" }}>
-                          <img src={member.avatar} alt="" />
-                          <span>{member.nickname}</span>
-                        </div>
-                        <div onClick={() => handleDeleteAdmin(member.user_id)}>
-                          {userInfo?.id === groupInfo?.owner_id &&
-                            member.role == 2 && (
-                              <span className="member-role">
-                                <svg
-                                  viewBox="0 0 1024 1024"
-                                  version="1.1"
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  p-id="4437"
-                                  width="20"
-                                  height="20"
-                                >
-                                  <path
-                                    d="M67 512C67 266.2 266.2 67 512 67s445 199.2 445 445-199.2 445-445 445S67 757.8 67 512z m230.2-30.7c-17.1 0-30.7 13.7-30.7 30.7 0 17.1 13.8 30.7 30.7 30.7h429.6c17.1 0 30.7-13.7 30.7-30.7 0-17.1-13.8-30.7-30.7-30.7H297.2zM895.6 512c0-211.9-171.8-383.6-383.6-383.6S128.4 300.1 128.4 512 300.1 895.6 512 895.6 895.6 723.9 895.6 512z"
-                                    fill="red"
-                                    p-id="4438"
-                                  ></path>
-                                </svg>
-                              </span>
-                            )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                {/* 群主才能添加管理员 */}
-                {userInfo?.id === groupInfo?.owner_id && (
-                  <div
-                    className="manager-item-list-item add-manager"
-                    onClick={() => {
-                      // 添加管理员
-                      setShowAddAdminDrawer(true);
-                    }}
-                  >
-                    <div className="add-manager-icon">
-                      <svg
-                        viewBox="0 0 1024 1024"
-                        version="1.1"
-                        xmlns="http://www.w3.org/2000/svg"
-                        p-id="5423"
-                        width="20"
-                        height="20"
-                      >
-                        <path
-                          d="M352 480h320c9.344 0 17.024 3.008 23.04 8.96 5.952 6.016 8.96 13.696 8.96 23.04a31.168 31.168 0 0 1-8.96 23.04 31.168 31.168 0 0 1-23.04 8.96h-320a31.168 31.168 0 0 1-23.04-8.96A31.168 31.168 0 0 1 320 512c0-9.344 3.008-17.024 8.96-23.04a31.168 31.168 0 0 1 23.04-8.96z m128 192v-320c0-9.344 3.008-17.024 8.96-23.04A31.168 31.168 0 0 1 512 320c9.344 0 17.024 3.008 23.04 8.96 5.952 6.016 8.96 13.696 8.96 23.04v320a31.168 31.168 0 0 1-8.96 23.04A31.168 31.168 0 0 1 512 704a31.168 31.168 0 0 1-23.04-8.96 31.168 31.168 0 0 1-8.96-23.04zM512 896c108.672-2.688 199.168-40.192 271.488-112.512S893.312 620.672 896 512c-2.688-108.672-40.192-199.168-112.512-271.488S620.672 130.688 512 128c-108.672 2.688-199.168 40.192-271.488 112.512S130.688 403.328 128 512c2.688 108.672 40.192 199.168 112.512 271.488S403.328 893.312 512 896z m0 64c-126.72-3.328-232.192-47.168-316.544-131.52C111.232 744.192 67.392 638.72 64 512c3.328-126.72 47.168-232.192 131.456-316.544C279.872 111.232 385.344 67.392 512 64c126.72 3.328 232.192 47.168 316.48 131.456C912.832 279.872 956.672 385.344 960 512c-3.328 126.72-47.168 232.192-131.52 316.48C744.192 912.832 638.72 956.672 512 960z"
-                          fill="red"
-                          p-id="5424"
-                        ></path>
-                      </svg>
-                    </div>
-                    <div>添加管理员</div>
-                  </div>
+              {/* 展示内容  */}
+              <div className="member-list">
+                {isDeleteMode ? (
+                  <>
+                    {/* 删除成员 */}
+                    {lowerLevelMembers
+                      ?.sort((a, b) => b.role - a.role) // 按角色降序排序(群主3 > 管理员2 > 普通成员1)
+                      .map((member) => renderMemberItem(member, true))}
+                  </>
+                ) : (
+                  <>
+                    {/* 查看群成员 */}
+                    {groupMemberList
+                      ?.sort((a, b) => b.role - a.role) // 按角色降序排序(群主3 > 管理员2 > 普通成员1)
+                      .map((member) => renderMemberItem(member))}
+                  </>
                 )}
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* 群主转让\添加管理员抽屉 */}
-        {/* 群主转让抽屉 */}
-        <div className={`member_drawer ${showTransferDrawer ? "show" : ""}`}>
-          {renderDrawerHeader({
-            title: "转让群主",
-            onBack: () => setShowTransferDrawer(false),
-          })}
+            {/* 群管理内容展示抽屉 */}
+            <div
+              className={`manager_drawer ${showManagerDrawer ? "show" : ""}`}
+            >
+              {renderDrawerHeader({
+                title: "群管理",
+                onBack: () => setShowManagerDrawer(false),
+              })}
 
-          <div className="member-list">
-            {groupMemberList
-              .filter((member) => member.role < 3) // 只显示非群主和管理员
-              .map((member) => (
-                <div
-                  onClick={() => {
-                    setIsTransferModalOpen(true);
-                    setTransferUserId(member.user_id);
-                  }}
-                >
-                  {renderMemberItem(member)}
+              <div className="manager-list">
+                {userInfo?.id === groupInfo?.owner_id && (
+                  <div
+                    className="manager-item"
+                    onClick={() => {
+                      setShowTransferDrawer(true);
+                    }}
+                  >
+                    <div className="manager-item-center">群主管理权转让</div>
+                  </div>
+                )}
+
+                <div className="manager-item">
+                  <div className="manager-item-title"> 群主\管理员</div>
+                  <div className="manager-item-list">
+                    {groupMemberList
+                      ?.filter((member: any) => member.role > 1) // 只显示管理员和群主
+                      ?.sort((a, b) => b.role - a.role) // 按角色降序排序
+                      .map((member: any) => {
+                        return (
+                          <div
+                            className="manager-item-list-item"
+                            key={member.user_id}
+                          >
+                            <div
+                              style={{ display: "flex", alignItems: "center" }}
+                            >
+                              <img src={member.avatar} alt="" />
+                              <span>{member.nickname}</span>
+                            </div>
+                            <div
+                              onClick={() => handleDeleteAdmin(member.user_id)}
+                            >
+                              {userInfo?.id === groupInfo?.owner_id &&
+                                member.role == 2 && (
+                                  <span className="member-role">
+                                    <MinusCircleOutlined
+                                      style={{ fontSize: "20px", color: "red" }}
+                                    />
+                                  </span>
+                                )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    {/* 群主才能添加管理员 */}
+                    {userInfo?.id === groupInfo?.owner_id && (
+                      <div
+                        className="manager-item-list-item add-manager"
+                        onClick={() => {
+                          // 添加管理员
+                          setShowAddAdminDrawer(true);
+                        }}
+                      >
+                        <div className="add-manager-icon">
+                          <PlusCircleOutlined
+                            style={{ fontSize: "20px", color: "red" }}
+                          />
+                        </div>
+                        <div>添加管理员</div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              ))}
-          </div>
-        </div>
-
-        {/* 添加管理员抽屉 */}
-        <div className={`member_drawer ${showAddAdminDrawer ? "show" : ""}`}>
-          {renderDrawerHeader({
-            title: "添加管理员",
-            onBack: () => {
-              setShowAddAdminDrawer(false);
-              setSelectedMembers([]);
-            },
-            showActionButton: true,
-            actionButtonText: `确认(${selectedMembers.length})`,
-            onAction: () => {
-              handleSetAdmin(selectedMembers);
-              setShowAddAdminDrawer(false);
-            },
-            actionDisabled: selectedMembers.length === 0,
-          })}
-
-          <div className="member-list">
-            {groupMemberList
-              .filter((member: any) => member.role === 1) // 只显示普通成员
-              .map((member: any) => renderMemberItem(member, true))}
-          </div>
-        </div>
-
-        {/* 修改群信息抽屉 */}
-        <div className={`member_drawer ${showEditGroupDrawer ? "show" : ""}`}>
-          {renderDrawerHeader({
-            title: "修改群信息",
-            onBack: () => setShowEditGroupDrawer(false),
-            showActionButton: true,
-            actionButtonText: "保存",
-            onAction: handleEditGroupInfo,
-            actionDisabled: false,
-          })}
-
-          <div className="member-list">
-            <div className="edit-group-item">
-              <div className="edit-label">群名称</div>
-              <Input
-                value={editGroupInfo.name}
-                onChange={(e) =>
-                  setEditGroupInfo({ ...editGroupInfo, name: e.target.value })
-                }
-                placeholder="请输入群名称"
-                showCount
-                maxLength={16}
-                status={!editGroupInfo.name.trim() ? "error" : undefined}
-              />
-              {!editGroupInfo.name.trim() && (
-                <div className="ant-form-item-explain-error">
-                  群名称不能为空
-                </div>
-              )}
-            </div>
-            <div className="edit-group-item">
-              <div className="edit-label">群简介</div>
-              <Input.TextArea
-                value={editGroupInfo.describe}
-                onChange={(e) =>
-                  setEditGroupInfo({
-                    ...editGroupInfo,
-                    describe: e.target.value,
-                  })
-                }
-                placeholder="请输入群简介"
-                autoSize={{ minRows: 3, maxRows: 5 }}
-                showCount
-                maxLength={100}
-              />
-            </div>
-            <div className="edit-group-item">
-              <div className="edit-label">群头像</div>
-              <div className="avatar-upload">
-                <img
-                  src={editGroupInfo.avatar || groupInfo.avatar}
-                  alt="群头像"
-                  className="group-avatar-preview"
-                />
-                <Button type="primary" onClick={handleUploadAvatar}>
-                  上传新头像
-                </Button>
               </div>
             </div>
-          </div>
-        </div>
+
+            {/* 群主转让\添加管理员抽屉 */}
+            {/* 群主转让抽屉 */}
+            <div
+              className={`member_drawer ${showTransferDrawer ? "show" : ""}`}
+            >
+              {renderDrawerHeader({
+                title: "转让群主",
+                onBack: () => setShowTransferDrawer(false),
+              })}
+
+              <div className="member-list">
+                {groupMemberList
+                  ?.filter((member) => member.role < 3) // 只显示非群主和管理员
+                  ?.map((member) => (
+                    <div
+                      onClick={() => {
+                        setIsTransferModalOpen(true);
+                        setTransferUserId(member.user_id);
+                      }}
+                    >
+                      {renderMemberItem(member)}
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            {/* 添加管理员抽屉 */}
+            <div
+              className={`member_drawer ${showAddAdminDrawer ? "show" : ""}`}
+            >
+              {renderDrawerHeader({
+                title: "添加管理员",
+                onBack: () => {
+                  setShowAddAdminDrawer(false);
+                  setSelectedMembers([]);
+                },
+                showActionButton: true,
+                actionButtonText: `确认(${selectedMembers.length})`,
+                onAction: () => {
+                  handleSetAdmin(selectedMembers);
+                  setShowAddAdminDrawer(false);
+                },
+                actionDisabled: selectedMembers.length === 0,
+              })}
+
+              <div className="member-list">
+                {groupMemberList
+                  ?.filter((member: any) => member.role === 1) // 只显示普通成员
+                  ?.map((member: any) => renderMemberItem(member, true))}
+              </div>
+            </div>
+
+            {/* 修改群信息抽屉 */}
+            <div
+              className={`member_drawer ${showEditGroupDrawer ? "show" : ""}`}
+            >
+              {renderDrawerHeader({
+                title: "修改群信息",
+                onBack: () => setShowEditGroupDrawer(false),
+                showActionButton: true,
+                actionButtonText: "保存",
+                onAction: handleEditGroupInfo,
+                actionDisabled: false,
+              })}
+
+              <div className="member-list">
+                <div className="edit-group-item">
+                  <div className="edit-label">群名称</div>
+                  <Input
+                    value={editGroupInfo.name}
+                    onChange={(e) =>
+                      setEditGroupInfo({
+                        ...editGroupInfo,
+                        name: e.target.value,
+                      })
+                    }
+                    placeholder="请输入群名称"
+                    showCount
+                    maxLength={16}
+                    status={!editGroupInfo.name.trim() ? "error" : undefined}
+                  />
+                  {!editGroupInfo.name.trim() && (
+                    <div className="ant-form-item-explain-error">
+                      群名称不能为空
+                    </div>
+                  )}
+                </div>
+                <div className="edit-group-item">
+                  <div className="edit-label">群简介</div>
+                  <Input.TextArea
+                    value={editGroupInfo.describe}
+                    onChange={(e) =>
+                      setEditGroupInfo({
+                        ...editGroupInfo,
+                        describe: e.target.value,
+                      })
+                    }
+                    placeholder="请输入群简介"
+                    autoSize={{ minRows: 3, maxRows: 5 }}
+                    showCount
+                    maxLength={100}
+                  />
+                </div>
+                <div className="edit-group-item">
+                  <div className="edit-label">群头像</div>
+                  <div className="avatar-upload">
+                    <img
+                      src={editGroupInfo.avatar || groupInfo.avatar}
+                      alt="群头像"
+                      className="group-avatar-preview"
+                    />
+                    <Button type="primary" onClick={handleUploadAvatar}>
+                      上传新头像
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* 添加新成员 */}

@@ -156,3 +156,20 @@
     font-weight: 500;
   }
 }
+.footer {
+  position: fixed;
+  bottom: 20px;
+  width: 100%;
+  text-align: center;
+  color: #999;
+  font-size: 12px;
+
+  a {
+    color: #999;
+    text-decoration: none;
+
+    &:hover {
+      color: #666;
+    }
+  }
+}
