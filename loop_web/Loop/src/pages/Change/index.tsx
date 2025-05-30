@@ -69,21 +69,27 @@ const Change = () => {
       });
 
       if (code === 1000) {
-        setToken(data.token);
-        setUserInfo(data.user);
-        // 保存账号信息到历史记录
-        saveUserToHistory({
-          id: data.user.id,
-          phone: selectedUser.phone,
-          password: selectedUser.password, // 注意：实际项目中不建议存储明文密码
-          avatar: data.user.avatar,
-          nickname: data.user.nickname,
-          timestamp: new Date().getTime(),
-        });
-        navigate("/home");
-        messageApi.success("登录成功");
-      } else {
-        messageApi.error(msg || "登录失败");
+        if (code === 1000) {
+          const paramsToken = {
+            access_token: data.access_token,
+            refresh_token: data.refresh_token,
+          };
+          setToken(paramsToken);
+          setUserInfo(data.user);
+          // 保存账号信息到历史记录
+          saveUserToHistory({
+            id: data.user.id,
+            phone: selectedUser.phone,
+            password: selectedUser.password, // 注意：实际项目中不建议存储明文密码
+            avatar: data.user.avatar,
+            nickname: data.user.nickname,
+            timestamp: new Date().getTime(),
+          });
+          navigate("/home");
+          messageApi.success("登录成功");
+        } else {
+          messageApi.error(msg || "登录失败");
+        }
       }
     } catch (error) {
       messageApi.error("登录请求失败");
@@ -92,70 +98,86 @@ const Change = () => {
   };
 
   return (
-    <div className="zhanghao">
-      {contextHolder}
-      <div
-        className={`content-container ${
-          showAccountManage ? "show-account" : "show-profile"
-        }`}
-      >
-        {/* 账号管理内容 */}
-        <div className="account-manage">
-          <div className="back-button" onClick={handleopen}>
-            <LeftOutlined style={{ fontSize: "20px" }} />
+    <div>
+      <div className="zhanghao">
+        {contextHolder}
+        <div
+          className={`content-container ${
+            showAccountManage ? "show-account" : "show-profile"
+          }`}
+        >
+          {/* 账号管理内容 */}
+          <div className="account-manage">
+            <div className="back-button" onClick={handleopen}>
+              <LeftOutlined style={{ fontSize: "20px" }} />
+            </div>
+            <h2 style={{ textAlign: "center", marginBottom: "20px" }}>
+              历史账号
+            </h2>
+            <div className="account-list">
+              {historyUsers.map((user: any) => (
+                <div
+                  key={user.phone}
+                  className="account-card"
+                  onClick={() => handleSelectAccount(user)}
+                >
+                  <img
+                    src={user.avatar}
+                    alt="头像"
+                    className="account-avatar"
+                  />
+                  <div className="account-name">{user.nickname}</div>
+                </div>
+              ))}
+            </div>
           </div>
-          <h2 style={{ textAlign: "center", marginBottom: "20px" }}>
-            历史账号
-          </h2>
-          <div className="account-list">
-            {historyUsers.map((user: any) => (
-              <div
-                key={user.phone}
-                className="account-card"
-                onClick={() => handleSelectAccount(user)}
-              >
-                <img src={user.avatar} alt="头像" className="account-avatar" />
-                <div className="account-name">{user.nickname}</div>
-              </div>
-            ))}
-          </div>
-        </div>
 
-        {/* 原内容 */}
-        <div className="profile-content">
-          <div className="usermess">
-            <div className="useravatar">
-              <img src={currentUser.avatar} />
+          {/* 原内容 */}
+          <div className="profile-content">
+            <div className="usermess">
+              <div className="useravatar">
+                <img src={currentUser.avatar} />
+              </div>
+              <div className="username">{currentUser.nickname}</div>
+              <div className="usermanage">
+                <span
+                  style={{ color: "#1677ff", cursor: "pointer" }}
+                  onClick={handleopen}
+                >
+                  账号管理
+                </span>
+                <span
+                  style={{ color: "#1677ff", cursor: "pointer" }}
+                  onClick={handlejump}
+                >
+                  密码登录
+                </span>
+              </div>
             </div>
-            <div className="username">{currentUser.nickname}</div>
-            <div className="usermanage">
-              <span
-                style={{ color: "#1677ff", cursor: "pointer" }}
-                onClick={handleopen}
+            <div className="oncelogin">
+              <Button type="primary" className="bt" onClick={handleLogin}>
+                一键登录
+              </Button>
+              <Checkbox
+                className="mess"
+                checked={checked}
+                onChange={(e) => setChecked(e.target.checked)}
               >
-                账号管理
-              </span>
-              <span
-                style={{ color: "#1677ff", cursor: "pointer" }}
-                onClick={handlejump}
-              >
-                密码登录
-              </span>
+                已阅读并同意<a> 服务协议 </a>和<a> Loop隐私保护指引</a>
+              </Checkbox>
             </div>
-          </div>
-          <div className="oncelogin">
-            <Button type="primary" className="bt" onClick={handleLogin}>
-              一键登录
-            </Button>
-            <Checkbox
-              className="mess"
-              checked={checked}
-              onChange={(e) => setChecked(e.target.checked)}
-            >
-              已阅读并同意<a> 服务协议 </a>和<a> Loop隐私保护指引</a>
-            </Checkbox>
           </div>
         </div>
+      </div>
+      {/* 添加备案信息 */}
+      <div className="footer">
+        <a
+          href="https://beian.miit.gov.cn/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          豫ICP备2023029043号-2
+        </a>
       </div>
     </div>
   );

@@ -2,9 +2,8 @@ import "./index.scss";
 import { observer } from "mobx-react-lite";
 import { v4 as uuidv4 } from "uuid";
 import { useState, useContext, useRef, useEffect } from "react";
-import {OpenAIOutlined } from "@ant-design/icons"; // 引入 OpenAIOutlined 图标
-import { Input, Drawer, message, Button, Spin, Dropdown, Modal } from "antd"; // 引入 Modal 组件
-import type { MenuProps } from "antd"; // 引入 MenuProps 类型
+import { OpenAIOutlined, CopyOutlined } from "@ant-design/icons"; // 引入 OpenAIOutlined 图标
+import { Input, Drawer, message, Button, Spin, Modal } from "antd"; // 引入 Modal 组件
 
 import { WebSocketContext } from "@/pages/Home";
 import chatStore from "@/store/chat";
@@ -13,7 +12,6 @@ import globalStore from "@/store/global";
 import { getChatDB } from "@/utils/chat-db";
 import ChatInfo from "@/components/ChatInfo"; // 导入 ChatInfo 组件
 import { AIchat } from "@/api/chat";
-
 
 // 定义组件props类型
 interface ChatProps {
@@ -48,6 +46,47 @@ const Chat = observer((props: ChatProps) => {
   // 新增：管理模态框状态和内容
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [modalContent, setModalContent] = useState("");
+
+  // 新增右键菜单状态
+  const [contextMenu, setContextMenu] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    message?: any;
+  }>({
+    visible: false,
+    x: 0,
+    y: 0,
+  });
+
+  // 处理右键点击事件
+  const handleContextMenu = (e: React.MouseEvent, message: any) => {
+    e.preventDefault();
+    setContextMenu({
+      visible: true,
+      x: e.clientX,
+      y: e.clientY,
+      message,
+    });
+  };
+
+  // 关闭右键菜单
+  const closeContextMenu = () => {
+    setContextMenu({ ...contextMenu, visible: false });
+  };
+
+  // 点击外部关闭右键菜单
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (contextMenu.visible) {
+        closeContextMenu();
+      }
+    };
+    document.addEventListener("click", handleClickOutside);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, [contextMenu.visible]);
 
   const handleSendMessage = async () => {
     const messageId = uuidv4();
@@ -134,6 +173,7 @@ const Chat = observer((props: ChatProps) => {
     sendMessageWithTimeout(message);
   };
 
+  // 获取聊天信息
   const handleNewConversation = async () => {
     const res: any = await db.getConversation(
       userInfo.id,
@@ -171,7 +211,7 @@ const Chat = observer((props: ChatProps) => {
     setIsAILoading(true);
     setIsModalVisible(true);
     setModalContent("");
-  
+
     // 用于标记是否是首次收到消息
     let isFirstMessage = true;
 
@@ -187,14 +227,14 @@ const Chat = observer((props: ChatProps) => {
           setModalContent((prev) => prev + message);
         },
         (error) => {
-          console.error('调用 AIchat 失败:', error);
-          message.error('获取 AI 回复失败');
+          console.error("调用 AIchat 失败:", error);
+          message.error("获取 AI 回复失败");
           setIsAILoading(false);
         }
       );
     } catch (error) {
-      console.error('调用 AIchat 过程中出错:', error);
-      message.error('获取 AI 回复失败');
+      console.error("调用 AIchat 过程中出错:", error);
+      message.error("获取 AI 回复失败");
     } finally {
       // 如果在整个过程中都没有收到消息，才在最后取消加载状态
       if (isFirstMessage) {
@@ -255,28 +295,6 @@ const Chat = observer((props: ChatProps) => {
 
       <div className="chat-center">
         {currentMessages?.map((message: any) => {
-          const menu: MenuProps = {
-            items: [
-              {
-                key: 'ai-reply',
-                label: (
-                  <a
-                    onClick={() => handleAIReply(message.content)}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      width: '100%'
-                    }}
-                  >
-                    <span>AI 回复</span>
-                    <OpenAIOutlined style={{ marginLeft: 4 }} />
-                  </a>
-                ),
-              },
-            ],
-          };
-
           // 判断是否是好友消息，仅好友消息添加下拉框
           const isFriendMessage = message.sendId !== userInfo.id;
 
@@ -285,6 +303,7 @@ const Chat = observer((props: ChatProps) => {
               className={`message ${
                 message.sendId === userInfo.id ? "sent" : "received"
               }`}
+              key={message.id}
             >
               {/* 信息是好友发的，展示好友头像 */}
               {isFriendMessage && (
@@ -313,7 +332,18 @@ const Chat = observer((props: ChatProps) => {
                     )}
                   </div>
                 )}
-                <div className="message-text">{message.content}</div>
+                <div
+                  className={`message-text ${
+                    isFriendMessage && "friend-message"
+                  }`}
+                  onContextMenu={
+                    isFriendMessage
+                      ? (e) => handleContextMenu(e, message)
+                      : undefined
+                  }
+                >
+                  {message.content}
+                </div>
               </div>
               {/* 信息是自己发的，展示自身头像 */}
               {!isFriendMessage && (
@@ -325,14 +355,7 @@ const Chat = observer((props: ChatProps) => {
               )}
             </div>
           );
-
-          return isFriendMessage ? (
-            <Dropdown key={message.id} menu={menu} trigger={["hover"]}>
-              {messageElement}
-            </Dropdown>
-          ) : (
-            messageElement
-          );
+          return messageElement;
         })}
         <div ref={messagesEndRef} />
       </div>
@@ -362,19 +385,61 @@ const Chat = observer((props: ChatProps) => {
         onClose={() => setOpenDrawer(false)}
         className="chatInfo-drawer"
       >
-        <ChatInfo />
+        <ChatInfo
+          friendId={Number(currentFriendId)}
+          chatType={chatType}
+          refreshConversation={handleNewConversation}
+          openDrawer={openDrawer}
+          setOpenDrawer={setOpenDrawer}
+        />
       </Drawer>
+
+      {/* 右键菜单模态框 */}
+      {contextMenu.visible && (
+        <div
+          className="context-menu"
+          style={{
+            left: contextMenu.x,
+            top: contextMenu.y,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div
+            className="menu-item"
+            onClick={() => {
+              if (contextMenu.message) {
+                handleAIReply(contextMenu.message.content);
+              }
+              closeContextMenu();
+            }}
+          >
+            <OpenAIOutlined style={{ marginRight: 8 }} />
+            AI生成回复
+          </div>
+          <div
+            className="menu-item"
+            onClick={() => {
+              navigator.clipboard.writeText(contextMenu.message?.content || "");
+              message.success("已复制到剪贴板");
+              closeContextMenu();
+            }}
+          >
+            <CopyOutlined style={{ marginRight: 8 }} />
+            复制
+          </div>
+        </div>
+      )}
 
       {/* 修改模态框 */}
       <Modal
         // 修改标题，添加图标
         title={
-          <span style={{ display: 'flex', alignItems: 'center' }}>
+          <span style={{ display: "flex", alignItems: "center" }}>
             <OpenAIOutlined style={{ marginRight: 8 }} />
             AI 回复
           </span>
         }
-        visible={isModalVisible}
+        open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         footer={[
           <Button key="apply" type="primary" onClick={handleApplyReply}>

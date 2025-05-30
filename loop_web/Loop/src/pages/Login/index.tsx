@@ -29,7 +29,11 @@ const Login = () => {
       };
       const { code, data, result }: any = await LoginPost(valueParams);
       if (code === 1000) {
-        setToken(data.token);
+        const paramsToken = {
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+        };
+        setToken(paramsToken);
         setUserInfo(data.user);
 
         // 保存账号信息到历史记录
@@ -168,6 +172,16 @@ const Login = () => {
             </Form.Item>
           </Form>
         </div>
+      </div>
+      {/* 添加备案信息 */}
+      <div className="footer">
+        <a
+          href="https://beian.miit.gov.cn/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          豫ICP备2023029043号-2
+        </a>
       </div>
     </div>
   );

@@ -20,12 +20,14 @@ class UserStore {
     signature: "",
   };
 
-  token: string = "";
+  access_token: string = "";
+  refresh_token: string = "";
 
   constructor() {
     makeObservable(this, {
       userInfo: observable,
-      token: observable,
+      access_token: observable,
+      refresh_token: observable,
       setUserInfo: action,
       setToken: action,
       clearUserInfo: action,
@@ -34,7 +36,7 @@ class UserStore {
 
     makePersistable(this, {
       name: "loopUserStore",
-      properties: ["userInfo", "token"],
+      properties: ["userInfo", "access_token", "refresh_token"],
       storage: window.localStorage,
     }).catch((e) => console.error("Persist failed:", e));
   }
@@ -43,8 +45,9 @@ class UserStore {
     this.userInfo = info;
   };
 
-  setToken = (token: string) => {
-    this.token = token;
+  setToken = (token: { access_token: string; refresh_token: string }) => {
+    this.access_token = token.access_token;
+    this.refresh_token = token.refresh_token;
   };
 
   clearUserInfo = () => {
@@ -59,7 +62,8 @@ class UserStore {
   };
 
   clearToken = () => {
-    this.token = "";
+    this.access_token = "";
+    this.refresh_token = "";
   };
 }
 
