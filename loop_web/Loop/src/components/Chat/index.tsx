@@ -2,7 +2,12 @@ import "./index.scss";
 import { observer } from "mobx-react-lite";
 import { v4 as uuidv4 } from "uuid";
 import { useState, useContext, useRef, useEffect } from "react";
-import { OpenAIOutlined, CopyOutlined } from "@ant-design/icons"; // 引入 OpenAIOutlined 图标
+import {
+  OpenAIOutlined,
+  CopyOutlined,
+  CheckCircleFilled,
+  CloseCircleFilled,
+} from "@ant-design/icons"; // 引入 OpenAIOutlined 图标
 import { Input, Drawer, message, Button, Spin, Modal } from "antd"; // 引入 Modal 组件
 
 import { WebSocketContext } from "@/pages/Home";
@@ -228,12 +233,15 @@ const Chat = observer((props: ChatProps) => {
         },
         (error) => {
           console.error("调用 AIchat 失败:", error);
-          message.error("获取 AI 回复失败");
           setIsAILoading(false);
+          setIsModalVisible(false);
+          message.error("获取 AI 回复失败");
         }
       );
     } catch (error) {
       console.error("调用 AIchat 过程中出错:", error);
+      setIsAILoading(false);
+      setIsModalVisible(false);
       message.error("获取 AI 回复失败");
     } finally {
       // 如果在整个过程中都没有收到消息，才在最后取消加载状态
@@ -245,7 +253,8 @@ const Chat = observer((props: ChatProps) => {
 
   // 新增应用按钮处理函数
   const handleApplyReply = () => {
-    setInputValue((prev) => prev + modalContent);
+    // setInputValue((prev) => prev + modalContent);
+    setInputValue(modalContent);
     setIsModalVisible(false);
   };
 
@@ -430,34 +439,38 @@ const Chat = observer((props: ChatProps) => {
         </div>
       )}
 
-      {/* 修改模态框 */}
-      <Modal
-        // 修改标题，添加图标
-        title={
-          <span style={{ display: "flex", alignItems: "center" }}>
-            <OpenAIOutlined style={{ marginRight: 8 }} />
-            AI 回复
-          </span>
-        }
-        open={isModalVisible}
-        onCancel={() => setIsModalVisible(false)}
-        footer={[
-          <Button key="apply" type="primary" onClick={handleApplyReply}>
-            应用
-          </Button>,
-          <Button key="cancel" onClick={() => setIsModalVisible(false)}>
-            取消
-          </Button>,
-        ]}
-      >
-        {isAILoading ? (
-          <div style={{ textAlign: "center" }}>
-            <Spin />
+      {/* 自定义AI回复模态框 */}
+      {isModalVisible && (
+        <div className="ai-reply-custom-modal">
+          <div className="ai-reply-header">
+            <div className="ai-reply-title">
+              <OpenAIOutlined style={{ marginRight: 8 }} />
+              <span>AI生成的回复</span>
+            </div>
+
+            <div className="ai-reply-actions">
+              <CheckCircleFilled
+                onClick={handleApplyReply}
+                style={{ fontSize: "20px", color: "#52c41a" }}
+              />
+              <CloseCircleFilled
+                onClick={() => setIsModalVisible(false)}
+                style={{ fontSize: "20px", color: "#ff4d4f" }}
+              />
+            </div>
           </div>
-        ) : (
-          <p>{modalContent}</p>
-        )}
-      </Modal>
+          <div className="ai-reply-content">
+            {isAILoading ? (
+              <div>
+                <Spin />
+                生成中...
+              </div>
+            ) : (
+              <p>{modalContent}</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 });

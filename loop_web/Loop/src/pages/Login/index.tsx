@@ -27,7 +27,7 @@ const Login = () => {
         phone: value.phone,
         password: value.password,
       };
-      const { code, data, result }: any = await LoginPost(valueParams);
+      const { code, data, msg }: any = await LoginPost(valueParams);
       if (code === 1000) {
         const paramsToken = {
           access_token: data.access_token,
@@ -49,7 +49,7 @@ const Login = () => {
         navigate("/home");
         message.success("登录成功");
       } else {
-        message.error(result.msg);
+        message.error(msg);
       }
     } else {
       // 注册

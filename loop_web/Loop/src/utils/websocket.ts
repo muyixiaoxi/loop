@@ -31,6 +31,71 @@ interface WebSocketOptions {
 // 连接状态类型
 type WebSocketStatus = "connecting" | "connected" | "disconnected" | "error";
 
+// 单例模式管理全局WebSocket连接
+class WebSocketManager {
+  private static instance: WebSocketManager;
+  private client: WebSocketClient | null = null;
+  private listeners: Set<(message: any) => void> = new Set();
+
+  private constructor() {}
+
+  public static getInstance(): WebSocketManager {
+    if (!WebSocketManager.instance) {
+      WebSocketManager.instance = new WebSocketManager();
+    }
+    return WebSocketManager.instance;
+  }
+
+  public connect(options: WebSocketOptions): WebSocketClient {
+    if (!this.client) {
+      this.client = new WebSocketClient({
+        ...options,
+        onMessage: (message) => {
+          this.notifyListeners(message);
+          options.onMessage?.(message);
+        },
+      });
+      this.client.connect();
+    }
+    return this.client;
+  }
+
+  /**
+   * 添加消息监听器
+   * @param listener 消息处理函数，当收到消息时会调用该函数
+   */
+  public addListener(listener: (message: any) => void): void {
+    this.listeners.add(listener);
+  }
+
+  /**
+   * 移除消息监听器
+   * @param listener 要移除的消息处理函数
+   */
+  public removeListener(listener: (message: any) => void): void {
+    this.listeners.delete(listener);
+  }
+
+  /**
+   * 内部方法 - 通知所有监听器有新消息到达
+   * @param message 收到的WebSocket消息
+   */
+  private notifyListeners(message: any): void {
+    this.listeners.forEach((listener) => listener(message));
+  }
+
+  /**
+   * 断开WebSocket连接
+   * 会清理所有监听器和内部状态
+   */
+  public disconnect(): void {
+    if (this.client) {
+      this.client.disconnect();
+      this.client = null;
+    }
+  }
+}
+
 class WebSocketClient<T = unknown> {
   private socket: WebSocket | null = null;
   private reconnectTimer: number | null = null;
@@ -206,4 +271,4 @@ class WebSocketClient<T = unknown> {
   }
 }
 
-export default WebSocketClient;
+export const webSocketManager = WebSocketManager.getInstance();
