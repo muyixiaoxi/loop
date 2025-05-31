@@ -1,0 +1,17 @@
+port: 8080
+mode: dev
+
+mysql:
+  host: 
+  port: 
+  user: 
+  password: 
+  dbname: 
+redis:
+  addr:
+  db: 
+  password: 
+openai:
+  model: 
+  token: 
+  url: 
