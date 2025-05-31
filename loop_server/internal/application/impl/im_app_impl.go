@@ -58,6 +58,7 @@ func (i *imAppImpl) handlerPrivateOffer(ctx context.Context, msg *dto.Message) e
 		slog.Error("sdp message unmarshal err:", err)
 		return err
 	}
+
 	return i.imDomain.SendMessage(ctx, msg.Cmd, sdpMessage.ReceiverId, sdpMessage)
 }
 
