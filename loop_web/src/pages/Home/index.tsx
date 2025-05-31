@@ -498,6 +498,24 @@ const Home = observer(() => {
     }
   };
 
+  // 作为发送者挂断视频通话
+  const handleVideoCallClose = () => {
+    setIsVideoModalVisible(false);
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop());
+    }
+    usePeerConnectionStore.closePeerConnection();
+    sendNonChatMessage({
+      cmd: 7,
+      data: {
+        sender_id: userInfo.id,
+        receiver_id: callerInfo.sender_id,
+        content: "对方已挂断，通话结束",
+      },
+    });
+    message.success("通话结束");
+  };
+
   // 作为接收者处理接受视频通话
   const handleAcceptCall = async () => {
     try {
@@ -815,7 +833,7 @@ const Home = observer(() => {
           </div>
         </div>
 
-        {/* 视频通话元素 */}
+        {/* 私聊视频通话框 */}
         <Modal
           open={isVideoModalVisible}
           closable={false}
@@ -827,23 +845,7 @@ const Home = observer(() => {
           <ChatPrivateVideo
             localStream={localStream}
             remoteStream={remoteStream}
-            onClose={() => {
-              setIsVideoModalVisible(false);
-              if (localStream) {
-                localStream.getTracks().forEach((track) => track.stop());
-              }
-              usePeerConnectionStore.closePeerConnection();
-              // 发送结束通话消息
-              sendNonChatMessage({
-                cmd: 7,
-                data: {
-                  sender_id: userInfo.id,
-                  receiver_id: callerInfo.sender_id,
-                  content: "对方已挂断，通话结束",
-                },
-              });
-              message.success("通话结束");
-            }}
+            onClose={() => handleVideoCallClose()}
           />
         </Modal>
 
@@ -860,17 +862,15 @@ const Home = observer(() => {
         />
 
         {/* 查看用户信息 */}
-        {isShowUserAmend ? (
-          <Modal
-            open={isShowUserAmend}
-            onCancel={() => setIsShowUserAmend(!isShowUserAmend)}
-            closable={false}
-            footer={null}
-            title="用户信息"
-          >
-            <EditUser />
-          </Modal>
-        ) : null}
+        <Modal
+          open={isShowUserAmend}
+          onCancel={() => setIsShowUserAmend(!isShowUserAmend)}
+          closable={false}
+          footer={null}
+          title="用户信息"
+        >
+          <EditUser />
+        </Modal>
       </div>
     </WebSocketContext.Provider>
   );
