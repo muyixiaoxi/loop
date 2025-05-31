@@ -53,6 +53,7 @@ func (u *userServerImpl) Register(c *gin.Context) {
 		Nickname: p.Nickname,
 		Password: p.Password,
 		Phone:    p.Phone,
+		Avatar:   consts.GetDefaultAvatar(),
 	}
 
 	if err := u.user.Register(c, user); err != nil {
@@ -120,4 +121,20 @@ func (u *userServerImpl) UpdateUserPassword(c *gin.Context) {
 		return
 	}
 	response.Success(c, nil)
+}
+
+func (u *userServerImpl) RefreshToken(c *gin.Context) {
+	var p struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+	if err := c.ShouldBind(&p); err != nil {
+		response.Fail(c, response.CodeInvalidParam)
+		return
+	}
+	acccessToken, err := u.user.RefreshToken(c, p.RefreshToken)
+	if err != nil {
+		response.Fail(c, response.CodeServerBusy)
+		return
+	}
+	response.Success(c, gin.H{"access_token": acccessToken})
 }

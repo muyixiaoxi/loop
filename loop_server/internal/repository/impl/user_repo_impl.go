@@ -17,12 +17,26 @@ func NewUserRepoImpl(db *gorm.DB) *userRepoImpl {
 	return &userRepoImpl{db}
 }
 
-func (u *userRepoImpl) Create(ctx context.Context, us *dto.User) error {
+func (u *userRepoImpl) Register(ctx context.Context, us *dto.User) error {
 	user := po.ConvertUserDtoToPo(us)
-	err := u.db.Create(user).Error
+	tx := u.db.WithContext(ctx)
+	err := tx.Create(user).Error
 	if err != nil {
 		slog.Error("internal/repository/impl/user_repo_impl.go Create error", err)
+		tx.Rollback()
+		return err
 	}
+
+	err = tx.Create(&po.FriendShip{
+		UserId:   user.ID,
+		FriendId: user.ID,
+	}).Error
+	if err != nil {
+		slog.Error("internal/repository/impl/user_repo_impl.go Create FriendShip error", err)
+		tx.Rollback()
+		return err
+	}
+
 	return err
 }
 

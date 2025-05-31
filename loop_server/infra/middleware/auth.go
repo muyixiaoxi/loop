@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"loop_server/infra/redis"
@@ -11,60 +12,85 @@ import (
 	"strings"
 )
 
-// JWTAuthMiddleware 基于JWT的认证中间件
-func JWTAuthMiddleware() func(c *gin.Context) {
+// JWTAuthMiddleware 双Token认证中间件
+func JWTAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var tokenString string
-
-		// Try to get token from Authorization header first
-		authHeader := c.Request.Header.Get("Authorization")
-		if authHeader != "" {
-			// 按空格分割
-			parts := strings.SplitN(authHeader, " ", 2)
-			if len(parts) == 2 && parts[0] == "Bearer" {
-				tokenString = parts[1]
-			}
-		}
-
-		// If token not found in header, try to get it from query parameter
-		if tokenString == "" {
-			tokenString = c.Query("token")
-		}
-
-		// If still no token found, return error
-		if tokenString == "" {
+		// 1. 优先从Header获取Access Token
+		accessToken := extractAccessToken(c)
+		if accessToken == "" {
 			response.Fail(c, response.CodeInvalidToken)
 			c.Abort()
 			return
 		}
 
-		if err := SetToken(c, tokenString); err != nil {
+		// 2. 验证Access Token
+		claims, err := validateAccessToken(c, accessToken)
+		if err != nil {
+			response.Fail(c, response.CodeInvalidToken)
 			c.Abort()
 			return
 		}
-
+		// Token有效，继续流程
+		c.Set(request.CtxUserIDKey, claims.UserClaims.ID)
 		c.Next()
 	}
 }
 
-func SetToken(c *gin.Context, t string) error {
-	// parts[1]是获取到的tokenString，我们使用之前定义好的解析JWT的函数来解析它
-	mc, err := jwt.ParseToken(t)
+// 从请求中提取Access Token
+func extractAccessToken(c *gin.Context) string {
+	// 1. 从Authorization头获取
+	if authHeader := c.GetHeader("Authorization"); authHeader != "" {
+		if parts := strings.Split(authHeader, " "); len(parts) == 2 && parts[0] == "Bearer" {
+			return parts[1]
+		}
+	}
+
+	// 2. 从查询参数获取（可选，生产环境建议禁用）
+	return c.Query("token")
+}
+
+// 验证Access Token有效性
+func validateAccessToken(c *gin.Context, token string) (*jwt.CustomClaims, error) {
+	// 1. 解析Token
+	claims, err := jwt.ParseToken(token, jwt.AccessToken)
 	if err != nil {
-		response.Fail(c, response.CodeInvalidToken)
-		c.Abort()
-		return errors.New("token error")
+		return nil, err
 	}
 
-	key := redis.GetTokenKey(mc.UserClaims.ID)
-	token, err := vars.Redis.Get(c, key).Result()
-	if err != nil || token != t {
-		response.Fail(c, response.CodeInvalidToken)
-		c.Abort()
-		return errors.New("token error")
+	// 2. 检查Redis中的Access Token是否匹配
+	storedToken, err := vars.Redis.Get(c, redis.GetAccessTokenKey(claims.UserClaims.ID)).Result()
+	if err != nil || storedToken != token {
+		return nil, errors.New("token revoked")
 	}
 
-	// 将当前请求的username信息保存到请求的上下文c上
-	c.Set(request.CtxUserIDKey, mc.UserClaims.ID)
-	return nil
+	return claims, nil
+}
+
+// 尝试用Refresh Token刷新Access Token
+func TryRefreshToken(c context.Context, refreshToken string) (string, error) {
+
+	// 1. 验证Refresh Token有效性
+	claims, err := jwt.ParseToken(refreshToken, jwt.RefreshToken)
+	if err != nil {
+		return "", errors.New("invalid refresh token")
+	}
+
+	// 2. 检查Redis中的Refresh Token是否匹配
+	storedRefresh, err := vars.Redis.Get(c, redis.GetRefreshTokenKey(claims.UserClaims.ID)).Result()
+	if err != nil || storedRefresh != refreshToken {
+		return "", errors.New("refresh token revoked")
+	}
+
+	// 3. 生成新Access Token
+	newAccessToken, err := jwt.GenerateToken(claims.UserClaims.ID, jwt.AccessTokenExpire, jwt.AccessToken)
+	if err != nil {
+		return "", errors.New("generate token failed")
+	}
+
+	// 4. 更新Redis中的Access Token
+	if err := vars.Redis.Set(c, redis.GetAccessTokenKey(claims.UserClaims.ID), newAccessToken, jwt.AccessTokenExpire).Err(); err != nil {
+		return "", errors.New("store token failed")
+	}
+
+	return newAccessToken, nil
 }

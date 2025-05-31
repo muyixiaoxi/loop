@@ -3,7 +3,7 @@ package impl
 import (
 	"context"
 	"log/slog"
-	"loop_server/infra/consts"
+
 	"loop_server/infra/redis"
 	"loop_server/infra/vars"
 	"loop_server/internal/model/dto"
@@ -26,28 +26,40 @@ func (u *userDomainImpl) Login(ctx context.Context, phone, password string) (*dt
 	if err != nil || user.ID == 0 || !bcrypt.ComparePassword(user.Password, password) {
 		return nil, err
 	}
+
+	// 生成双 token
+	accessToken, refreshToken, err := jwt.GenerateTokens(user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	accessKey := redis.GetAccessTokenKey(user.ID)
+	refreshKey := redis.GetRefreshTokenKey(user.ID)
+
+	// 使用 pipeline 批量操作
+	pipe := vars.Redis.Pipeline()
+	pipe.Set(ctx, accessKey, accessToken, jwt.AccessTokenExpire)
+	pipe.Set(ctx, refreshKey, refreshToken, jwt.RefreshTokenExpire)
+	if _, err := pipe.Exec(ctx); err != nil {
+		slog.Error("redis pipe exec err:", err)
+		return nil, err
+	}
+
+	// 清理敏感数据
 	user.CreatedAt = nil
 	user.UpdatedAt = nil
-	token, err := jwt.GenToken(user.ID)
-	if err != nil {
-		return nil, err
-	}
-	key := redis.GetTokenKey(user.ID)
-	err = vars.Redis.Set(ctx, key, token, consts.TokenExpiration).Err()
-	if err != nil {
-		slog.Error("internal/domain/impl/user_domain_impl.go Login Redis.Set err:", err)
-		return nil, err
-	}
 	user.Password = ""
+
 	return &dto.UserLogin{
-		Token: token,
-		User:  user,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		User:         user,
 	}, err
 }
 
 // Register 注册
 func (u *userDomainImpl) Register(ctx context.Context, user *dto.User) error {
-	return u.userRepo.Create(ctx, user)
+	return u.userRepo.Register(ctx, user)
 }
 
 // QueryUser 查询用户信息
@@ -74,5 +86,8 @@ func (u *userDomainImpl) UpdateUserPassword(ctx context.Context, userId uint, pa
 }
 
 func (u *userDomainImpl) GetUserListByUserIds(ctx context.Context, userIds []uint) ([]*dto.User, error) {
+	if len(userIds) == 0 {
+		return nil, nil
+	}
 	return u.userRepo.GetUserListByUserIds(ctx, userIds)
 }

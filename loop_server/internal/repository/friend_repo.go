@@ -13,4 +13,5 @@ type FriendRepo interface {
 	GetFriendListByUserId(ctx context.Context, userId uint) ([]*dto.User, error)
 	IsFriend(ctx context.Context, userId uint, friendId uint) (bool, error)
 	DeleteFriend(ctx context.Context, userId uint, friendId uint) error
+	FriendRequestStatistics(ctx context.Context, userId uint) (*dto.FriendListStatistics, error)
 }

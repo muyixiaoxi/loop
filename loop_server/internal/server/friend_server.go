@@ -8,4 +8,6 @@ type FriendServer interface {
 	GetFriendList(c *gin.Context)
 	AddFriend(c *gin.Context)
 	DeleteFriend(c *gin.Context)
+	FriendListStatistics(c *gin.Context)
+	GetFriendListByGroupId(c *gin.Context)
 }

@@ -8,10 +8,11 @@ import (
 )
 
 type AppConfig struct {
-	Mode         string `mapstructure:"mode"`
-	Port         int    `mapstructure:"port"`
-	*MySQLConfig `mapstructure:"mysql"`
-	*RedisConfig `mapstructure:"redis"`
+	Mode          string `mapstructure:"mode"`
+	Port          int    `mapstructure:"port"`
+	*MySQLConfig  `mapstructure:"mysql"`
+	*RedisConfig  `mapstructure:"redis"`
+	*OpenaiConfig `mapstructure:"openai"`
 }
 
 type MySQLConfig struct {
@@ -28,6 +29,12 @@ type RedisConfig struct {
 	Addr     string `mapstructure:"addr"`
 	Password string `mapstructure:"password"`
 	DB       int    `mapstructure:"db"`
+}
+
+type OpenaiConfig struct {
+	Model string `mapstructure:"model"`
+	Token string `mapstructure:"token"`
+	URL   string `mapstructure:"url"`
 }
 
 func Init() (app *AppConfig, err error) {

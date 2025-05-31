@@ -41,3 +41,7 @@ func (u *friendDomainImpl) GetFriendList(ctx context.Context) ([]*dto.User, erro
 func (u *friendDomainImpl) IsFriend(ctx context.Context, userId, friendId uint) (bool, error) {
 	return u.friendRepo.IsFriend(ctx, userId, friendId)
 }
+
+func (u *friendDomainImpl) FriendRequestStatistics(ctx context.Context, userId uint) (*dto.FriendListStatistics, error) {
+	return u.friendRepo.FriendRequestStatistics(ctx, userId)
+}
