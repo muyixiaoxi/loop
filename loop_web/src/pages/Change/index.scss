@@ -1,0 +1,175 @@
+.zhanghao {
+  width: 50%;
+  height: 70vh;
+  border-radius: 20px;
+  background-color: #ffffff;
+  margin: 6% auto;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* 添加阴影效果 */
+  border: 1px solid #f1f1f1; /* 添加边框 */
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  //管理内容
+  .account-manage {
+    position: relative;
+    padding: 20px;
+    text-align: center;
+
+    .back-button {
+      position: absolute;
+      left: 20px;
+      top: 20px;
+      cursor: pointer;
+      z-index: 1;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+    }
+  }
+  .content-container {
+    position: relative;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .account-manage,
+  .profile-content {
+    transition: all 0.8s cubic-bezier(0.25, 0.8, 0.25, 1); // 更平滑的缓动函数
+    position: absolute;
+    width: 100%;
+    height: 100%; // 添加高度确保滑动区域完整
+  }
+
+  .show-account {
+    .account-manage {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    .profile-content {
+      transform: translateY(-120%); // 增加滑动距离
+      opacity: 0;
+    }
+  }
+
+  .show-profile {
+    .account-manage {
+      transform: translateY(120%); // 增加滑动距离
+      opacity: 0;
+    }
+    .profile-content {
+      transform: translateY(0);
+      opacity: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+  }
+  //切换内容
+  .usermess {
+    width: 50%;
+    height: 250px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    .useravatar {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      overflow: hidden;
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    }
+    .username {
+      width: 100%;
+      height: 50px;
+      margin-top: 20px;
+      font-size: 30px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .usermanage {
+      display: flex;
+      width: 200px;
+      padding-top: 20px;
+      justify-content: space-between;
+    }
+  }
+  .oncelogin {
+    width: 100%;
+    height: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    .bt {
+      width: 300px;
+      height: 40px;
+    }
+    .mess {
+      margin-top: 20px;
+      font-size: 12px;
+      font-weight: 300;
+    }
+  }
+}
+
+.account-manage {
+  .account-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 0 20px;
+  }
+
+  .account-card {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    background: #f7f7f7;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+    width: 60%;
+    margin: 0 auto;
+
+    &:hover {
+      background: #e8e8e8;
+    }
+  }
+
+  .account-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 10px;
+    object-fit: cover;
+  }
+
+  .account-name {
+    font-size: 16px;
+    font-weight: 500;
+  }
+}
+.footer {
+  position: fixed;
+  bottom: 20px;
+  width: 100%;
+  text-align: center;
+  color: #999;
+  font-size: 12px;
+
+  a {
+    color: #999;
+    text-decoration: none;
+
+    &:hover {
+      color: #666;
+    }
+  }
+}
