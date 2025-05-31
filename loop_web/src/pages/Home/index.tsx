@@ -40,6 +40,8 @@ const Home = observer(() => {
   const userId = userInfo.id; // 用户ID
   const {
     currentFriendId, // 当前聊天好友ID
+    currentFriendName, // 当前聊天好友名称
+    currentFriendAvatar, // 当前聊天好友头像
     setCurrentChatList, // 设置当前聊天列表
     setCurrentMessages, // 设置当前消息列表
     currentChatInfo, // 当前聊天信息(类型、群组信息等)
@@ -846,6 +848,8 @@ const Home = observer(() => {
             localStream={localStream}
             remoteStream={remoteStream}
             onClose={() => handleVideoCallClose()}
+            callerAvatar={String(currentFriendAvatar)}
+            callerName={String(currentFriendName)}
           />
         </Modal>
 

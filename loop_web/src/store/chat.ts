@@ -9,7 +9,7 @@ class ChatStore {
   };
   currentFriendId: string | null = null;
   currentFriendName: string | null = null;
-  currentFriendAvatar: string | undefined = undefined;
+  currentFriendAvatar: string | null = null;
 
   // 可观察数据
   currentMessages = []; // 当前会话消息列表
