@@ -8,8 +8,8 @@ import icon1 from "../../../public/message.svg";
 import icon2 from "../../../public/message2.svg";
 import icon3 from "../../../public/address.svg";
 import icon4 from "../../../public/address2.svg";
-import icon5 from "../../../public/setting.svg";
 import { Popover, Button } from "antd";
+import { SettingFilled } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 
 const SideNavigation = observer(() => {
@@ -20,7 +20,6 @@ const SideNavigation = observer(() => {
 
   const messageIcon = currentRoute === "conversation" ? icon2 : icon1;
   const addressIcon = currentRoute === "friend" ? icon4 : icon3;
-  const settingIcon = icon5;
 
   const { disconnect } = useContext(WebSocketContext); // 获取WebSocket断开方法
 
@@ -69,7 +68,7 @@ const SideNavigation = observer(() => {
         <div>
           <Popover placement="right" content={logoutContent}>
             <div className="setting">
-              <img src={settingIcon} alt="Setting" />
+              <SettingFilled style={{ fontSize: "32px", color: "#8a8a8a" }} /> 
             </div>
           </Popover>
         </div>
