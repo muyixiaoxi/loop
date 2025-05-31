@@ -13,3 +13,10 @@ type AddFriendRequest struct {
 type DeleteFriendRequest struct {
 	FriendId uint `json:"friend_id" binding:"required"`
 }
+
+type InviteFriendAddGroupList struct {
+	UserId       uint   `json:"user_id"`
+	UserAvatar   string `json:"user_avatar"`
+	UserNickname string `json:"user_nickname"`
+	IsGroup      bool   `json:"is_group"`
+}

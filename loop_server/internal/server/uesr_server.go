@@ -8,4 +8,5 @@ type UserServer interface {
 	QueryUser(c *gin.Context)
 	UpdateUserInfo(c *gin.Context)
 	UpdateUserPassword(c *gin.Context)
+	RefreshToken(c *gin.Context)
 }

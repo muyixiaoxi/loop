@@ -1,0 +1,435 @@
+.chat-drawer {
+  background-color: #f6f6f6;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+
+  .more-members {
+    padding: 8px 24px;
+    color: #e46342;
+    font-size: 14px;
+    cursor: pointer;
+    text-align: center;
+  }
+
+  &-list-item {
+    padding: 10px 20px;
+    display: flex;
+    flex-wrap: wrap; // 添加换行属性
+    gap: 5px;
+
+    .chat-list-item {
+      width: 60px;
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+
+      .chat-list-img {
+        width: 50px;
+        height: 50px;
+        border-radius: 40%;
+        overflow: hidden;
+        img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+      }
+      .chat-list-name {
+        font-size: 12px;
+        color: rgba(9, 30, 66, 0.87);
+        text-overflow: ellipsis;
+        width: 100%;
+        height: 14px;
+        overflow: hidden;
+        white-space: nowrap;
+        text-align: center;
+        margin-top: 5px;
+        line-height: 12px;
+      }
+    }
+  }
+
+  .chat-group-info {
+    .group-info {
+      display: flex;
+      align-items: center;
+      padding: 10px 24px;
+      min-height: 40px;
+      justify-content: space-between;
+      background-color: #fff;
+      cursor: pointer;
+
+      .group-label {
+        font-size: 15px;
+        font-weight: 400;
+        color: black;
+      }
+
+      .group-name {
+        font-size: 14px;
+        color: rgb(170, 170, 170);
+      }
+      .group-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 40%;
+        overflow: hidden;
+        img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+      }
+
+      &:hover {
+        background-color: #eee;
+      }
+    }
+
+    .group-describe {
+      flex-direction: column;
+      align-items: flex-start;
+
+      .group-describe-text {
+        margin-top: 10px;
+        font-size: 14px;
+        color: rgb(170, 170, 170);
+      }
+    }
+
+    .group-manager {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      padding: 10px 24px;
+      background-color: #fff;
+      height: 40px;
+      cursor: pointer;
+
+      &-label {
+        font-size: 15px;
+        font-weight: 400;
+        color: black;
+      }
+      &:hover {
+        background-color: #eee;
+      }
+    }
+  }
+
+  .chat-drawer-action {
+    margin-top: 10px;
+    background-color: #fff;
+
+    .chat_action {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 40px;
+      padding: 10px 24px;
+      cursor: pointer;
+
+      .switch-text {
+        font-weight: 400;
+        font-size: 15px;
+      }
+
+      &:hover {
+        background-color: #eee;
+      }
+    }
+  }
+
+  .chat-group-handle {
+    padding: 10px 24px;
+    margin-top: 10px;
+    background-color: #fff;
+    display: flex;
+    flex-direction: column; // 改为纵向排列
+    gap: 10px; // 添加间距
+
+    .ant-btn {
+      width: 100%; // 按钮宽度填满
+      margin: 0; // 移除默认边距
+      text-align: center; // 文字居中
+    }
+  }
+
+  .member_drawer {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #f6f6f6;
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+    z-index: 10;
+    transform: translateX(100%);
+    transition: transform 0.2s ease-out;
+    overflow-y: auto;
+
+    &.show {
+      transform: translateX(0);
+    }
+
+    .drawer-header {
+      padding: 16px 24px;
+      background-color: #f6f6f6;
+      display: flex;
+      justify-content: space-between;
+      .header-title {
+        display: flex;
+        align-items: center;
+      }
+      .back-icon {
+        cursor: pointer;
+        margin-right: 16px;
+      }
+      h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+      }
+      .delete-button {
+        height: 26px;
+        width: 50px;
+        font-size: 12px;
+      }
+    }
+
+    .member-list {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .member-item {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      padding: 8px 16px;
+      border-radius: 4px;
+      transition: background-color 0.2s;
+
+      &:hover {
+        background-color: #f0f0f0;
+      }
+    }
+
+    .member-content {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .member-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      margin-right: 12px;
+      object-fit: cover;
+    }
+
+    .member-name {
+      font-size: 14px;
+      flex-grow: 1;
+    }
+
+    .member-role {
+      font-size: 12px;
+      color: #666;
+      background-color: #f0f0f0;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+  }
+
+  // 在.chat-drawer中添加以下样式
+  .manager_drawer {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #f6f6f6;
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+    z-index: 10;
+    transform: translateX(100%);
+    transition: transform 0.2s ease-out;
+    overflow-y: auto;
+
+    &.show {
+      transform: translateX(0);
+    }
+
+    .drawer-header {
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      .header-title {
+        display: flex;
+      }
+      .back-icon {
+        cursor: pointer;
+        margin-right: 16px;
+      }
+      h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+      }
+      .delete-button {
+        height: 26px;
+        width: 50px;
+        font-size: 12px;
+      }
+    }
+
+    .manager-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .manager-item {
+      cursor: pointer;
+      .manager-item-title {
+        padding: 5px 24px;
+        font-size: 13px;
+        color: rgb(170, 170, 170);
+        background-color: #f6f6f6;
+      }
+      .manager-item-center {
+        background-color: #fff;
+        padding: 10px 24px;
+        font-size: 15px;
+        font-weight: 400;
+        color: black;
+      }
+      .manager-item-list {
+        color: rgba(9, 30, 66, 0.87);
+        &-item {
+          padding: 10px 24px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          background-color: #fff;
+
+          img {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin-right: 10px;
+          }
+        }
+
+        .add-manager {
+          justify-content: left;
+          cursor: pointer;
+          color: rgba(9, 30, 66, 0.87);
+          .add-manager-icon {
+            margin-right: 10px;
+          }
+        }
+      }
+    }
+  }
+
+  .edit-group-item {
+    padding: 12px 16px;
+    background-color: #f6f6f6;
+
+    .edit-label {
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: #999;
+    }
+
+    .avatar-upload {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+
+      .group-avatar-preview {
+        width: 260px;
+        height: 260px;
+        border-radius: 4px;
+        object-fit: cover;
+      }
+    }
+    .ant-form-item-explain-error {
+      color: #ff4d4f;
+      font-size: 14px;
+    }
+  }
+}
+
+.add-member-modal {
+  .ant-modal-body {
+    padding: 16px;
+  }
+
+  .add-member {
+    &-list {
+      height: 400px;
+      overflow-y: auto;
+      border-radius: 8px;
+      border: 1px solid #f0f0f0;
+
+      .letter-group {
+        &:not(:first-child) {
+          margin-top: 8px;
+        }
+
+        .letter-header {
+          padding: 8px 16px;
+          background-color: #f5f5f5;
+          font-weight: 500;
+          color: #666;
+          font-size: 14px;
+          border-bottom: 1px solid #f0f0f0;
+        }
+        .user-checkbox {
+          padding: 0px 16px;
+        }
+        .member-list-item {
+          display: flex;
+          align-items: center;
+          padding: 10px 16px;
+          transition: background-color 0.2s;
+
+          &:hover {
+            background-color: #f9f9f9;
+          }
+
+          .chat-list-img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            overflow: hidden;
+            margin-right: 12px;
+
+            img {
+              width: 100%;
+              height: 100%;
+              object-fit: cover;
+            }
+          }
+
+          .chat-list-name {
+            font-size: 14px;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+        }
+      }
+    }
+  }
+}

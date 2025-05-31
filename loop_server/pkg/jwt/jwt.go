@@ -7,57 +7,88 @@ import (
 )
 
 const (
-	tokenExpireDuration = time.Hour * 24
+	AccessTokenExpire  = time.Hour * 2      // Access Token 有效期 2 小时
+	RefreshTokenExpire = time.Hour * 24 * 7 // Refresh Token 有效期 7 天
 )
 
 var (
-	CustomSecret = []byte("loop")
+	AccessTokenSecret  = []byte("loop-access")
+	RefreshTokenSecret = []byte("loop-refresh")
 )
 
 type UserClaims struct {
-	// 可根据需要自行添加字段
-	ID uint `json:"id"`
+	ID uint `json:"id"` // 用户ID
 }
+
+type tokenType int
+
+const (
+	AccessToken  tokenType = 0
+	RefreshToken tokenType = 1
+)
 
 type CustomClaims struct {
 	UserClaims
-	jwt.RegisteredClaims // 内嵌标准的声明
+	jwt.RegisteredClaims
 }
 
-// GenToken 生成token
-func GenToken(Id uint) (string, error) {
-	user := UserClaims{
-		ID: Id,
+// 生成双 Token
+func GenerateTokens(userID uint) (accessToken, refreshToken string, err error) {
+	// 1. 生成 Access Token
+	accessToken, err = GenerateToken(userID, AccessTokenExpire, AccessToken)
+	if err != nil {
+		return "", "", err
 	}
-	// 创建一个我们自己的声明
+
+	// 2. 生成 Refresh Token（单独用途，不包含用户敏感信息）
+	refreshToken, err = GenerateToken(userID, RefreshTokenExpire, RefreshToken)
+	return
+}
+
+// GenerateToken 生成单个 Token tokenType: 0-accessToken,1-refreshToken
+func GenerateToken(userID uint, expireDuration time.Duration, tokenType tokenType) (string, error) {
 	claims := CustomClaims{
-		user, // 自定义字段
-		jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(tokenExpireDuration)),
-			Issuer:    "my-project", // 签发人
+		UserClaims: UserClaims{ID: userID},
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expireDuration)),
+			Issuer:    "my-im-system",
 		},
 	}
-	// 使用指定的签名方法创建签名对象
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	// 使用指定的secret签名并获得完整的编码后的字符串token
-	return token.SignedString(CustomSecret)
+	customSecret := AccessTokenSecret
+	if tokenType == 1 {
+		customSecret = RefreshTokenSecret
+	}
+	return token.SignedString(customSecret)
 }
 
-// ParseToken 解析JWT
-func ParseToken(tokenString string) (*CustomClaims, error) {
-	// 解析token
-	// 如果是自定义Claim结构体则需要使用 ParseWithClaims 方法
-	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (i interface{}, err error) {
-		// 直接使用标准的Claim则可以直接使用Parse方法
-		//token, err := jwt.Parse(tokenString, func(token *jwt.Token) (i interface{}, err error) {
-		return CustomSecret, nil
+// 解析 Token
+func ParseToken(tokenString string, tokenType tokenType) (*CustomClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+		customSecret := AccessTokenSecret
+		if tokenType == 1 {
+			customSecret = RefreshTokenSecret
+		}
+		return customSecret, nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	// 对token对象中的Claim进行类型断言
-	if claims, ok := token.Claims.(*CustomClaims); ok && token.Valid { // 校验token
+
+	if claims, ok := token.Claims.(*CustomClaims); ok && token.Valid {
 		return claims, nil
 	}
 	return nil, errors.New("invalid token")
+}
+
+// 刷新 Access Token（校验 Refresh Token 后生成新 Access Token）
+func RefreshAccessToken(refreshToken string) (newAccessToken string, err error) {
+	// 1. 校验 Refresh Token 有效性
+	claims, err := ParseToken(refreshToken, RefreshToken)
+	if err != nil {
+		return "", errors.New("invalid refresh token")
+	}
+
+	// 2. 生成新 Access Token
+	return GenerateToken(claims.UserClaims.ID, AccessTokenExpire, AccessToken)
 }

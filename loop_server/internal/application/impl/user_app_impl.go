@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+	"loop_server/infra/middleware"
 	"loop_server/internal/domain"
 	"loop_server/internal/model/dto"
 	"loop_server/pkg/bcrypt"
@@ -76,4 +77,12 @@ func (u *userAppImpl) UpdateUserPassword(ctx context.Context, old string, new st
 		return false, err
 	}
 	return true, nil
+}
+
+func (u *userAppImpl) RefreshToken(ctx context.Context, refreshToken string) (string, error) {
+	accessToken, err := middleware.TryRefreshToken(ctx, refreshToken)
+	if err != nil {
+		return "", err
+	}
+	return accessToken, nil
 }

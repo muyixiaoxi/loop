@@ -77,3 +77,26 @@ func (f *friendServerImpl) DeleteFriend(c *gin.Context) {
 	}
 	response.Success(c, nil)
 }
+
+func (f *friendServerImpl) FriendListStatistics(c *gin.Context) {
+	data, err := f.friend.FriendListStatistics(c)
+	if err != nil {
+		response.Fail(c, response.CodeServerBusy)
+		return
+	}
+	response.Success(c, data)
+}
+
+func (f *friendServerImpl) GetFriendListByGroupId(c *gin.Context) {
+	input := &param.GroupId{}
+	if err := c.ShouldBind(input); err != nil {
+		response.Fail(c, response.CodeInvalidParam)
+		return
+	}
+	data, err := f.friend.GetFriendListByGroupId(c, input.GroupId)
+	if err != nil {
+		response.Fail(c, response.CodeServerBusy)
+		return
+	}
+	response.Success(c, data)
+}

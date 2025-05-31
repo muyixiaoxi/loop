@@ -1,0 +1,18 @@
+.main-layout {
+  width: 100%;
+  height: 100vh;
+  background-color: #f6f6f6;
+  display: flex;
+  overflow: hidden;
+  .main-layout-content {
+    display: flex;
+    flex: 1;
+
+    .main-layout-content-left {
+      border-right: 1px solid #eee;
+    }
+    .main-layout-content-right {
+      flex: 1;
+    }
+  }
+}

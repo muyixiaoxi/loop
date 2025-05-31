@@ -1,0 +1,54 @@
+.side-navigation {
+  height: 100vh;
+  width: 60px;
+  background-color: #d7d7d7;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  .avatar {
+    width: 45px;
+    height: 45px;
+    margin-top: 15px;
+    cursor: pointer;
+
+    img {
+      width: 100%;
+      height: 100%;
+      // 使用 cover 让图片覆盖整个容器，可能会裁剪部分图片以适应圆形
+      border-radius: 50%;
+      object-fit: cover;
+    }
+  }
+
+  .choice {
+    width: 100%;
+    flex: 1;
+    margin-top: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+
+    .conversation {
+      font-size: 30px;
+      margin-top: 20%;
+      display: flex;
+      justify-content: center;
+    }
+
+    .friend {
+      font-size: 30px;
+      margin-top: 40%;
+      display: flex;
+      justify-content: center;
+    }
+
+    .setting {
+      font-size: 30px;
+      display: flex;
+      justify-content: center;
+      margin-bottom: 40px;
+    }
+  }
+}

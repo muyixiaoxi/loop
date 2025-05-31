@@ -6,7 +6,7 @@ import (
 )
 
 type UserRepo interface {
-	Create(ctx context.Context, user *dto.User) error
+	Register(ctx context.Context, user *dto.User) error
 	QueryByPhone(ctx context.Context, phone string) (*dto.User, error)
 	QueryById(ctx context.Context, id uint) (*dto.User, error)
 	UpdateUser(ctx context.Context, user *dto.User) error

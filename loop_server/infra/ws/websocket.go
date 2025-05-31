@@ -1,9 +1,11 @@
 package ws
 
 import (
+	"errors"
 	"github.com/gorilla/websocket"
 	"net/http"
 	"sync"
+	"time"
 )
 
 var Upgrade = websocket.Upgrader{
@@ -16,6 +18,7 @@ var Upgrade = websocket.Upgrader{
 
 type Client struct {
 	Conn   *websocket.Conn
+	Mu     *sync.Mutex
 	UserId uint
 }
 
@@ -47,4 +50,33 @@ func (s *Server) Delete(key uint) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.clients, key)
+}
+
+func (s *Server) SendMessage(userId uint, msg []byte) error {
+	client := s.Get(userId)
+	if client == nil {
+		return errors.New("client not exist")
+	}
+
+	var err error
+	func() {
+		client.Mu.Lock()
+		defer client.Mu.Unlock()
+		err = client.Conn.WriteMessage(websocket.TextMessage, msg)
+	}()
+
+	for i := 0; i < 2 && err != nil; i++ {
+		time.Sleep(time.Second)
+		client = s.Get(userId)
+		if client == nil {
+			return errors.New("client connection is closed")
+		}
+		func() {
+			client.Mu.Lock()
+			defer client.Mu.Unlock()
+			err = client.Conn.WriteMessage(websocket.TextMessage, msg)
+		}()
+	}
+
+	return err
 }
