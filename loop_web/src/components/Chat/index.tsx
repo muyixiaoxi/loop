@@ -8,8 +8,8 @@ import {
   CheckCircleFilled,
   CloseCircleFilled,
 } from "@ant-design/icons"; // 引入 OpenAIOutlined 图标
-import { Input, Drawer, message, Button, Spin, Modal } from "antd"; // 引入 Modal 组件
-
+import { Input, Drawer, message, Spin, Modal, Checkbox } from "antd"; // 引入 Modal 组件
+import { getGroupMemberList } from "@/api/group";
 import { WebSocketContext } from "@/pages/Home";
 import chatStore from "@/store/chat";
 import userStore from "@/store/user";
@@ -20,11 +20,19 @@ import { AIchat } from "@/api/chat";
 
 // 定义组件props类型
 interface ChatProps {
-  onInitiateVideoCall?: () => Promise<void>; // 新增：视频通话回调函数
+  initiatePrivateVideoCall: () => Promise<void>; // 新增：私聊视频通话回调函数
+  initiateGroupVideoCall: () => Promise<void>; // 新增：群聊视频通话回调函数
+  setSelectedMembers: (members: any) => void; // 新增：设置选中成员的回调函数
+  selectedMembers: any[]; // 新增：选中成员的数组
 }
 
 const Chat = observer((props: ChatProps) => {
-  const { onInitiateVideoCall } = props; // 解构传入的回调函数
+  const {
+    initiatePrivateVideoCall,
+    initiateGroupVideoCall,
+    setSelectedMembers,
+    selectedMembers,
+  } = props; // 解构传入的回调函数
   const { userInfo } = userStore;
   const { sendMessageWithTimeout } = useContext<any>(WebSocketContext); // 使用WebSocket上下文
   const {
@@ -47,6 +55,7 @@ const Chat = observer((props: ChatProps) => {
   // 新增：管理 SSE 加载状态
   const [isAILoading, setIsAILoading] = useState(false);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 新增：管理模态框状态和内容
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -63,6 +72,11 @@ const Chat = observer((props: ChatProps) => {
     x: 0,
     y: 0,
   });
+
+  // 群视频通话相关状态
+  const [groupMembers, setGroupMembers] = useState<any[]>([]); // 群成员列表
+  const [isGroupMemberModalVisible, setIsGroupMemberModalVisible] =
+    useState(false); // 控制群成员模态框显示
 
   // 处理右键点击事件
   const handleContextMenu = (e: React.MouseEvent, message: any) => {
@@ -188,8 +202,6 @@ const Chat = observer((props: ChatProps) => {
     setCurrentMessages(res?.messages);
   };
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -253,9 +265,60 @@ const Chat = observer((props: ChatProps) => {
 
   // 新增应用按钮处理函数
   const handleApplyReply = () => {
-    // setInputValue((prev) => prev + modalContent);
     setInputValue(modalContent);
     setIsModalVisible(false);
+  };
+
+  // 开启视频通话
+  const handleVideoCall = async () => {
+    if (currentChatInfo.type === 1) {
+      // 私聊
+      initiatePrivateVideoCall();
+    } else if (chatType === 2) {
+      setSelectedMembers([]);
+      // 打开群成员模态框
+
+      fetchGroupMembers();
+      setIsGroupMemberModalVisible(true);
+    }
+  };
+
+  // 获取群成员列表
+  const fetchGroupMembers = async () => {
+    try {
+      const res: any = await getGroupMemberList(Number(currentFriendId));
+      setGroupMembers(
+        res.data.filter((member: any) => member.user_id !== userInfo.id)
+      );
+    } catch (error) {
+      console.error("获取群成员失败:", error);
+      message.error("获取群成员失败");
+    }
+  };
+
+  // 选择/取消选择成员
+  const toggleMemberSelection = (member: any, checked: boolean) => {
+    setSelectedMembers(
+      (prev: any) =>
+        checked
+          ? [
+              ...prev,
+              {
+                avatar: member.avatar,
+                nickname: member.nickname,
+                user_id: member.user_id, // 确保user_id字段存在
+              },
+            ] // 添加整个成员对象
+          : prev.filter((m) => m.user_id !== member.user_id) // 根据user_id过滤
+    );
+  };
+
+  // 确认选择
+  const handleMemberSelectionConfirm = () => {
+    console.log("已选择成员:", selectedMembers);
+    setIsGroupMemberModalVisible(false);
+    // 开启群视频通话回调
+    initiateGroupVideoCall();
   };
 
   return (
@@ -263,12 +326,12 @@ const Chat = observer((props: ChatProps) => {
       <div className="chat-header">
         <div className="chat-header-left">
           <div className="firend-avatar">
-            <img src={currentFriendAvatar} alt="" />
+            <img src={String(currentFriendAvatar)} alt="" />
           </div>
           <div className="firend-name">{currentFriendName}</div>
         </div>
         <div className="chat-header-right">
-          <div className="more-video" onClick={onInitiateVideoCall}>
+          <div className="more-video" onClick={handleVideoCall}>
             <svg
               fill="#E46342"
               height="34px"
@@ -386,6 +449,39 @@ const Chat = observer((props: ChatProps) => {
         />
         {/* 移除输入框的加载状态 */}
       </div>
+
+      <Modal
+        title="选择群成员"
+        open={isGroupMemberModalVisible}
+        onCancel={() => setIsGroupMemberModalVisible(false)}
+        onOk={handleMemberSelectionConfirm}
+        width={600}
+      >
+        <div className="group-member-list">
+          {groupMembers.map((member) => (
+            <div className="group-member-item" key={member.user_id}>
+              <Checkbox
+                className="group-member-checkbox"
+                onChange={(e) =>
+                  toggleMemberSelection(member, e.target.checked)
+                }
+                checked={selectedMembers.some(
+                  (m) => m.user_id === member.user_id
+                )}
+              >
+                <div className="group-member-info">
+                  <img
+                    src={member.avatar}
+                    alt={member.nickname}
+                    className="group-member-avatar"
+                  />
+                  <span className="group-member-name">{member.nickname}</span>
+                </div>
+              </Checkbox>
+            </div>
+          ))}
+        </div>
+      </Modal>
 
       <Drawer
         title="聊天信息"

@@ -12,7 +12,7 @@ import { makeObservable, observable, action } from "mobx";
  * 7. 双方交换ICE候选
  * 8. 连接建立
  */
-class PeerConnectionStore {
+class GroupPeerStore {
   // 核心连接实例
   peerConnection: RTCPeerConnection | null = null;
 
@@ -84,6 +84,7 @@ class PeerConnectionStore {
     // 创建新的RTCPeerConnection实例
     this.peerConnection = new RTCPeerConnection(config);
 
+    console.log("创建PeerConnection", this.peerConnection);
     // 添加本地媒体流
     this._addLocalStream(localStream);
 
@@ -160,11 +161,15 @@ class PeerConnectionStore {
    * @param desc 要设置的远程描述(Offer/Answer)
    */
   async setRemoteDescription(desc: RTCSessionDescriptionInit) {
+    console.log("设置远程描述", !this.peerConnection, desc);
+
     if (!this.peerConnection) return;
 
     await this.peerConnection.setRemoteDescription(
       new RTCSessionDescription(desc)
     );
+    console.log("群远程描述已设置");
+
     this.remoteDescriptionSet = true;
   }
 
@@ -180,7 +185,6 @@ class PeerConnectionStore {
     onComplete: () => void
   ) {
     if (!this.peerConnection) return;
-    console.log(123);
 
     this.iceCandidateHandler = onCandidate;
 
@@ -225,6 +229,8 @@ class PeerConnectionStore {
    * @param candidate ICE候选
    */
   async addIceCandidate(candidate: RTCIceCandidateInit) {
+    console.log("添加ICE");
+
     if (!this.peerConnection || !this.remoteDescriptionSet) return;
 
     await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
@@ -239,14 +245,14 @@ class PeerConnectionStore {
   setupMediaStreamHandlers(callback: (stream: MediaStream) => void) {
     if (!this.peerConnection) return;
 
-    const remoteStream = new MediaStream();
-
     this.peerConnection.ontrack = (event) => {
       if (event.track.kind === "video" || event.track.kind === "audio") {
-        remoteStream.addTrack(event.track);
-        if (event.track.kind === "video") {
-          callback(remoteStream);
-        }
+        // 为每个远程peer创建独立的stream
+        const stream = new MediaStream();
+        stream.addTrack(event.track);
+
+        // 通过回调传递stream和peer ID
+        callback(stream);
       }
     };
   }
@@ -271,8 +277,7 @@ class PeerConnectionStore {
     // ICE连接状态变化
     this.peerConnection.oniceconnectionstatechange = () => {
       const state = this.peerConnection?.iceConnectionState;
-      // console.log("ICE连接状态:", state);
-
+      console.log("ICE连接状态发生变化，当前状态: ", state);
       // 更新连接状态
       this.isWebRTCConnected = state === "connected" || state === "completed";
     };
@@ -280,6 +285,7 @@ class PeerConnectionStore {
     // 连接状态变化
     this.peerConnection.onconnectionstatechange = () => {
       const state = this.peerConnection?.connectionState;
+      console.log("WebRTC连接状态发生变化，当前状态: ", state);
       this.isVideoChatStarted = state === "disconnected";
       if (state === "disconnected") {
         this.closePeerConnection();
@@ -294,27 +300,46 @@ class PeerConnectionStore {
     this.isAudioStreamAdded = false;
     this.isVideoStreamAdded = false;
   }
+
   setupIceCandidateListenerWithLogging() {
     return new Promise<void>((resolve) => {
       if (!this.peerConnection) {
-        console.error('PeerConnection 未初始化');
+        console.error("PeerConnection 未初始化");
         resolve();
         return;
       }
 
       this.peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
-          console.log('收集到新的 ICE 候选:', event.candidate);
+          console.log("收集到新的 ICE 候选:", event.candidate);
           // 这里可以根据需求添加将候选存入队列等操作
           this.iceCandidateQueue.push(event.candidate);
         } else {
-          console.log('ICE 候选者收集完成');
+          console.log("ICE 候选者收集完成");
           resolve();
         }
       };
     });
   }
+
+  /**
+   * 检测 ICE 和 WebRTC 的连接状态
+   * 输出当前 ICE 连接状态和 WebRTC 连接状态信息
+   */
+  checkConnectionStatus() {
+    if (!this.peerConnection) {
+      console.log("PeerConnection 未初始化，无法检测连接状态");
+      return;
+    }
+
+    const iceConnectionState = this.peerConnection.iceConnectionState;
+    const webRTCConnected = this.isWebRTCConnected;
+    const connectionState = this.peerConnection.connectionState;
+
+    console.log(`ICE 连接状态: ${iceConnectionState}`);
+    console.log(`WebRTC 连接状态: ${webRTCConnected ? "已连接" : "未连接"}`);
+    console.log(`连接状态: ${connectionState}`);
+  }
 }
 
-
-export const usePeerConnectionStore = new PeerConnectionStore();
+export const useGroupPeerStore = new GroupPeerStore();

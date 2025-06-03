@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
 import "./index.scss";
-
+import React, { useEffect, useRef, useState } from "react";
+import userStore from "@/store/user";
 // 定义组件属性接口
 interface ChatPrivateVideoProps {
   localStream: MediaStream | null; // 本地视频流
@@ -17,6 +17,7 @@ const ChatPrivateVideo: React.FC<ChatPrivateVideoProps> = ({
   callerAvatar,
   callerName,
 }) => {
+  const { userInfo } = userStore;
   // 视频元素引用
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -90,9 +91,19 @@ const ChatPrivateVideo: React.FC<ChatPrivateVideoProps> = ({
           ref={localVideoRef}
           autoPlay
           playsInline
-          muted // 本地视频默认静音避免回声
-          className="local-video"
+          muted
+          className={`local-video ${isVideoOff ? "hidden" : "show"}`}
         />
+
+        <div
+          className={`me-avatar-container ${!isVideoOff ? "hidden" : "show"}`}
+        >
+          <img
+            src={userInfo.avatar} // 使用当前用户头像
+            alt="我的头像"
+            className="me-avatar"
+          />
+        </div>
       </div>
 
       {/* 控制按钮区域 */}

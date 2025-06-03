@@ -1,6 +1,6 @@
 import "./index.scss";
 import { createContext, useState, useEffect, useRef } from "react";
-import { Modal, message, Button } from "antd";
+import { Modal, message } from "antd";
 import { observer } from "mobx-react-lite";
 import globalStore from "@/store/global";
 import SideNavigation from "@/components/SideNavigation";
@@ -12,16 +12,16 @@ import { webSocketManager } from "@/utils/websocket";
 import userStore from "@/store/user";
 import chatStore from "@/store/chat";
 import { getChatDB } from "@/utils/chat-db";
-import { getGroupMemberList } from "@/api/group";
 import {
   getLocalTime,
   getOfflineMessage,
   submitOfflineMessage,
 } from "@/api/chat";
 import ChatPrivateVideo from "@/components/ChatPrivateVideo";
+import GroupVideoChat from "@/components/ChatGroupVideo";
 import ChatVideoAcceptor from "@/components/ChatVideoAcceptor";
-import { usePeerConnectionStore } from "@/store/PeerConnectionStore"; // 确保导入
-import { useGroupPeerConnectionStore } from "@/store/GroupPeer";
+import { usePrivatePeerStore } from "@/store/privatePeerStore"; // 确保导入
+import { useGroupPeerStore } from "@/store/groupPeerStore";
 
 // 创建WebSocket上下文
 export const WebSocketContext = createContext<{
@@ -80,6 +80,20 @@ const Home = observer(() => {
   const [isCalling, setIsCalling] = useState(false); // 是否正在呼叫中
   const [callerInfo, setCallerInfo] = useState<any>({}); // 呼叫者信息
 
+  // 群视频通话相关状态，选择的成员ID列表
+  const [selectedMembers, setSelectedMembers] = useState<any[]>([]);
+
+  const [groupVideoModalVisible, setGroupVideoModalVisible] = useState(false);
+  const [remoteStreams, setRemoteStreams] = useState<
+    Record<number, MediaStream>
+  >({});
+  const [participants, setParticipants] = useState<
+    Array<{
+      id: number;
+      name: string;
+      avatar: string;
+    }>
+  >([]);
   /**
    * 计算并设置客户端与服务器的时间差
    * 1. 获取本地开始时间
@@ -140,7 +154,7 @@ const Home = observer(() => {
 
   useEffect(() => {
     // 视频链接状态变化
-    if (usePeerConnectionStore.isVideoChatStarted) {
+    if (usePrivatePeerStore.isVideoChatStarted) {
       console.log("检测到视频已经挂断");
       // 视频已经挂断
       setIsVideoModalVisible(false);
@@ -155,9 +169,9 @@ const Home = observer(() => {
       });
 
       // 关闭连接
-      usePeerConnectionStore.closePeerConnection();
+      usePrivatePeerStore.closePeerConnection();
     }
-  }, [usePeerConnectionStore?.isVideoChatStarted]);
+  }, [usePrivatePeerStore?.isVideoChatStarted]);
 
   useEffect(() => {
     LocalTime(); // 调用获取当前时间的函数
@@ -217,13 +231,23 @@ const Home = observer(() => {
       case 6: // ICE候选处理
         await handleIceCandidate(data);
         break;
-      case 7: // 挂断处理
+      case 7: // 私聊挂断处理
         await handleCallEnd(data);
+        break;
+      case 8: // 群聊Offer处理
+        await handleGroupVideoOffer(data, client);
+        break;
+      case 9: // 群聊Answer处理
+        await handleGroupVideoAnswer(data);
+        break;
+      case 10: // 群聊ICE候选处理
+        await handleGroupIceCandidate(data);
         break;
     }
   };
 
   /**
+   * cmd: 1 私聊消息
    * 处理私聊消息
    * 1. 存储消息到本地
    * 2. 发送ACK确认
@@ -244,6 +268,7 @@ const Home = observer(() => {
   };
 
   /**
+   * cmd: 2 群聊消息
    * 处理群聊消息
    * 1. 存储消息到本地
    * 2. 发送ACK确认(带群组标识)
@@ -264,6 +289,7 @@ const Home = observer(() => {
   };
 
   /**
+   * cmd: 3 ACK响应
    * 处理消息ACK响应
    * 1. 清除重试定时器
    * 2. 更新消息状态为成功
@@ -292,7 +318,8 @@ const Home = observer(() => {
   };
 
   /**
-   * 处理视频通话Offer请求
+   * cmd: 4 私聊视频通话Offer请求
+   * 处理私聊视频通话Offer请求
    * 1. 检查当前是否已在通话中
    * 2. 如果在通话中则发送拒绝消息
    * 3. 否则设置呼叫者信息并显示接听界面
@@ -320,6 +347,7 @@ const Home = observer(() => {
   };
 
   /**
+   * cmd: 5 私聊视频通话Answer响应
    * 处理视频通话Answer响应
    * 1. 设置远程SDP描述
    * 2. 开始发送ICE候选
@@ -327,11 +355,12 @@ const Home = observer(() => {
    */
   const handleVideoAnswer = async (data: any) => {
     // 设置远程描述
-    await usePeerConnectionStore.setRemoteDescription(data.session_description);
-    await usePeerConnectionStore.flushIceCandidates(); // 开始发送 ICE 候选
+    await usePrivatePeerStore.setRemoteDescription(data.session_description);
+    await usePrivatePeerStore.flushIceCandidates(); // 开始发送 ICE 候选
   };
 
   /**
+   * cmd: 6 视频ICE候选信息
    * 处理ICE候选信息
    * 1. 添加远程ICE候选
    * 2. 开始发送本地ICE候选
@@ -339,10 +368,10 @@ const Home = observer(() => {
    */
   const handleIceCandidate = async (data: any) => {
     // ICE候选消息
-    await usePeerConnectionStore.addIceCandidate(data.candidate_init);
+    await usePrivatePeerStore.addIceCandidate(data.candidate_init);
 
     // 收到ICE后开始发送自己的ICE候选;
-    await usePeerConnectionStore.flushIceCandidates(); // 开始发送 ICE 候选
+    await usePrivatePeerStore.flushIceCandidates(); // 开始发送 ICE 候选
 
     if (callTimeoutRef.current) {
       //开始通话关闭定时器
@@ -351,6 +380,7 @@ const Home = observer(() => {
   };
 
   /**
+   * cmd:7 私聊视频通话结束
    * 处理通话结束请求
    * 1. 关闭PeerConnection连接
    * 2. 清理媒体流资源
@@ -360,7 +390,7 @@ const Home = observer(() => {
    */
   const handleCallEnd = async (data: any) => {
     // 先关闭连接
-    usePeerConnectionStore.closePeerConnection();
+    usePrivatePeerStore.closePeerConnection();
 
     // 确保媒体流被清理
     if (localStream) {
@@ -377,44 +407,190 @@ const Home = observer(() => {
     message.success(data.content);
   };
 
-  //作为发送者开启视频通话
-  const initiateVideoCall = async () => {
+  /**
+   * cmd: 8 群聊视频通话Offer请求
+   * 处理群聊视频通话Offer请求
+   * 1. 检查当前是否已在通话中
+   * 2. 如果在通话中则发送拒绝消息
+   * 3. 否则设置呼叫者信息并显示接听界面
+   * @param data - 包含发送者信息和SDP offer的对象
+   */
+  const handleGroupVideoOffer = async (data: any, client: any) => {
+    if (isCalling || isVideoModalVisible || groupVideoModalVisible) {
+      // 已经处于呼叫或被呼叫状态，直接拒绝
+      const rejectData = {
+        cmd: 11, // 拒绝命令
+        data: {
+          content: "对方通话中，请稍后再拨",
+          sender_id: userInfo.id,
+          receiver_id: data.sender_id,
+        },
+      };
+      client.sendMessage(rejectData);
+      return;
+    }
+    // else {
+    //   // 打开弹窗，等待接听
+    //   setIsCalling(true);
+    //   setGroupVideoModalVisible(true);
+    // }
+
+    try {
+      // 获取本地媒体流
+      const stream = await getMediaStream();
+      setLocalStream(stream);
+
+      // 设置参与者信息
+      setParticipants(
+        data.receiver_list.filter(
+          (participant: any) => participant.id !== userInfo.id
+        )
+      );
+
+      // 创建PeerConnection
+      useGroupPeerStore.createPeerConnection(stream);
+
+      // 设置远程流处理器
+      useGroupPeerStore.setupMediaStreamHandlers((remoteStream) => {
+        setRemoteStreams((prev) => ({
+          ...prev,
+          [remoteStream.id]: remoteStream,
+        }));
+      });
+
+      // 设置远程描述
+      await useGroupPeerStore.setRemoteDescription(data.session_description);
+
+      // 创建并发送Answer
+      const answer = await useGroupPeerStore.createAnswer();
+      client.sendMessage({
+        cmd: 9,
+        data: {
+          sender_id: userInfo.id,
+          receiver_id: data.sender_id,
+          session_description: answer,
+          receiver_list: data.receiver_list,
+        },
+      });
+
+      // 设置ICE候选监听
+      useGroupPeerStore.setupIceCandidateListener(
+        (candidate) => {
+          client.sendMessage({
+            cmd: 10,
+            data: {
+              sender_id: userInfo.id,
+              receiver_id: data.sender_id,
+              candidate_init: candidate,
+              receiver_list: data.receiver_list,
+            },
+          });
+        },
+        () => console.log("ICE收集完成")
+      );
+
+      setGroupVideoModalVisible(true);
+      setIsCalling(false);
+    } catch (error) {
+      console.error("处理群视频邀请失败:", error);
+      message.error("处理群视频邀请失败");
+    }
+  };
+
+  /**
+   * cmd: 9 群聊视频通话Answer响应
+   * 处理群聊视频通话Answer响应
+   * 1. 设置远程SDP描述
+   * 2. 开始发送ICE候选
+   * @param data - 包含SDP answer的对象
+   */
+  const handleGroupVideoAnswer = async (data: any) => {
+    console.log("收到了answer", data);
+    // 设置远程描述
+    await useGroupPeerStore.setRemoteDescription(data.session_description);
+    await useGroupPeerStore.flushIceCandidates(); // 开始发送ICE候选
+  };
+
+  /**
+   * cmd: 10 群聊视频ICE候选信息
+   * 处理群聊ICE候选信息
+   * 1. 添加远程ICE候选
+   * 2. 开始发送本地ICE候选
+   * @param data - 包含ICE候选信息的对象
+   */
+  const handleGroupIceCandidate = async (data: any) => {
+    // 添加远程ICE候选
+    await useGroupPeerStore.addIceCandidate(data.candidate_init);
+    // 开始发送自己的ICE候选
+    await useGroupPeerStore.flushIceCandidates();
+  };
+
+  // 新增获取媒体流的方法
+  const getMediaStream = async () => {
+    // 1. 检查设备可用性
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const hasVideo = devices.some((device) => device.kind === "videoinput");
+    const hasAudio = devices.some((device) => device.kind === "audioinput");
+
+    if (!hasVideo || !hasAudio) {
+      throw new Error("未检测到可用的摄像头或麦克风");
+    }
+
+    // 2. 获取媒体流
+    const stream = await navigator.mediaDevices
+      .getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: true,
+      })
+      .catch((err) => {
+        console.error("获取媒体设备失败:", err);
+        message.error("无法访问摄像头/麦克风，请检查设备连接和权限设置");
+        throw err;
+      });
+
+    // 3. 验证媒体流
+    if (!stream.getVideoTracks().length || !stream.getAudioTracks().length) {
+      throw new Error("获取的媒体流中没有视频或音频轨道");
+    }
+
+    setLocalStream(stream);
+
+    return stream;
+  };
+
+  // 作为发送者挂断视频通话
+  const handleVideoCallClose = () => {
+    setIsVideoModalVisible(false);
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop());
+    }
+    usePrivatePeerStore.closePeerConnection();
+    sendNonChatMessage({
+      cmd: 7,
+      data: {
+        sender_id: userInfo.id,
+        receiver_id: callerInfo.sender_id,
+        content: "对方已挂断，通话结束",
+      },
+    });
+    message.success("通话结束");
+  };
+
+  // 私聊作为发送者拨打电话
+  const initiatePrivateVideoCall = async () => {
     try {
       if (isCalling || isVideoModalVisible) {
         // 已经处于呼叫或被呼叫状态，直接返回
         return;
       }
-      // 1. 先检查设备可用性
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const hasVideo = devices.some((device) => device.kind === "videoinput");
-      const hasAudio = devices.some((device) => device.kind === "audioinput");
 
-      if (!hasVideo || !hasAudio) {
-        throw new Error("未检测到可用的摄像头或麦克风");
-      }
+      // 获取媒体流
+      const stream = await getMediaStream();
 
-      // 2. 获取媒体流时添加错误处理
-      const stream = await navigator.mediaDevices
-        .getUserMedia({
-          video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
-          audio: true,
-        })
-        .catch((err) => {
-          console.error("获取媒体设备失败:", err);
-          message.error("无法访问摄像头/麦克风，请检查设备连接和权限设置");
-          throw err;
-        });
-
-      // 3. 添加设备状态检查
-      if (!stream.getVideoTracks().length || !stream.getAudioTracks().length) {
-        throw new Error("获取的媒体流中没有视频或音频轨道");
-      }
-
-      setLocalStream(stream);
-
+      // 私聊视频通话的特定逻辑
       // 设置10秒无人接听计时器
       callTimeoutRef.current = setTimeout(() => {
         if (!isVideoModalVisible) {
@@ -435,19 +611,19 @@ const Home = observer(() => {
             localStream.getTracks().forEach((track) => track.stop());
             setLocalStream(null);
           }
-          usePeerConnectionStore.closePeerConnection();
-          useGroupPeerConnectionStore.closePeerConnection();
+          usePrivatePeerStore.closePeerConnection();
+          useGroupPeerStore.closePeerConnection();
         }
       }, 15000); // 10秒超时
 
       // 4. 创建PeerConnection (简化参数传递)
-      usePeerConnectionStore.createPeerConnection(stream);
+      usePrivatePeerStore.createPeerConnection(stream);
 
       // 5. 设置远程流处理器
-      usePeerConnectionStore.setupMediaStreamHandlers(setRemoteStream);
+      usePrivatePeerStore.setupMediaStreamHandlers(setRemoteStream);
 
       // 6. 创建并发送Offer
-      const offer = await usePeerConnectionStore.createOffer();
+      const offer = await usePrivatePeerStore.createOffer();
       // 准备发送的数据
       const offerData = {
         sender_id: userInfo.id,
@@ -461,7 +637,7 @@ const Home = observer(() => {
         data: offerData,
       });
       //发送ICE
-      usePeerConnectionStore.setupIceCandidateListener(
+      usePrivatePeerStore.setupIceCandidateListener(
         (candidate) => {
           // 这个回调会在设置本地描述后触发
           sendNonChatMessage({
@@ -480,13 +656,6 @@ const Home = observer(() => {
 
       // 6. 显示视频弹框
       setIsVideoModalVisible(true);
-
-      // 清理计时器
-      return () => {
-        if (callTimeoutRef.current) {
-          clearTimeout(callTimeoutRef.current);
-        }
-      };
     } catch (error) {
       console.error("获取用户媒体或发送offer失败:", error);
       message.error("启动视频通话失败");
@@ -496,29 +665,109 @@ const Home = observer(() => {
         localStream.getTracks().forEach((track) => track.stop());
         setLocalStream(null);
       }
-      usePeerConnectionStore.closePeerConnection();
+      usePrivatePeerStore.closePeerConnection();
+      if (callTimeoutRef.current) {
+        clearTimeout(callTimeoutRef.current);
+      }
     }
   };
 
-  // 作为发送者挂断视频通话
-  const handleVideoCallClose = () => {
-    setIsVideoModalVisible(false);
-    if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop());
+  // 群聊作为发送者拨打电话
+  const initiateGroupVideoCall = async () => {
+    try {
+      console.log("发起群聊视频通话", selectedMembers);
+
+      if (isCalling || isVideoModalVisible) {
+        // 已经处于呼叫或被呼叫状态，直接返回
+        return;
+      }
+
+      // 获取媒体流
+      const stream = await getMediaStream();
+
+      // 私聊视频通话的特定逻辑
+      // 设置10秒无人接听计时器
+
+      // 设置参与者信息
+      const newParticipants = selectedMembers.map((item) => ({
+        id: item.user_id,
+        name: item.nickname,
+        avatar: item.avatar,
+      }));
+      console.log("selectedMembers", selectedMembers);
+      setParticipants(newParticipants);
+
+      // 4. 创建PeerConnection (简化参数传递)
+      useGroupPeerStore.createPeerConnection(stream);
+
+      // 5. 设置远程流处理器
+      // useGroupPeerStore.setupMediaStreamHandlers(setRemoteStream);
+      useGroupPeerStore.setupMediaStreamHandlers((remoteStream) => {
+        setRemoteStreams((prev) => ({
+          ...prev,
+          [remoteStream.id]: remoteStream,
+        }));
+      });
+
+      // 6. 创建并发送Offer
+      const offer = await useGroupPeerStore.createOffer();
+
+      // 参与视频通话的所有人，包含自己
+      const receiverParams = [
+        ...newParticipants,
+        { id: userInfo.id, name: userInfo.nickname, avatar: userInfo.avatar },
+      ];
+      // 准备发送的数据
+      sendNonChatMessage({
+        cmd: 8,
+        data: {
+          sender_id: userInfo.id,
+          receiver_id: Number(currentFriendId),
+          session_description: offer,
+          sender_nickname: userInfo.nickname,
+          sender_avatar: userInfo.avatar,
+          // receiver_list: selectedMembers,
+          receiver_list: receiverParams,
+        },
+      });
+
+      //发送ICE
+      useGroupPeerStore.setupIceCandidateListener(
+        (candidate) => {
+          // 这个回调会在设置本地描述后触发
+          sendNonChatMessage({
+            cmd: 10, // ICE 候选者消息
+            data: {
+              sender_id: userInfo.id, // 发送者 ID
+              receiver_id: Number(currentFriendId), // 接收者 ID
+              candidate_init: candidate, // 候选者信息
+            },
+          });
+        },
+        () => {
+          console.log("ICE 候选者收集完成");
+        }
+      );
+
+      // 6. 显示视频弹框
+      setGroupVideoModalVisible(true);
+    } catch (error) {
+      console.error("获取用户媒体或发送offer失败:", error);
+      message.error("启动视频通话失败");
+
+      // 清理资源
+      if (localStream) {
+        localStream.getTracks().forEach((track) => track.stop());
+        setLocalStream(null);
+      }
+      usePrivatePeerStore.closePeerConnection();
+      if (callTimeoutRef.current) {
+        clearTimeout(callTimeoutRef.current);
+      }
     }
-    usePeerConnectionStore.closePeerConnection();
-    sendNonChatMessage({
-      cmd: 7,
-      data: {
-        sender_id: userInfo.id,
-        receiver_id: callerInfo.sender_id,
-        content: "对方已挂断，通话结束",
-      },
-    });
-    message.success("通话结束");
   };
 
-  // 作为接收者处理接受视频通话
+  // 私聊作为接收者处理接受视频通话
   const handleAcceptCall = async () => {
     try {
       // 1. 获取本地媒体流
@@ -529,20 +778,20 @@ const Home = observer(() => {
       setLocalStream(stream);
 
       // 2. 创建PeerConnection
-      usePeerConnectionStore.createPeerConnection(stream);
+      usePrivatePeerStore.createPeerConnection(stream);
 
       // 3. 设置远程媒体流处理器
-      usePeerConnectionStore.setupMediaStreamHandlers((remoteStream) => {
+      usePrivatePeerStore.setupMediaStreamHandlers((remoteStream) => {
         setRemoteStream(remoteStream);
       });
 
       // 4. 设置远程描述(Offer)
-      await usePeerConnectionStore.setRemoteDescription(
+      await usePrivatePeerStore.setRemoteDescription(
         callerInfo.session_description
       );
 
       // 5. 创建并发送Answer
-      const answer = await usePeerConnectionStore.createAnswer();
+      const answer = await usePrivatePeerStore.createAnswer();
 
       sendNonChatMessage({
         cmd: 5, // Answer命令
@@ -558,7 +807,7 @@ const Home = observer(() => {
       setIsCalling(false);
 
       // 7. 设置ICE候选监听器（此时不会立即发送ICE）
-      usePeerConnectionStore.setupIceCandidateListener(
+      usePrivatePeerStore.setupIceCandidateListener(
         (candidate) => {
           // 这个回调会在设置本地描述后触发
           sendNonChatMessage({
@@ -581,15 +830,17 @@ const Home = observer(() => {
         setLocalStream(null);
       }
       // 关闭视频
-      usePeerConnectionStore.closePeerConnection();
+      usePrivatePeerStore.closePeerConnection();
     }
   };
+
+  // 群聊作为接收者处理接受视频电话
 
   // 作为接收者处理拒绝视频通话
   const handleRejectCall = () => {
     setIsCalling(false);
     // 关闭视频
-    usePeerConnectionStore.closePeerConnection();
+    usePrivatePeerStore.closePeerConnection();
 
     // 可以发送拒绝消息给对方
     sendNonChatMessage({
@@ -818,6 +1069,7 @@ const Home = observer(() => {
       }}
     >
       <div className="main-layout">
+        {/* 侧边菜单*/}
         <SideNavigation />
 
         <div className="main-layout-content">
@@ -830,7 +1082,12 @@ const Home = observer(() => {
           </div>
           <div className="main-layout-content-right">
             {currentFriendId && (
-              <Chat onInitiateVideoCall={initiateVideoCall} />
+              <Chat
+                initiatePrivateVideoCall={initiatePrivateVideoCall}
+                initiateGroupVideoCall={initiateGroupVideoCall}
+                setSelectedMembers={setSelectedMembers}
+                selectedMembers={selectedMembers}
+              />
             )}
           </div>
         </div>
@@ -850,6 +1107,33 @@ const Home = observer(() => {
             onClose={() => handleVideoCallClose()}
             callerAvatar={String(currentFriendAvatar)}
             callerName={String(currentFriendName)}
+          />
+        </Modal>
+
+        {/* 群聊视频通话框 */}
+        <Modal
+          className="group-video-modal"
+          title="群视频通话"
+          open={groupVideoModalVisible}
+          onCancel={() => {
+            setGroupVideoModalVisible(false);
+            // 清理资源
+            if (localStream) {
+              localStream.getTracks().forEach((track) => track.stop());
+            }
+            useGroupPeerStore.closePeerConnection();
+            setRemoteStreams({});
+          }}
+          footer={null}
+          width={800}
+          destroyOnClose
+        >
+          <GroupVideoChat
+            visible={groupVideoModalVisible}
+            onClose={() => setGroupVideoModalVisible(false)}
+            localStream={localStream}
+            remoteStreams={remoteStreams}
+            participants={participants}
           />
         </Modal>
 

@@ -76,7 +76,7 @@ const FirendList = observer(() => {
     };
     setaddData(newAddData);
     try {
-      const response = await postAddFriend(newAddData);
+      const response: any = await postAddFriend(newAddData);
       if (response.code === 1000) {
         message.success("添加好友请求已发送");
         // 更新 sentRequests 状态
@@ -153,21 +153,12 @@ const FirendList = observer(() => {
       const res: any = await searchUser(phone);
 
       if (res.code === 1000) {
-        if (res.data) {
-          // 检查搜索的手机号是否是自己的手机号
-          if (phone === userInfo.phone) {
-            message.warning("不能添加自己到通讯录");
-            // 不再清空搜索结果
-            setSearchResult(res.data);
-            setSearchStatus("success");
-            return;
-          }
-          setSearchResult(res.data);
-          setSearchStatus("success");
-        } else {
-          setSearchResult(null);
-          setSearchStatus("success");
+        // 检查搜索的手机号是否是自己的手机号
+        if (phone === userInfo.phone) {
+          message.warning("不能添加自己到通讯录");
         }
+        setSearchResult(res.data);
+        setSearchStatus("success");
       } else {
         setSearchResult(null);
         setSearchStatus("error");
@@ -197,7 +188,9 @@ const FirendList = observer(() => {
       requester_id: friendId,
       status: status,
     };
-    postHandleFriend(data);
+    await postHandleFriend(data);
+    // 刷新好友请求列表
+    await handleNew();
   };
 
   // 点击好友、群聊，更换会话内容
@@ -447,7 +440,13 @@ const FirendList = observer(() => {
           <div className="drawer-header">
             <LeftOutlined onClick={onClose} />
             <span>新朋友</span>
-            <PlusOutlined onClick={() => setIsModalOpen(true)} />
+            <PlusOutlined
+              onClick={() => {
+                setSearchInput("");
+                setSearchResult(null);
+                setIsModalOpen(true);
+              }}
+            />
           </div>
         }
         width={300}
@@ -480,7 +479,7 @@ const FirendList = observer(() => {
                       handleApply(item.requester_id, 1);
                     }}
                   >
-                    确认
+                    同意
                   </Button>
                 )}
               </div>
@@ -543,7 +542,7 @@ const FirendList = observer(() => {
                       </div>
                     </div>
                     {/* 当搜索结果不是自己时才显示操作按钮 */}
-                    {searchInput !== userInfo.phone && (
+                    {searchInput !== userInfo?.phone && (
                       <>
                         {searchResult.is_friend ? (
                           <Button
