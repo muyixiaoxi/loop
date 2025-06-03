@@ -76,7 +76,8 @@ const GroupVideoChat = observer((props: GroupVideoChatProps) => {
         {participants.map((participant) => {
           const stream = remoteStreams[participant.id];
           // if (!stream) return null;
-          // console.log("remoteStreams", remoteStreams);
+          console.log("stream", stream);
+          console.log("remoteStreams", remoteStreams);
           // console.log("participant", participant);
 
           return (
