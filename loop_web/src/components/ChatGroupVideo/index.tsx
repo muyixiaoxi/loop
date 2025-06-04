@@ -19,7 +19,6 @@ const GroupVideoChat = observer((props: GroupVideoChatProps) => {
   const { visible, onClose, localStream, remoteStreams, participants } = props;
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
-  console.log("participants-------------", participants);
 
   // 设置本地视频流
   useEffect(() => {
@@ -73,11 +72,13 @@ const GroupVideoChat = observer((props: GroupVideoChatProps) => {
         )}
 
         {/* 远程视频流 */}
-        {participants.map((participant) => {
-          const stream = remoteStreams[participant.id];
+        {participants.map((participant, index: number) => {
+          // const stream = remoteStreams[participant.id];
+          const stream = remoteStreams[index];
+
           // if (!stream) return null;
           console.log("stream", stream);
-          console.log("remoteStreams", remoteStreams);
+          console.log("remoteStreams", remoteStreams[index]);
           // console.log("participant", participant);
 
           return (

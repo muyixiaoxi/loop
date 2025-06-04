@@ -84,9 +84,10 @@ const Home = observer(() => {
   const [selectedMembers, setSelectedMembers] = useState<any[]>([]);
 
   const [groupVideoModalVisible, setGroupVideoModalVisible] = useState(false);
-  const [remoteStreams, setRemoteStreams] = useState<
-    Record<number, MediaStream>
-  >({});
+  // const [remoteStreams, setRemoteStreams] = useState<
+  //   Record<number, MediaStream>
+  // >({});
+  const [remoteStreams, setRemoteStreams] = useState<Array<MediaStream>>([]);
   const [participants, setParticipants] = useState<
     Array<{
       id: number;
@@ -94,9 +95,6 @@ const Home = observer(() => {
       avatar: string;
     }>
   >([]);
-  const [streamIdToParticipantId, setStreamIdToParticipantId] = useState<
-    Record<string, number>
-  >({});
 
   /**
    * 计算并设置客户端与服务器的时间差
@@ -453,28 +451,34 @@ const Home = observer(() => {
       // 创建PeerConnection
       useGroupPeerStore.createPeerConnection(stream);
 
+      console.log(
+        "dataReceiverList设置参与者信息,过滤掉自己",
+        dataReceiverList
+      );
       // 设置远程流处理器
-      // useGroupPeerStore.setupMediaStreamHandlers((remoteStream) => {
+      useGroupPeerStore.setupMediaStreamHandlers((remoteStream) => {
+        // setRemoteStreams((prev) => ({
+        //   ...prev,
+        //   0: remoteStream,
+        // }));
+        setRemoteStreams((prev) => [...prev, remoteStream]);
+      });
+      // [remoteStream.id]:
+
+      // useGroupPeerStore.setupMediaStreamHandlers((remoteStream, peerId) => {
+      //   console.log("收到远程流:", remoteStream, "来自:", peerId);
+      //   // 找到对应的参与者
+      //   const participant = dataReceiverList.find((p) => p.id === peerId);
+
       //   setRemoteStreams((prev) => ({
       //     ...prev,
-      //     [remoteStream.id]: remoteStream,
+      //     [participant.id]: remoteStream,
+      //   }));
+      //   setStreamIdToParticipantId((prev) => ({
+      //     ...prev,
+      //     [remoteStream.id]: participant.id,
       //   }));
       // });
-
-      // 设置远程流处理器，关联流ID与参与者ID
-      useGroupPeerStore.setupMediaStreamHandlers((remoteStream, peerId) => {
-        const participant = dataReceiverList.find((p) => p.id === peerId);
-        if (participant) {
-          setRemoteStreams((prev) => ({
-            ...prev,
-            [participant.id]: remoteStream,
-          }));
-          setStreamIdToParticipantId((prev) => ({
-            ...prev,
-            [remoteStream.id]: participant.id,
-          }));
-        }
-      });
 
       // 设置远程描述
       await useGroupPeerStore.setRemoteDescription(data.session_description);
@@ -494,12 +498,6 @@ const Home = observer(() => {
       // 设置ICE候选监听
       useGroupPeerStore.setupIceCandidateListener(
         (candidate) => {
-          console.log(
-            userInfo.id,
-            data.sender_id,
-            candidate,
-            data.receiver_list
-          );
           client.sendMessage({
             cmd: 10,
             data: {
@@ -726,27 +724,14 @@ const Home = observer(() => {
 
       // 5. 设置远程流处理器
       // useGroupPeerStore.setupMediaStreamHandlers(setRemoteStream);
-      // useGroupPeerStore.setupMediaStreamHandlers((remoteStream) => {
-      //   setRemoteStreams((prev) => ({
-      //     ...prev,
-      //     [remoteStream.id]: remoteStream,
-      //   }));
-      // });
-      // 设置远程流处理器，关联流ID与参与者ID
-      useGroupPeerStore.setupMediaStreamHandlers((remoteStream, peerId) => {
-        // 根据peerId找到对应的参与者
-        const participant = newParticipants.find((p) => p.id === peerId);
-        if (participant) {
-          setRemoteStreams((prev) => ({
-            ...prev,
-            [participant.id]: remoteStream,
-          }));
-          setStreamIdToParticipantId((prev) => ({
-            ...prev,
-            [remoteStream.id]: participant.id,
-          }));
-        }
+      useGroupPeerStore.setupMediaStreamHandlers((remoteStream) => {
+        // setRemoteStreams((prev) => ({
+        //   ...prev,
+        //   [remoteStream.id]: remoteStream,
+        // }));
+        setRemoteStreams((prev) => [...prev, remoteStream]);
       });
+
       // 6. 创建并发送Offer
       const offer = await useGroupPeerStore.createOffer();
 
@@ -1160,7 +1145,7 @@ const Home = observer(() => {
               localStream.getTracks().forEach((track) => track.stop());
             }
             useGroupPeerStore.closePeerConnection();
-            setRemoteStreams({});
+            setRemoteStreams([]);
           }}
           footer={null}
           width={800}

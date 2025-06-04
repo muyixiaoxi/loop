@@ -250,7 +250,14 @@ class GroupPeerStore {
         // 为每个远程peer创建独立的stream
         const stream = new MediaStream();
         stream.addTrack(event.track);
-
+        // 从event中获取peerId
+        console.log("event", event);
+        const peerId =
+          event.transceiver.mid ||
+          event.transceiver.sender?.track?.id ||
+          Date.now().toString();
+        console.log("收到远程流", stream);
+        console.log(peerId, "peerId");
         // 通过回调传递stream和peer ID
         callback(stream);
       }
