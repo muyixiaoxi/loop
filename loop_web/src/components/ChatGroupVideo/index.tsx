@@ -78,8 +78,7 @@ const GroupVideoChat = observer((props: GroupVideoChatProps) => {
 
           // if (!stream) return null;
           console.log("stream", stream);
-          console.log("remoteStreams", remoteStreams[index]);
-          // console.log("participant", participant);
+          console.log("remoteStreams", remoteStreams, remoteStreams[index]);
 
           return (
             <div className="video-item" key={participant.id}>

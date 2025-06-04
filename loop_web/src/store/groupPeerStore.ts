@@ -245,21 +245,52 @@ class GroupPeerStore {
   setupMediaStreamHandlers(callback: (stream: MediaStream) => void) {
     if (!this.peerConnection) return;
 
+    // 使用Map来跟踪每个peer的流
+    const peerStreams = new Map<string, MediaStream>();
+
     this.peerConnection.ontrack = (event) => {
-      if (event.track.kind === "video" || event.track.kind === "audio") {
-        // 为每个远程peer创建独立的stream
-        const stream = new MediaStream();
-        stream.addTrack(event.track);
-        // 从event中获取peerId
-        console.log("event", event);
+      // if (event.track.kind === "video" || event.track.kind === "audio") {
+      //   // 为每个远程peer创建独立的stream
+      //   const stream = new MediaStream();
+      //   stream.addTrack(event.track);
+      //   // 从event中获取peerId
+      //   console.log("event", event);
+      //   const peerId =
+      //     event.transceiver.mid ||
+      //     event.transceiver.sender?.track?.id ||
+      //     Date.now().toString();
+      //   console.log("收到远程流", stream);
+      //   console.log(peerId, "peerId");
+      //   // 通过回调传递stream和peer ID
+      //   callback(stream);
+      // }
+      const track = event.track;
+      if (track.kind === "video" || track.kind === "audio") {
+        // 获取peerId - 使用transceiver的mid作为唯一标识
         const peerId =
           event.transceiver.mid ||
           event.transceiver.sender?.track?.id ||
           Date.now().toString();
-        console.log("收到远程流", stream);
-        console.log(peerId, "peerId");
-        // 通过回调传递stream和peer ID
-        callback(stream);
+
+        // 获取或创建该peer的流
+        let stream = peerStreams.get(peerId);
+        if (!stream) {
+          stream = new MediaStream();
+          peerStreams.set(peerId, stream);
+        }
+
+        // 添加track到流
+        stream.addTrack(track);
+
+        // 只有当这个peer的所有track都添加完成时才回调
+        // 这里假设每个peer有1个视频和1个音频track
+        const tracks = stream.getTracks();
+        if (
+          tracks.length === 2 ||
+          (tracks.length === 1 && tracks[0].kind === "video")
+        ) {
+          callback(stream, peerId);
+        }
       }
     };
   }
