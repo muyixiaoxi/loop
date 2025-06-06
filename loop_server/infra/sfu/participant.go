@@ -10,6 +10,7 @@ import (
 type Participant struct {
 	id            uint
 	PeerConn      *webrtc.PeerConnection
+	IceChan       chan *webrtc.ICECandidate
 	isInitiator   bool // 是否是发起者
 	initiatorFunc func()
 	lock          sync.Mutex

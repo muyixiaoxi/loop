@@ -117,6 +117,7 @@ func (sfu *SFU) CreateOrGetParticipant(groupId uint, isInitiator bool, userId ui
 		id:            userId,
 		PeerConn:      pc,
 		lock:          sync.Mutex{},
+		IceChan:       make(chan *webrtc.ICECandidate, 10),
 		isInitiator:   isInitiator,
 		initiatorFunc: initiator,
 	}, nil

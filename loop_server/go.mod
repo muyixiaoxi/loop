@@ -1,6 +1,6 @@
 module loop_server
 
-go 1.23.0
+go 1.24.3
 
 require (
 	github.com/fsnotify/fsnotify v1.8.0

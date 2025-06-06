@@ -12,14 +12,16 @@ import (
 	"loop_server/internal/domain"
 	"loop_server/internal/model/dto"
 	"loop_server/internal/model/po"
+	"loop_server/pkg/request"
 	"strings"
 )
 
 type imAppImpl struct {
-	sfuApp      application.SfuAPP
-	imDomain    domain.ImDomain
-	groupDomain domain.GroupDomain
-	userDomain  domain.UserDomain
+	sfuApp       application.SfuAPP
+	imDomain     domain.ImDomain
+	groupDomain  domain.GroupDomain
+	userDomain   domain.UserDomain
+	friendDomain domain.FriendDomain
 }
 
 func NewImAppImpl(sfuApp application.SfuAPP, imDomain domain.ImDomain, groupDomain domain.GroupDomain, userDomain domain.UserDomain) *imAppImpl {
@@ -43,10 +45,8 @@ func (i *imAppImpl) HandleMessage(ctx context.Context, curUserId uint, msgByte [
 		return i.handlerGroupMessage(ctx, msg)
 	case consts.WsMessageCmdPrivateOffer, consts.WsMessageCmdPrivateAnswer, consts.WsMessageCmdPrivateIce, consts.WsMessageCmdPrivateHangUp:
 		return i.handlerPrivateOffer(ctx, msg)
-	case consts.WsMessageCmdGroupInitiatorOffer:
+	case consts.WsMessageCmdGroupInitiatorOffer, consts.WsMessageCmdGroupAnswer, consts.WsMessageCmdGroupIce:
 		return i.handlerGroupOffer(ctx, msg)
-	case consts.WsMessageCmdGroupIce:
-		return i.handlerGroupIce(ctx, msg)
 	}
 	return nil
 }
@@ -126,12 +126,17 @@ func (i *imAppImpl) handlePrivateMessage(ctx context.Context, msg *dto.Message) 
 	/*
 		A —> B 发送消息：
 		1. 在线转发
+		2. 过滤：自己、非好友
 		2. 不在线，存入消息队列
 	*/
 	pMsg := &dto.PrivateMessage{}
 	json.Unmarshal(msg.Data, pMsg)
-	if pMsg.SeqId == "" || pMsg.ReceiverId == 0 {
+	if pMsg.SeqId == "" || pMsg.ReceiverId == 0 || pMsg.ReceiverId == request.GetCurrentUser(ctx) {
 		return nil
+	}
+	isFriend, err := i.friendDomain.IsFriend(ctx, request.GetCurrentUser(ctx), pMsg.ReceiverId)
+	if err != nil || isFriend {
+		return err
 	}
 
 	// 在线
@@ -271,16 +276,25 @@ func (i *imAppImpl) handlerGroupOffer(ctx context.Context, msg *dto.Message) err
 		return nil
 	}
 
-	userId := sdpMessage.SenderId
-	answer, err := i.sfuApp.SetOfferGetAnswer(ctx, sdpMessage.ReceiverId, sdpMessage.SenderNickname, sdpMessage.SenderAvatar,
-		sdpMessage.ReceiverList, sdpMessage.MediaType, sdpMessage.SessionDescription)
-	if err != nil {
-		return err
+	for _, receiver := range sdpMessage.ReceiverList {
+		if receiver.Id != sdpMessage.SenderId {
+			if i.imDomain.IsOnline(ctx, receiver.Id) {
+				i.imDomain.SendMessage(ctx, msg.Cmd, receiver.Id, sdpMessage)
+			}
+		}
 	}
 
-	sdpMessage.SenderId, sdpMessage.ReceiverId = sdpMessage.ReceiverId, sdpMessage.SenderId
-	sdpMessage.SessionDescription = answer
-	return i.imDomain.SendMessage(ctx, consts.WsMessageCmdGroupAnswer, userId, sdpMessage)
+	return nil
+	//userId := sdpMessage.SenderId
+	//answer, err := i.sfuApp.SetOfferGetAnswer(ctx, sdpMessage.ReceiverId, sdpMessage.SenderNickname, sdpMessage.SenderAvatar,
+	//	sdpMessage.ReceiverList, sdpMessage.MediaType, sdpMessage.SessionDescription)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//sdpMessage.SenderId, sdpMessage.ReceiverId = sdpMessage.ReceiverId, sdpMessage.SenderId
+	//sdpMessage.SessionDescription = answer
+	//return i.imDomain.SendMessage(ctx, consts.WsMessageCmdGroupAnswer, userId, sdpMessage)
 }
 
 func (i *imAppImpl) handlerGroupIce(ctx context.Context, msg *dto.Message) error {
@@ -290,8 +304,16 @@ func (i *imAppImpl) handlerGroupIce(ctx context.Context, msg *dto.Message) error
 		slog.Error("handlerGroupOffer unmarshal err:", err)
 		return err
 	}
-	return i.sfuApp.SetIceCandidateInit(ctx, sdpMessage.ReceiverId, sdpMessage.SenderNickname, sdpMessage.SenderAvatar,
-		sdpMessage.ReceiverList, sdpMessage.MediaType, sdpMessage.CandidateInit)
+	ice, err := i.sfuApp.SetIceCandidateInit(ctx, sdpMessage.CandidateInit)
+	if err != nil {
+		return err
+	}
+	sdpMessage.SenderId, sdpMessage.ReceiverId = sdpMessage.ReceiverId, sdpMessage.SenderId
+	for _, candidate := range ice {
+		sdpMessage.Candidate = candidate
+		i.imDomain.SendMessage(ctx, consts.WsMessageCmdGroupIce, sdpMessage.ReceiverId, sdpMessage)
+	}
+	return nil
 }
 
 func (i *imAppImpl) SubmitOfflineMessage(ctx context.Context, userId uint, seqIdList []*dto.Ack) error {

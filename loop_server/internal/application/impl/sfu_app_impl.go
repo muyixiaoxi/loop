@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"github.com/pion/webrtc/v4"
+	"log/slog"
 	"loop_server/infra/consts"
 	"loop_server/infra/vars"
 	"loop_server/internal/domain"
@@ -26,15 +27,18 @@ func (s *sfuAppImpl) SetOfferGetAnswer(ctx context.Context, groupId uint, sender
 		initiator = func() {
 			// 发送通知
 			for _, receiver := range receiverList {
-				s.imDomain.SendMessage(ctx, consts.WsMessageCmdCallInvitation, receiver.Id, &dto.WebRTCMessage{
-					SenderId:       request.GetCurrentUser(ctx),
-					SenderNickname: senderNickname,
-					SenderAvatar:   senderAvatar,
-					ReceiverId:     groupId,
-					ReceiverList:   receiverList,
-					Content:        senderNickname + consts.WsMessageGroupCallMessageTemplate,
-					MediaType:      mediaType,
-				})
+				// 如果用户在线转发通知
+				if s.imDomain.IsOnline(ctx, receiver.Id) {
+					s.imDomain.SendMessage(ctx, consts.WsMessageCmdCallInvitation, receiver.Id, &dto.WebRTCMessage{
+						SenderId:       request.GetCurrentUser(ctx),
+						SenderNickname: senderNickname,
+						SenderAvatar:   senderAvatar,
+						ReceiverId:     groupId,
+						ReceiverList:   receiverList,
+						Content:        senderNickname + consts.WsMessageGroupCallMessageTemplate,
+						MediaType:      mediaType,
+					})
+				}
 			}
 		}
 	}
@@ -45,13 +49,11 @@ func (s *sfuAppImpl) SetOfferGetAnswer(ctx context.Context, groupId uint, sender
 	}
 	participant.PeerConn.OnICECandidate(func(candidate *webrtc.ICECandidate) {
 		if candidate == nil {
+			close(participant.IceChan)
 			return
 		}
-		s.imDomain.SendMessage(ctx, consts.WsMessageCmdGroupIce, userId, &dto.WebRTCMessage{
-			SenderId:   groupId,
-			ReceiverId: userId,
-			Candidate:  candidate,
-		})
+		// 收集ice
+		participant.IceChan <- candidate
 	})
 
 	answer, err := participant.SetOfferAndGetAnswer(offer)
@@ -71,28 +73,19 @@ func (s *sfuAppImpl) SetOfferGetAnswer(ctx context.Context, groupId uint, sender
 	return answer, nil
 }
 
-func (s *sfuAppImpl) SetIceCandidateInit(ctx context.Context, groupId uint, senderNickname, senderAvatar string, receiverList []*dto.Receiver, mediaType uint, init *webrtc.ICECandidateInit) error {
-	isInitiator := len(receiverList) > 0
-	var initiator func()
-	if isInitiator {
-		initiator = func() {
-			// 发送通知
-			for _, receiver := range receiverList {
-				s.imDomain.SendMessage(ctx, consts.WsMessageCmdCallInvitation, receiver.Id, &dto.WebRTCMessage{
-					SenderId:       request.GetCurrentUser(ctx),
-					SenderNickname: senderNickname,
-					SenderAvatar:   senderAvatar,
-					ReceiverId:     groupId,
-					ReceiverList:   receiverList,
-					Content:        senderNickname + consts.WsMessageGroupCallMessageTemplate,
-					MediaType:      mediaType,
-				})
-			}
-		}
+func (s *sfuAppImpl) SetIceCandidateInit(ctx context.Context, init *webrtc.ICECandidateInit) ([]*webrtc.ICECandidate, error) {
+	participant := vars.Sfu.GetParticipant(request.GetCurrentUser(ctx))
+	if participant == nil {
+		return nil, nil
 	}
-	participant, err := vars.Sfu.CreateOrGetParticipant(groupId, len(receiverList) > 0, request.GetCurrentUser(ctx), initiator)
-	if err != nil || participant == nil {
-		return err
+	err := participant.PeerConn.AddICECandidate(*init)
+	if err != nil {
+		slog.Error("sfuAppImpl.SetIceCandidateInit AddICECandidate", "err", err)
+		return nil, err
 	}
-	return participant.PeerConn.AddICECandidate(*init)
+	list := []*webrtc.ICECandidate{}
+	for i := range participant.IceChan {
+		list = append(list, i)
+	}
+	return list, nil
 }

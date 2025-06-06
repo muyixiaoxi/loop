@@ -56,8 +56,9 @@ type WebRTCMessage struct {
 }
 
 type Receiver struct {
-	Id     uint   `json:"id"`
-	Avatar string `json:"avatar"`
+	Id       uint   `json:"id"`
+	Avatar   string `json:"avatar"`
+	Nickname string `json:"nickname"`
 }
 
 type Message struct {
