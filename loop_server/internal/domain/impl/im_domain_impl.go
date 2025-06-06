@@ -30,8 +30,8 @@ func (i *imDomainImpl) IsOnline(ctx context.Context, userId uint) bool {
 }
 
 func (i *imDomainImpl) HandleHeartbeat(ctx context.Context, curUserId uint, msgByte []byte) error {
-	if err := vars.Ws.Get(curUserId).Conn.WriteMessage(websocket.TextMessage, msgByte); err != nil {
-		slog.Error("internal/domain/impl/im_domain_impl.go HandleHeartbeat write message err:", err)
+	vars.Ws.UpdateLastActive(curUserId)
+	if err := vars.Ws.SendMessage(curUserId, msgByte); err != nil {
 		return err
 	}
 	return nil
@@ -54,16 +54,11 @@ func (i *imDomainImpl) HandleOnlinePrivateMessage(ctx context.Context, pMsg *dto
 		return false, err
 	}
 
-	if client := vars.Ws.Get(pMsg.ReceiverId); client != nil {
-		err = client.Conn.WriteMessage(websocket.TextMessage, msgByte)
-		if err != nil {
-			slog.Error("internal/domain/impl/im_domain_impl.go write message err:", err)
-			return false, err
-		}
-		return true, nil
+	err = vars.Ws.SendMessage(pMsg.ReceiverId, msgByte)
+	if err != nil {
+		return false, err
 	}
-
-	return false, nil
+	return true, nil
 }
 
 func (i *imDomainImpl) HandleOfflinePrivateMessage(ctx context.Context, pMsg *dto.PrivateMessage) error {
@@ -150,9 +145,8 @@ func (i *imDomainImpl) SendAck(ctx context.Context, ack *dto.Ack) error {
 	}
 	msg := &dto.Message{Cmd: consts.WsMessageCmdAck, Data: ackByte}
 	msgByte, _ := json.Marshal(msg)
-	err = vars.Ws.Get(ack.ReceiverId).Conn.WriteMessage(websocket.TextMessage, msgByte)
+	err = vars.Ws.SendMessage(ack.ReceiverId, msgByte)
 	if err != nil {
-		slog.Error("internal/domain/impl/im_domain_impl.go HandleOnlinePrivateMessage write message err:", err)
 		return err
 	}
 	return nil

@@ -32,15 +32,12 @@ func (i *imServerImpl) WsHandler(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	if err != nil {
-		slog.Error("parse token err:", err)
-		return
-	}
 	userId := request.GetCurrentUser(c)
 	client := &ws.Client{
-		UserId: userId,
-		Conn:   conn,
-		Mu:     &sync.Mutex{},
+		UserId:     userId,
+		Conn:       conn,
+		Mu:         sync.Mutex{},
+		LastActive: time.Now().Unix(),
 	}
 
 	i.im.AddOnlineUser(c, client)

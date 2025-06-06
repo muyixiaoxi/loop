@@ -3,6 +3,7 @@ package vars
 import (
 	"github.com/go-redis/redis/v8"
 	"log/slog"
+	"loop_server/infra/consts"
 	redis2 "loop_server/infra/redis"
 	"loop_server/infra/sfu"
 	"loop_server/infra/ws"
@@ -26,7 +27,7 @@ func init() {
 		return
 	}
 	Redis = redis2.InitRDB(App.RedisConfig)
-	Ws = ws.NewWsServer()
+	Ws = ws.NewWsServer(consts.WebsocketServerShard, consts.WebsocketServerClearTicker, consts.WebsocketMaxGap)
 	Sfu, err = sfu.NewSFU()
 	if err != nil {
 		slog.Error("sfu.NewSFU() err:", err)

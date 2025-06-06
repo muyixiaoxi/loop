@@ -6,6 +6,13 @@ const (
 	TokenExpiration = 24 * time.Hour
 )
 
+// websocket 启动配置
+const (
+	WebsocketServerShard       uint = 16               // 分组
+	WebsocketServerClearTicker      = 5 * time.Second  // 定时器时间
+	WebsocketMaxGap                 = 15 * time.Second // 最大间隔时间
+)
+
 const (
 	FriendRequestStatusUntreated = 0 // 待处理
 	FriendRequestStatusAgree     = 1

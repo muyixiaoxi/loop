@@ -24,8 +24,8 @@ type imAppImpl struct {
 	friendDomain domain.FriendDomain
 }
 
-func NewImAppImpl(sfuApp application.SfuAPP, imDomain domain.ImDomain, groupDomain domain.GroupDomain, userDomain domain.UserDomain) *imAppImpl {
-	return &imAppImpl{sfuApp: sfuApp, imDomain: imDomain, groupDomain: groupDomain, userDomain: userDomain}
+func NewImAppImpl(sfuApp application.SfuAPP, imDomain domain.ImDomain, groupDomain domain.GroupDomain, userDomain domain.UserDomain, friendDomain domain.FriendDomain) *imAppImpl {
+	return &imAppImpl{sfuApp: sfuApp, imDomain: imDomain, groupDomain: groupDomain, userDomain: userDomain, friendDomain: friendDomain}
 }
 
 func (i *imAppImpl) HandleMessage(ctx context.Context, curUserId uint, msgByte []byte) error {
