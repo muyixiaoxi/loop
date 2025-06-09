@@ -21,7 +21,6 @@ import {
 import ChatPrivateVideo from "@/components/ChatPrivateVideo";
 import ChatVideoAcceptor from "@/components/ChatVideoAcceptor";
 import { usePrivatePeerStore } from "@/store/privatePeerStore"; // 确保导入
-import { useGroupPeerStore } from "@/store/groupPeerStore";
 import { v4 as uuidv4 } from "uuid";
 
 // 创建WebSocket上下文
@@ -449,8 +448,8 @@ const Home = observer(() => {
     if (isSelfCallerRef.current) {
       const params = {
         seq_id: uuidv4(),
-        sender_id: data.receiver_id,
-        receiver_id: data.sender_id,
+        sender_id: data.sender_id,
+        receiver_id: data.receiver_id,
         content: "对方已挂断",
         send_time: getCurrentTimeDifference(),
         sender_nickname: userInfo.nickname,
@@ -625,8 +624,8 @@ const Home = observer(() => {
     // 存储通话结束信息到聊天记录
     const params = {
       seq_id: uuidv4(),
-      sender_id: userInfo.id,
-      receiver_id: Number(currentFriendId),
+      sender_id: Number(currentFriendId),
+      receiver_id: userInfo.id,
       content: "已取消",
       send_time: getCurrentTimeDifference(),
       sender_nickname: userInfo.nickname,
@@ -670,8 +669,8 @@ const Home = observer(() => {
           // 存储通话结束信息到聊天记录
           const params = {
             seq_id: uuidv4(),
-            sender_id: userInfo.id,
-            receiver_id: Number(currentFriendId),
+            sender_id: Number(currentFriendId),
+            receiver_id: userInfo.id,
             content: "未接通",
             send_time: getCurrentTimeDifference(),
             sender_nickname: userInfo.nickname,
@@ -1015,6 +1014,7 @@ const Home = observer(() => {
   ) => {
     console.log(item, "item发送消息");
     const userId = userInfo.id;
+    console.log(isSelfCallerRef.current, item.sender_id, item.receiver_id);
     const targetId = isSelfCallerRef.current
       ? item.sender_id
       : item.receiver_id;
@@ -1045,9 +1045,9 @@ const Home = observer(() => {
       messages: [
         {
           id: item.seq_id,
-          targetId: item.receiver_id,
+          targetId: targetId,
           type: messageType,
-          sendId: item.sender_id,
+          sendId: userId,
           content: item.content,
           sendTime: item.send_time,
           sender_nickname: item.sender_nickname,
