@@ -79,6 +79,7 @@ const Home = observer(() => {
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false); // 视频弹窗可见性
   const [isCalling, setIsCalling] = useState(false); // 是否正在呼叫中
   const [callerInfo, setCallerInfo] = useState<any>({}); // 呼叫者信息
+  const callerInfoRef = useRef<any>({}); // 呼叫者信息引用
   const isSelfCallerRef = useRef<boolean>(false); // 是否是自己发起的呼叫
 
   // 群视频通话相关状态，选择的成员ID列表
@@ -392,6 +393,7 @@ const Home = observer(() => {
     } else {
       // 设置呼叫者数据，用于接听
       setCallerInfo(data);
+      callerInfoRef.current = data;
       // 打开弹窗，等待接听
       setIsCalling(true);
     }
@@ -446,6 +448,7 @@ const Home = observer(() => {
   const handleCallEnd = async (data: any) => {
     console.log("收到挂断消息", isSelfCallerRef.current, data);
     if (isSelfCallerRef.current) {
+      // 是自己发起的呼叫，接受到对方挂断消息
       const params = {
         seq_id: uuidv4(),
         sender_id: data.sender_id,
@@ -457,7 +460,18 @@ const Home = observer(() => {
       };
       await handleSendMessage(params, 1, "video");
     } else {
-      await handleNewStorage(data, 1, "video");
+      // 对方呼叫的，接受到对方挂断消息
+      console.log(callerInfo, callerInfoRef.current, "callerInfo");
+      const params = {
+        seq_id: uuidv4(),
+        sender_id: data.sender_id,
+        receiver_id: data.receiver_id,
+        content: "对方已挂断",
+        send_time: getCurrentTimeDifference(),
+        sender_nickname: callerInfoRef.current.sender_nickname,
+        sender_avatar: callerInfoRef.current.sender_avatar,
+      };
+      await handleNewStorage(params, 1, "video");
     }
     if (callTimeoutRef.current) {
       clearTimeout(callTimeoutRef.current);
@@ -641,8 +655,8 @@ const Home = observer(() => {
         receiver_id: callerInfo.sender_id,
         content: "已挂断",
         send_time: getCurrentTimeDifference(),
-        sender_nickname: userInfo.nickname,
-        sender_avatar: userInfo.avatar,
+        sender_nickname: callerInfo.sender_nickname,
+        sender_avatar: callerInfo.sender_avatar,
       };
       handleSendMessage(params, 1, "video");
     }
@@ -840,16 +854,16 @@ const Home = observer(() => {
         content: "对方已拒绝",
       },
     });
-
+    console.log(callerInfo, "callerInfo");
     // 存储通话结束信息到聊天记录
     const params = {
       seq_id: uuidv4(),
       sender_id: userInfo.id,
-      receiver_id: Number(currentFriendId),
-      content: "已取消",
+      receiver_id: callerInfo.sender_id,
+      content: "已拒绝",
       send_time: getCurrentTimeDifference(),
-      sender_nickname: userInfo.nickname,
-      sender_avatar: userInfo.avatar,
+      sender_nickname: callerInfo.sender_nickname,
+      sender_avatar: callerInfo.sender_avatar,
     };
     handleSendMessage(params, 1, "video");
     message.success("已取消通话");
@@ -1009,21 +1023,20 @@ const Home = observer(() => {
     await db.upsertConversation(userId, {
       targetId: targetId,
       type: chatType,
-      showName: showName || existingConversation?.showName,
-      headImage: headImage || existingConversation?.headImage,
+      showName: showName,
+      headImage: headImage,
       lastContent: item.content,
       unreadCount: newUnreadCount, // 使用计算后的未读数量
       messages: [
         {
-          id: item.seq_id || uuidv4(), // 如果没有seq_id，则生成一个新的
+          id: item.seq_id, // 如果没有seq_id，则生成一个新的
           targetId: item.receiver_id,
           type: messageType,
           sendId: item.sender_id,
           content: item.content,
-          sendTime: item.send_time || getCurrentTimeDifference(),
-          sender_nickname:
-            item.sender_nickname || existingConversation?.showName,
-          sender_avatar: item.sender_avatar || existingConversation?.headImage,
+          sendTime: item.send_time,
+          sender_nickname: item.sender_nickname,
+          sender_avatar: item.sender_avatar,
           status: "success",
         },
       ],
@@ -1067,8 +1080,8 @@ const Home = observer(() => {
     await db.upsertConversation(userId, {
       targetId: targetId,
       type: chatType,
-      showName: currentFriendName,
-      headImage: currentFriendAvatar,
+      showName: item.sender_nickname,
+      headImage: item.sender_avatar,
       lastContent: item.content,
       unreadCount: newUnreadCount, // 使用计算后的未读数量
       messages: [
