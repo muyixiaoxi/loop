@@ -26,7 +26,7 @@ interface submitOfflineType {
   ];
 }
 
-// 提交离线消息
+// 提交离线消息ACK，用于确认消息收到
 export const submitOfflineMessage = (data: submitOfflineType) => {
   return http.post("/api/v1/im/submit_message", data);
 };

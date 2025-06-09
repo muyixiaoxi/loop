@@ -32,3 +32,8 @@ export const deleteFriend = (friend_id: number) => {
     friend_id,
   });
 };
+
+// 待处理的好友申请数量
+export const getHandleFriendCount = () => {
+  return http.get("/api/v1/user/friend/request/statistics");
+};

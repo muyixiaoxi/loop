@@ -4,12 +4,7 @@ import { WebSocketContext } from "@/pages/Home";
 import { useContext } from "react";
 import userStore from "@/store/user";
 import globalStore from "@/store/global";
-import icon1 from "../../../public/message.svg";
-import icon2 from "../../../public/message2.svg";
-import icon3 from "../../../public/address.svg";
-import icon4 from "../../../public/address2.svg";
 import { Popover, Button } from "antd";
-import { SettingFilled } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 
 const SideNavigation = observer(() => {
@@ -17,9 +12,6 @@ const SideNavigation = observer(() => {
   const { isShowUserAmend, setIsShowUserAmend, currentRoute, setCurrentRoute } =
     globalStore;
   const navigate = useNavigate();
-
-  const messageIcon = currentRoute === "conversation" ? icon2 : icon1;
-  const addressIcon = currentRoute === "friend" ? icon4 : icon3;
 
   const { disconnect } = useContext(WebSocketContext); // 获取WebSocket断开方法
 
@@ -46,32 +38,37 @@ const SideNavigation = observer(() => {
   );
 
   return (
-    <div className="side-navigation">
-      <div
-        className="avatar"
-        onClick={() => setIsShowUserAmend(!isShowUserAmend)}
-      >
-        <img src={userInfo.avatar} alt="" />
+    <div className="navi-bar">
+      <div className="top">
+        <div
+          className="user-head-image"
+          onClick={() => setIsShowUserAmend(!isShowUserAmend)}
+        >
+          <img src={userInfo.avatar} alt="" />
+        </div>
+
+        <div className="menu">
+          {/* 会话记录 */}
+          <div className="menu-item" onClick={() => handleIconClick("chat")}>
+            <span className="icon iconfont icon-chat"></span>
+          </div>
+          {/* 好友 */}
+          <div className="menu-item" onClick={() => handleIconClick("friend")}>
+            <span className="icon iconfont icon-friend"></span>
+          </div>
+          {/* 群聊 */}
+          <div className="menu-item" onClick={() => handleIconClick("group")}>
+            <span className="icon iconfont icon-group"></span>
+          </div>
+        </div>
       </div>
-      <div className="choice">
-        <div>
-          <div
-            className="conversation"
-            onClick={() => handleIconClick("conversation")}
-          >
-            <img src={messageIcon} alt="Conversation" />
+
+      <div className="bottom">
+        <Popover placement="right" content={logoutContent}>
+          <div className="bottom-item">
+            <span className="icon iconfont icon-exit"></span>
           </div>
-          <div className="friend" onClick={() => handleIconClick("friend")}>
-            <img src={addressIcon} alt="Address" />
-          </div>
-        </div>
-        <div>
-          <Popover placement="right" content={logoutContent}>
-            <div className="setting">
-              <SettingFilled style={{ fontSize: "32px", color: "#8a8a8a" }} /> 
-            </div>
-          </Popover>
-        </div>
+        </Popover>
       </div>
     </div>
   );

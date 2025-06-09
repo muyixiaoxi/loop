@@ -40,3 +40,40 @@ function isWithinWeek(now: Date, date: Date): boolean {
   const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
   return now.getTime() - date.getTime() < oneWeekMs;
 }
+
+/**
+ * 节流函数
+ * @param func 要节流的函数
+ * @param delay 节流时间间隔
+ * */
+export const throttle = <T extends (...args: any[]) => any>(
+  func: T,
+  delay: number
+) => {
+  let lastCall = 0;
+  return (...args: Parameters<T>) => {
+    const now = new Date().getTime();
+    if (now - lastCall < delay) return;
+    lastCall = now;
+    return func(...args);
+  };
+};
+
+/**
+ * 防抖函数
+ * @param func 要防抖的函数
+ * @param delay 防抖延迟时间(毫秒)
+ * @returns 防抖后的函数
+ */
+export const debounce = <T extends (...args: any[]) => any>(
+  func: T,
+  delay: number
+) => {
+  let timer: NodeJS.Timeout | null = null;
+  return (...args: Parameters<T>) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      func(...args);
+    }, delay);
+  };
+};

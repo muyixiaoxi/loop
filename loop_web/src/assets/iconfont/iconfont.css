@@ -1,0 +1,165 @@
+@font-face {
+  font-family: "iconfont"; /* Project id 3791506 */
+  src: url("iconfont.ttf?t=1745933248800") format("truetype");
+}
+
+.iconfont {
+  font-family: "iconfont" !important;
+  font-size: 16px;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 用户相关图标 */
+.icon-man:before {
+  /* 男性用户图标 */
+  content: "\e615";
+}
+
+.icon-girl:before {
+  /* 女性用户图标 */
+  content: "\e602";
+}
+
+.icon-username:before {
+  /* 用户名/账号图标 */
+  content: "\e60f";
+}
+
+/* 状态提示图标 */
+.icon-no-data:before {
+  /* 无数据提示图标 */
+  content: "\e61b";
+}
+
+/* 通讯方式图标 */
+.icon-phone:before {
+  /* 电话/手机图标 */
+  content: "\e692";
+}
+
+.icon-email:before {
+  /* 邮箱图标 */
+  content: "\e610";
+}
+
+/* 聊天相关图标 */
+.icon-chat:before {
+  /* 基础聊天图标 */
+  content: "\e600";
+}
+
+.icon-chat-unmuted:before {
+  /* 聊天未静音状态 */
+  content: "\ec44";
+}
+
+.icon-chat-muted:before {
+  /* 聊天静音状态 */
+  content: "\e634";
+}
+
+/* 音视频控制图标 */
+.icon-microphone-on:before {
+  /* 麦克风开启状态 */
+  content: "\e63b";
+}
+
+.icon-microphone-off:before {
+  /* 麦克风关闭状态 */
+  content: "\efe5";
+}
+
+.icon-speaker-on:before {
+  /* 扬声器开启状态 */
+  content: "\e6a4";
+}
+
+.icon-speaker-off:before {
+  /* 扬声器关闭状态 */
+  content: "\ea3c";
+}
+
+.icon-camera-on:before {
+  /* 摄像头开启状态 */
+  content: "\e627";
+}
+
+.icon-camera-off:before {
+  /* 摄像头关闭状态 */
+  content: "\e6b5";
+}
+
+/* 通话控制图标 */
+.icon-phone-accept:before {
+  /* 接听电话按钮 */
+  content: "\e8be";
+}
+
+.icon-phone-reject:before {
+  /* 拒绝电话按钮 */
+  content: "\e605";
+}
+
+.icon-chat-video:before {
+  /* 视频通话图标 */
+  content: "\e73b";
+}
+
+.icon-chat-voice:before {
+  /* 语音通话图标 */
+  content: "\e633";
+}
+
+/* 功能操作图标 */
+.icon-setting:before {
+  /* 设置/配置图标 */
+  content: "\e620";
+}
+
+.icon-friend:before {
+  /* 好友/联系人图标 */
+  content: "\e604";
+}
+
+.icon-group:before {
+  /* 群组/团队图标 */
+  content: "\e7f4";
+}
+
+.icon-modify:before {
+  /* 修改/编辑图标 */
+  content: "\e60d";
+}
+
+.icon-quit:before {
+  /* 退出/离开图标 */
+  content: "\e606";
+}
+
+.icon-exit:before {
+  /* 退出/登出图标 */
+  content: "\e9e4";
+}
+
+.icon-ok:before {
+  /* 确认/完成图标 */
+  content: "\e6ac";
+}
+
+/* 其他功能图标 */
+.icon-receipt:before {
+  /* 收据/回执图标 */
+  content: "\e61a";
+}
+
+.icon-emoji:before {
+  /* 表情符号图标 */
+  content: "\e60c";
+}
+
+.icon-invite-rtc:before {
+  /* 邀请加入实时通话图标 */
+  content: "\e65f";
+}

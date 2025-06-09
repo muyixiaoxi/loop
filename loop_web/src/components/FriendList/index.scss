@@ -1,112 +1,76 @@
-.friend-list {
+.friend-page {
   width: 300px;
   height: 100vh;
   overflow: hidden;
 
-  .friend-list-title {
-    font-size: 1.5rem;
-    font-weight: 600;
-    padding: 10px 20px 0px;
-  }
-  .friend-list-search {
-    padding: 8px 16px;
-
-    .ant-input-affix-wrapper {
-      border-radius: 18px;
-      border: 1px solid #e8e8e8;
-      transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
-
-      &:hover {
-        border-color: #d9d9d9;
-      }
-
-      &:focus-within {
-        border-color: #e46342;
-        box-shadow: 0 0 0 2px rgba(228, 99, 66, 0.1);
-      }
-
-      .search-icon {
-        color: #bfbfbf;
-        margin-right: 8px;
-        transition: color 0.3s;
-      }
-
-      .ant-input {
-        font-size: 14px;
-        &::placeholder {
-          color: #8c8c8c;
-        }
-      }
+  .friend-container {
+    .header {
+      display: flex;
+      padding: 10px 10px 5px;
+      align-items: center;
     }
-  }
-  .friend-list-content {
-    .friend-list-search {
-      padding: 8px 16px;
 
-      .ant-input-affix-wrapper {
-        border-radius: 18px;
-        border: 1px solid #e8e8e8;
-        transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
-
-        &:hover {
-          border-color: #d9d9d9;
-        }
-
-        &:focus-within {
-          border-color: #e46342;
-          box-shadow: 0 0 0 2px rgba(228, 99, 66, 0.1);
-        }
-
-        .search-icon {
-          color: #bfbfbf;
-          margin-right: 8px;
-          transition: color 0.3s;
-        }
-
-        .ant-input {
+    .friend-ul {
+      .friend-section {
+        .section-header {
+          padding: 6px 16px;
           font-size: 14px;
-          &::placeholder {
-            color: #8c8c8c;
-          }
+          color: #999;
+          background-color: #fff;
         }
       }
-    }
-
-    .friend-list-ul {
-      .friend-list-item {
+      .friend-item {
         display: flex;
         align-items: center;
+        padding: 5px 16px;
         cursor: pointer;
-        height: 70px;
-        padding: 0 20px;
+        transition: background-color 0.2s;
 
-        .friend-list-item-avatar {
-          width: 32px;
-          height: 32px;
+        &:hover {
+          background-color: #f5f5f5;
+        }
+
+        &-avatar {
+          width: 40px;
+          height: 40px;
           border-radius: 50%;
+          margin-right: 12px;
           overflow: hidden;
-          margin-right: 10px;
 
           img {
             width: 100%;
             height: 100%;
+            object-fit: cover;
           }
         }
 
-        .friend-list-item-info {
-          font-size: 14px;
-          font-weight: 500;
-        }
-      }
+        &-info {
+          position: relative;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          font-size: 15px;
 
-      .friend-ul {
-        background-color: #fff;
+          .unread-text {
+            position: absolute;
+            background-color: #f56c6c;
+            right: -12px;
+            top: -8px;
+            color: white;
+            border-radius: 30px;
+            padding: 1px 5px;
+            font-size: 10px;
+            text-align: center;
+            white-space: nowrap;
+            border: 1px solid #f1e5e5;
+          }
+        }
       }
     }
   }
 
   .content_roll {
-    height: calc(100vh - 230px);
+    overflow: hidden;
     overflow-y: auto;
   }
 
@@ -141,20 +105,8 @@
 
   .drawer-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
     padding: 16px;
-
-    .anticon {
-      font-size: 18px;
-      cursor: pointer;
-      padding: 4px;
-      transition: all 0.3s;
-
-      &:hover {
-        color: #1890ff;
-      }
-    }
   }
 
   .request-list {
@@ -206,91 +158,94 @@
       }
     }
   }
+
+  // ... 其他样式保持不变 ...
 }
-.Input {
-  height: 450px;
+
+.friend-search-modal {
+  height: 520px;
   display: flex;
   flex-direction: column;
-  .main {
+
+  .search-content {
+    flex: 1;
     background-color: #ffffff;
-    font-size: 30px;
-    .search-result {
-      width: 100%;
-      height: 100px;
-      margin-top: 20px;
-      border-radius: 15px;
-      padding: 5px;
+    display: flex;
+    flex-direction: column;
+
+    .search-empty-state {
+      text-align: center;
+      color: #999;
+      padding: 20px 0;
+      margin: auto;
+    }
+
+    .search-loading {
+      text-align: center;
+      padding: 20px 0;
+      margin: auto;
+    }
+
+    .search-result-card {
+      padding: 10px;
+      margin-top: 12px;
+      border-radius: 8px;
       background-color: #f8f8f8;
       display: flex;
-      .addbt {
-        margin: 40px auto;
-      }
-      .user-info {
-        width: 70%;
-        height: 100%;
+      align-items: center;
+
+      .user-profile {
         display: flex;
         align-items: center;
-        .avatar {
-          width: 50px; // 改为固定宽度
-          height: 50px; // 改为固定高度
-          min-width: 50px; // 添加最小宽度防止挤压
+        flex: 1;
+
+        .user-avatar {
+          width: 50px;
+          height: 50px;
+          min-width: 50px;
           border-radius: 50%;
           overflow: hidden;
+          margin-right: 12px;
+
           img {
             width: 100%;
             height: 100%;
             object-fit: cover;
           }
         }
-        .nickname {
-          width: calc(100% - 60px); // 减去头像宽度和padding
-          padding-left: 10px;
-          display: flex;
-          flex-direction: column;
-          overflow: hidden; // 添加overflow
 
-          .realname {
-            width: 100%;
-            font-size: 20px;
-            white-space: nowrap; // 姓名单行显示
+        .user-details {
+          flex: 1;
+          overflow: hidden;
+
+          .user-name {
+            font-size: 16px;
+            font-weight: 500;
+            white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
           }
 
-          .signature {
-            width: 100%;
+          .user-signature {
             font-size: 14px;
             color: #9b9b9b;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            word-break: break-word; // 允许单词内换行
-            white-space: nowrap; // 强制单行显示
+            white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
           }
         }
       }
+
+      .action-button {
+        margin-left: 16px;
+      }
+    }
+
+    .search-error {
+      text-align: center;
+      padding: 20px 0;
+      color: #ff4d4f;
+      margin: auto;
     }
   }
-}
-.friend-list-letter {
-  padding: 8px 16px;
-  font-size: 14px;
-  color: #999;
-  background-color: #f5f5f5;
-}
-.category-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px;
-  background-color: #f5f5f5;
-  cursor: pointer;
-}
-
-.category-header:hover {
-  background-color: #e8e8e8;
-}
-.ant-tabs-nav-wrap {
-  margin-left: 20px;
 }

@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { observer } from "mobx-react-lite";
-import { Drawer, Button, Modal, Input, message, Tabs } from "antd";
-import type { TabsProps } from "antd";
+import { Drawer, Button, Modal, Input, message } from "antd";
 import { LeftOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import "./index.scss";
 import {
@@ -9,151 +8,182 @@ import {
   postAddFriend,
   searchNewfriend,
   postHandleFriend,
+  getHandleFriendCount,
 } from "@/api/friend";
 import { searchUser } from "@/api/user";
 import userStore from "@/store/user";
 import ChatStore from "@/store/chat";
 import { getChatDB } from "@/utils/chat-db";
 import { getFirstLetter } from "@/utils/pinyin";
-import { getGroupList } from "@/api/group";
+import { debounce } from "@/utils";
 
-const FirendList = observer(() => {
+const FriendList = observer(() => {
+  // ========== 状态管理 ==========
   const { userInfo } = userStore;
   const db = getChatDB(userInfo.id);
-  const {
-    currentChatList,
-    setCurrentFriendData,
-    setCurrentMessages,
-    setCurrentChatInfo,
-  } = ChatStore;
-  const [open, setOpen] = useState(false);
-  const [addopen, setaddOpen] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [searchInput, setSearchInput] = useState("");
-  const [modalTimer, setModalTimer] = useState<NodeJS.Timeout | null>(null);
-  const [searchResult, setSearchResult] = useState<any>(null);
+  const { setCurrentFriendData, setCurrentMessages, setCurrentChatInfo } =
+    ChatStore;
+
+  // 组件状态
+  const [open, setOpen] = useState(false); // 新朋友抽屉开关
+  const [addopen, setaddOpen] = useState(false); // 添加好友抽屉开关
+  const [isModalOpen, setIsModalOpen] = useState(false); // 搜索好友模态框开关
+  const [searchInput, setSearchInput] = useState(""); // 搜索手机号输入
+  const [modalTimer, setModalTimer] = useState<NodeJS.Timeout | null>(null); // 搜索防抖计时器
+  const [searchResult, setSearchResult] = useState<any>(null); // 搜索结果
   const [searchStatus, setSearchStatus] = useState<
     "idle" | "loading" | "success" | "error"
-  >("idle");
-  const [friendList, setFriendList] = useState<any[]>([]);
-  const [newFriendList, setNewFriendList] = useState<any[]>([]);
+  >("idle"); // 搜索状态
+  const [friendList, setFriendList] = useState<any[]>([]); // 好友列表
+  const [newFriendList, setNewFriendList] = useState<any[]>([]); // 新朋友列表
   const [addData, setaddData] = useState<any>({
     friend_id: 0,
     message: `你好！我是${userInfo.nickname || "匿名用户"}`,
-  });
-  const [applyMessage, setApplyMessage] = useState("");
-  const [sentRequests, setSentRequests] = useState<Set<number>>(new Set());
-  const [groupList, setGroupList] = useState<any[]>([]);
+  }); // 添加好友数据
+  const [pendingFriendRequests, setPendingFriendRequests] = useState<{
+    untreated_count: number;
+  }>({
+    untreated_count: 0,
+  }); // 待处理好友请求数量
+  const [applyMessage, setApplyMessage] = useState(""); // 申请消息
+  const [sentRequests, setSentRequests] = useState<Set<number>>(new Set()); // 已发送请求
+  const [searchKeyword, setSearchKeyword] = useState(""); // 好友搜索关键词
 
-  const [searchKeyword, setSearchKeyword] = useState("");
+  // ========== 数据获取方法 ==========
 
+  /** 获取好友列表数据 */
+  const getFriendListData = async () => {
+    try {
+      const res: any = await getFriendList();
+      // 为每个好友添加聊天类型标识
+      const friendsWithType = res.data.map((friend: any) => ({
+        ...friend,
+        chatType: 1, // 1表示好友聊天
+      }));
+      setFriendList(friendsWithType);
+    } catch (error) {
+      console.error("获取好友列表出错:", error);
+      message.error("获取好友列表失败");
+    }
+  };
+
+  /** 获取待处理的好友申请数量 */
+
+  const getNewFriendListData = async () => {
+    const res: any = await getHandleFriendCount(); // 获取待处理的好友申请数量
+    setPendingFriendRequests(res.data); // 更新状态
+  };
+
+  // ========== 好友搜索相关方法 ==========
+
+  /** 处理好友搜索输入变化（带防抖） */
+  const handleFriendSearch = useCallback(
+    debounce((value: string) => {
+      setSearchKeyword(value.trim().toLowerCase());
+    }, 500),
+    []
+  );
+
+  /** 获取排序后的好友列表（按首字母分组） */
+  const getSortedFriendList = useCallback(() => {
+    if (!friendList || friendList.length === 0) return [];
+
+    const groupedFriends = new Map<string, any[]>();
+    friendList.forEach((friend) => {
+      if (!friend?.nickname) return;
+
+      const firstLetter = getFirstLetter(friend.nickname);
+      groupedFriends.set(firstLetter, [
+        ...(groupedFriends.get(firstLetter) || []),
+        friend,
+      ]);
+    });
+    return Array.from(groupedFriends.entries()).sort(([a], [b]) =>
+      a.localeCompare(b)
+    );
+  }, [friendList]);
+
+  /** 获取筛选后的好友列表（根据搜索关键词） */
+  const getFilteredFriendList = useCallback(() => {
+    if (!friendList || friendList.length === 0) return [];
+    if (!searchKeyword.trim()) return getSortedFriendList();
+
+    const lowerKeyword = searchKeyword.toLowerCase();
+    const filteredFriends = friendList.filter((friend) => {
+      if (!friend?.nickname) return false;
+
+      const nickname = friend.nickname.toLowerCase();
+      const firstLetter = getFirstLetter(friend.nickname).toLowerCase();
+      return (
+        nickname.includes(lowerKeyword) || firstLetter.includes(lowerKeyword)
+      );
+    });
+
+    const groupedFriends = new Map<string, any[]>();
+    filteredFriends.forEach((friend) => {
+      const firstLetter = getFirstLetter(friend.nickname);
+      groupedFriends.set(firstLetter, [
+        ...(groupedFriends.get(firstLetter) || []),
+        friend,
+      ]);
+    });
+
+    return Array.from(groupedFriends.entries()).sort(([a], [b]) =>
+      a.localeCompare(b)
+    );
+  }, [friendList, searchKeyword, getSortedFriendList]);
+
+  // ========== 新朋友相关方法 ==========
+
+  /** 获取新朋友列表 */
   const handleNew = async () => {
     setOpen(true);
-
-    // 查询好友申请
-    const res: any = await searchNewfriend();
-    if (res.code === 1000) {
-      setNewFriendList(res.data);
-    }
-  };
-
-  const handleAD = (id: number) => {
-    // 更新 addData 中的 friend_id
-    setaddData((prevData: any) => ({
-      ...prevData,
-      friend_id: id,
-    }));
-    // 设置 applyMessage 为默认内容
-    const defaultMessage = `你好！我是${userInfo.nickname || "匿名用户"}`;
-    setApplyMessage(defaultMessage);
-    setaddOpen(true);
-  };
-
-  const handleSendRequest = async () => {
-    const newAddData = {
-      ...addData,
-      message: applyMessage,
-    };
-    setaddData(newAddData);
     try {
-      const response: any = await postAddFriend(newAddData);
-      if (response.code === 1000) {
-        message.success("添加好友请求已发送");
-        // 更新 sentRequests 状态
-        setSentRequests((prev) => new Set([...prev, newAddData.friend_id]));
-        setaddOpen(false); // 关闭抽屉
-      } else {
-        message.error("添加好友请求失败，请稍后重试");
+      const res: any = await searchNewfriend();
+      if (res.code === 1000) {
+        setNewFriendList(res.data);
       }
     } catch (error) {
-      console.error("发送好友申请出错:", error);
-      message.error("添加好友请求出错，请稍后重试");
+      console.error("获取新朋友列表出错:", error);
     }
   };
 
-  const onaddClose = () => {
-    setaddOpen(false);
-  };
-
-  const onClose = () => {
-    setOpen(false); // 关闭抽屉
-  };
-
-  const containerStyle: React.CSSProperties = {
-    position: "relative",
-    overflow: "hidden",
-  };
-
-  const getFriendListData = async () => {
-    const res: any = await getFriendList();
-    // 给每个好友数据添加chatType:1
-    const friendsWithType = res.data.map((friend: any) => ({
-      ...friend,
-      chatType: 1, // 添加chatType字段，1表示单聊
-    }));
-
-    setFriendList(friendsWithType);
-  };
-
-  const getGroupListData = async () => {
+  /** 处理好友申请 */
+  const handleApply = async (friendId: number, status: number) => {
     try {
-      const res: any = await getGroupList();
-      if (res.data && Array.isArray(res.data)) {
-        setGroupList(res.data);
-      } else {
-        console.error("群聊数据格式不正确");
-      }
+      const data = { requester_id: friendId, status };
+      await postHandleFriend(data);
+      await handleNew(); // 刷新新朋友列表
+      await getFriendListData(); // 刷新好友列表
+      await getNewFriendListData(); // 刷新待处理的数量
+      message.success(status === 1 ? "已同意好友申请" : "已拒绝好友申请");
     } catch (error) {
-      console.error("获取群聊列表出错:", error);
+      console.error("处理好友申请出错:", error);
+      message.error("处理好友申请失败");
     }
   };
 
+  // ========== 添加好友相关方法 ==========
+
+  /** 处理添加好友搜索 */
   const handleModalSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
+    setSearchStatus("loading");
     setSearchInput(value);
+    if (modalTimer) clearTimeout(modalTimer);
 
-    // 清除之前的定时器
-    if (modalTimer) {
-      clearTimeout(modalTimer);
-    }
-
-    // 设置新的定时器，1秒后执行搜索
     setModalTimer(
       setTimeout(() => {
-        if (value.trim()) {
-          handleSearchUser(value);
-        }
-      }, 1000)
+        if (value.trim()) handleSearchUser(value);
+      }, 800)
     );
   };
 
+  /** 搜索用户 */
   const handleSearchUser = async (phone: string) => {
-    setSearchStatus("loading");
     try {
       const res: any = await searchUser(phone);
-
       if (res.code === 1000) {
-        // 检查搜索的手机号是否是自己的手机号
         if (phone === userInfo.phone) {
           message.warning("不能添加自己到通讯录");
         }
@@ -170,283 +200,148 @@ const FirendList = observer(() => {
     }
   };
 
+  /** 准备添加好友 */
+  const handleAD = (id: number) => {
+    setaddData((prevData: any) => ({
+      ...prevData,
+      friend_id: id,
+    }));
+    const defaultMessage = `你好！我是${userInfo.nickname || "匿名用户"}`;
+    setApplyMessage(defaultMessage);
+    setaddOpen(true);
+  };
+
+  /** 发送好友请求 */
+  const handleSendRequest = async () => {
+    try {
+      const newAddData = {
+        ...addData,
+        message: applyMessage,
+      };
+      const response: any = await postAddFriend(newAddData);
+      if (response.code === 1000) {
+        message.success("添加好友请求已发送");
+        setSentRequests((prev) => new Set([...prev, newAddData.friend_id]));
+        setaddOpen(false);
+      }
+    } catch (error) {
+      console.error("发送好友申请出错:", error);
+      message.error("添加好友请求出错");
+    }
+  };
+
+  // ========== 聊天相关方法 ==========
+
+  /** 开始新会话 */
+  const handleNewConversation = async (data: any) => {
+    const params = {
+      id: data.id,
+      nickname: data.nickname,
+      avatar: data.avatar,
+    };
+    setCurrentFriendData(params);
+
+    const res: any = await db.getConversation(userInfo.id, data.id, 1);
+    setCurrentMessages(res?.messages);
+    setCurrentChatInfo({ type: 1 });
+  };
+
+  // ========== 副作用钩子 ==========
   useEffect(() => {
     getFriendListData();
-    getGroupListData();
+    getNewFriendListData();
   }, []);
 
   useEffect(() => {
     return () => {
-      if (modalTimer) {
-        clearTimeout(modalTimer);
-      }
+      if (modalTimer) clearTimeout(modalTimer);
     };
   }, [modalTimer]);
 
-  const handleApply = async (friendId: number, status: number) => {
-    const data = {
-      requester_id: friendId,
-      status: status,
-    };
-    await postHandleFriend(data);
-    // 刷新好友请求列表
-    await handleNew();
+  // ========== 其他方法 ==========
+  const onaddClose = () => {
+    setaddOpen(false);
   };
 
-  // 点击好友、群聊，更换会话内容
-  const handleNewConversation = async (data: any, type: number) => {
-    const params = {
-      id: data.id,
-      nickname: type == 1 ? data.nickname : data.name,
-      avatar: data.avatar,
-    };
-    setCurrentFriendData(params); // 设置当前好友数据
-
-    const res: any = await db.getConversation(
-      userInfo.id,
-      data.id,
-      type // 1: 单聊 2: 群聊
-    ); // 获取会话数据
-    setCurrentMessages(res?.messages); // 设置当前消息
-    setCurrentChatInfo({ type });
+  const onClose = () => {
+    setOpen(false);
   };
 
-  const getSortedFriendList = () => {
-    // 创建一个Map来存储按首字母分组的好友
-    const groupedFriends = new Map<string, any[]>();
-
-    friendList.forEach((friend) => {
-      const firstLetter = getFirstLetter(friend.nickname);
-
-      if (!groupedFriends.has(firstLetter)) {
-        groupedFriends.set(firstLetter, []);
-      }
-      groupedFriends.get(firstLetter)?.push(friend);
-    });
-
-    // 将Map转换为数组并按字母排序
-    const sortedGroups = Array.from(groupedFriends.entries()).sort(([a], [b]) =>
-      a.localeCompare(b)
-    );
-
-    return sortedGroups;
+  const containerStyle: React.CSSProperties = {
+    position: "relative",
+    overflow: "hidden",
   };
 
-  const handleFriendSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchKeyword(e.target.value);
-  };
-
-  const getFilteredFriendList = () => {
-    if (!searchKeyword.trim()) {
-      return getSortedFriendList();
-    }
-
-    const lowerKeyword = searchKeyword.toLowerCase();
-
-    // 过滤好友列表
-    const filteredFriends = friendList.filter((friend) => {
-      const nickname = friend.nickname.toLowerCase();
-      const firstLetter = getFirstLetter(friend.nickname).toLowerCase();
-
-      // 匹配完整昵称或首字母
-      return (
-        nickname.includes(lowerKeyword) || firstLetter.includes(lowerKeyword)
-      );
-    });
-
-    // 将过滤后的好友列表按首字母分组
-    const groupedFriends = new Map<string, any[]>();
-
-    filteredFriends.forEach((friend) => {
-      const firstLetter = getFirstLetter(friend.nickname);
-      if (!groupedFriends.has(firstLetter)) {
-        groupedFriends.set(firstLetter, []);
-      }
-      groupedFriends.get(firstLetter)?.push(friend);
-    });
-
-    // 将Map转换为数组并按字母排序
-    return Array.from(groupedFriends.entries()).sort(([a], [b]) =>
-      a.localeCompare(b)
-    );
-  };
-
-  const getSortedGroupList = () => {
-    // 创建一个Map来存储按首字母分组的群聊
-    const groupedGroups = new Map<string, any[]>();
-
-    groupList.forEach((group) => {
-      // 使用 name 字段获取首字母
-      const firstLetter = getFirstLetter(group.name);
-
-      if (!groupedGroups.has(firstLetter)) {
-        groupedGroups.set(firstLetter, []);
-      }
-      groupedGroups.get(firstLetter)?.push(group);
-    });
-
-    // 将Map转换为数组并按字母排序
-    const sortedGroups = Array.from(groupedGroups.entries()).sort(([a], [b]) =>
-      a.localeCompare(b)
-    );
-
-    return sortedGroups;
-  };
-
-  const getFilteredGroupList = () => {
-    if (!searchKeyword.trim()) {
-      return getSortedGroupList();
-    }
-
-    const lowerKeyword = searchKeyword.toLowerCase();
-
-    // 过滤群聊列表，使用 name 字段
-    const filteredGroups = groupList.filter((group) => {
-      const groupName = group.name.toLowerCase();
-      const firstLetter = getFirstLetter(group.name).toLowerCase();
-
-      // 匹配完整群名或首字母
-      return (
-        groupName.includes(lowerKeyword) || firstLetter.includes(lowerKeyword)
-      );
-    });
-
-    // 将过滤后的群聊列表按首字母分组
-    const groupedGroups = new Map<string, any[]>();
-
-    filteredGroups.forEach((group) => {
-      // 使用 name 字段获取首字母
-      const firstLetter = getFirstLetter(group.name);
-      if (!groupedGroups.has(firstLetter)) {
-        groupedGroups.set(firstLetter, []);
-      }
-      groupedGroups.get(firstLetter)?.push(group);
-    });
-
-    // 将Map转换为数组并按字母排序
-    return Array.from(groupedGroups.entries()).sort(([a], [b]) =>
-      a.localeCompare(b)
-    );
-  };
-
-  useEffect(() => {
-    // 监听聊天列表变化，更新本地状态
-    getFriendListData();
-    getGroupListData();
-  }, [currentChatList]);
-
-  const itemsTabs: TabsProps["items"] = [
-    {
-      key: "1",
-      label: "好友",
-      children: (
-        <div className="content_roll">
-          <ul className="friend-ul">
-            {getFilteredFriendList().map(([letter, friends]) => (
-              <div key={letter}>
-                <div className="friend-list-letter">{letter}</div>
-                <ul className="friend-ul">
-                  {friends.map((item: any) => (
-                    <li key={item.id}>
-                      <div
-                        className="friend-list-item"
-                        onClick={() => handleNewConversation(item, 1)}
-                      >
-                        <div className="friend-list-item-avatar">
-                          <img src={item.avatar} alt="头像" />
-                        </div>
-                        <div className="friend-list-item-info">
-                          {item.nickname}
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </ul>
-        </div>
-      ),
-    },
-    {
-      key: "2",
-      label: "群聊",
-      children: (
-        <div className="content_roll">
-          <ul className="group-ul">
-            {getFilteredGroupList().map(([letter, groups]) => (
-              <div key={letter}>
-                <div className="friend-list-letter">{letter}</div>
-                <ul className="group-ul">
-                  {groups.map((item: any) => (
-                    <li key={item.id}>
-                      <div
-                        className="friend-list-item"
-                        onClick={() => {
-                          handleNewConversation(item, 2);
-                        }}
-                      >
-                        <div className="friend-list-item-avatar">
-                          <img src={item.avatar} alt="群头像" />
-                        </div>
-                        <div className="friend-list-item-info">{item.name}</div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </ul>
-        </div>
-      ),
-    },
-  ];
-
-  // 修改渲染部分
+  // ========== 渲染部分 ==========
   return (
-    <div className="friend-list" style={containerStyle}>
-      <div className="friend-list-title">通讯录</div>
-      <div className="friend-list-content">
-        <div className="friend-list-search">
+    <div className="friend-page" style={containerStyle}>
+      <div className="friend-container">
+        <div className="header">
           <Input
-            placeholder="搜索好友或群聊"
+            placeholder="搜索好友"
             prefix={<SearchOutlined className="search-icon" />}
             allowClear
-            value={searchKeyword}
-            onChange={handleFriendSearch}
+            onChange={(e) => handleFriendSearch(e.target.value)}
+          />
+          <PlusOutlined
+            style={{ fontSize: 20, marginLeft: 10 }}
+            onClick={() => {
+              setSearchInput("");
+              setSearchResult(null);
+              setIsModalOpen(true);
+            }}
           />
         </div>
-        <div className="friend-list-ul">
+
+        <div className="friend-ul">
           <div
-            className="friend-list-item"
+            className="friend-item"
             onClick={() => {
               handleNew();
             }}
           >
-            <div className="friend-list-item-avatar">
+            <div className="friend-item-avatar">
               <img
                 src="https://loopavatar.oss-cn-beijing.aliyuncs.com/1744681340372_新朋友.png"
                 alt="头像"
               />
             </div>
-            <div className="friend-list-item-info">新朋友</div>
+            <div className="friend-item-info">
+              <span>新朋友</span>
+              {pendingFriendRequests.untreated_count > 0 && (
+                <div className="unread-text">
+                  {pendingFriendRequests.untreated_count}
+                </div>
+              )}
+            </div>
           </div>
-          <Tabs defaultActiveKey="1" items={itemsTabs} />
+          <div className="content_roll">
+            {getFilteredFriendList().map(([letter, friends]) => (
+              <div className="friend-section" key={letter}>
+                <div className="section-header">{letter}</div>
+                {friends.map((item) => (
+                  <div
+                    key={item.id}
+                    className="friend-item"
+                    onClick={() => handleNewConversation(item)}
+                  >
+                    <div className="friend-item-avatar">
+                      <img src={item.avatar} alt={item.nickname} />
+                    </div>
+                    <div className="friend-item-info">{item.nickname}</div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
       <Drawer
         title={
           <div className="drawer-header">
-            <LeftOutlined onClick={onClose} />
+            <LeftOutlined onClick={onClose} style={{ marginRight: "8px" }} />
             <span>新朋友</span>
-            <PlusOutlined
-              onClick={() => {
-                setSearchInput("");
-                setSearchResult(null);
-                setIsModalOpen(true);
-              }}
-            />
           </div>
         }
         width={300}
@@ -463,7 +358,7 @@ const FirendList = observer(() => {
             <div className="request-item" key={item.id}>
               <img src={item.avatar} alt="" className="request-avatar" />
               <div className="request-info">
-                <div className="username">{item.nickname}</div>
+                <div className="username">{item.name}</div>
                 <div className="message">{item.message}</div>
               </div>
               <div className="action-buttons">
@@ -489,119 +384,79 @@ const FirendList = observer(() => {
       </Drawer>
 
       <Modal
-        title="添加新朋友"
+        title="添加好友"
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         footer={null}
         closable={true}
-        style={{ overflow: "hidden" }}
+        className="friend-search-modal"
       >
-        <div className="Input">
-          <Input
-            placeholder="通过手机号查询好友"
-            value={searchInput}
-            onChange={handleModalSearch}
-          />
-          <div className="main">
-            {!searchInput.trim() ? (
-              <div
-                className="search-tip"
-                style={{
-                  textAlign: "center",
-                  color: "#999",
-                  padding: "20px 0",
-                  margin: "30% auto",
-                }}
-              >
-                请输入手机号以搜索
-              </div>
-            ) : (
-              <>
-                {searchStatus === "loading" && (
-                  <div
-                    style={{
-                      textAlign: "center",
-                      padding: "20px 0",
-                      margin: "30% auto",
-                    }}
-                  >
-                    搜索中...
-                  </div>
-                )}
-                {searchStatus === "success" && searchResult && (
-                  <div className="search-result">
-                    <div className="user-info">
-                      <div className="avatar">
-                        <img src={searchResult.avatar} alt="用户头像" />
-                      </div>
-                      <div className="nickname">
-                        <div className="realname">{searchResult.nickname}</div>
-                        <div className="signature">
-                          <span>{searchResult.signature}</span>
-                        </div>
+        <Input
+          placeholder="通过手机号查询好友"
+          value={searchInput}
+          onChange={handleModalSearch}
+        />
+        <div className="search-content">
+          {!searchInput.trim() ? (
+            <div className="search-empty-state">请输入手机号以搜索</div>
+          ) : (
+            <>
+              {searchStatus === "loading" && (
+                <div className="search-loading">搜索中...</div>
+              )}
+              {searchStatus === "success" && searchResult && (
+                <div className="search-result-card">
+                  <div className="user-profile">
+                    <div className="user-avatar">
+                      <img src={searchResult.avatar} alt="用户头像" />
+                    </div>
+                    <div className="user-details">
+                      <div className="user-name">{searchResult.nickname}</div>
+                      <div className="user-signature">
+                        {searchResult.signature}
                       </div>
                     </div>
-                    {/* 当搜索结果不是自己时才显示操作按钮 */}
-                    {searchInput !== userInfo?.phone && (
-                      <>
-                        {searchResult.is_friend ? (
-                          <Button
-                            type="primary"
-                            className="addbt"
-                            // 这里可以添加发消息的逻辑
-                            onClick={() =>
-                              console.log("发消息给", searchResult.id)
-                            }
-                          >
-                            发消息
-                          </Button>
-                        ) : sentRequests.has(searchResult.id) ? (
-                          <Button type="default" className="addbt" disabled>
-                            已发送
-                          </Button>
-                        ) : (
-                          <Button
-                            type="primary"
-                            className="addbt"
-                            onClick={() => handleAD(searchResult.id)}
-                          >
-                            添加好友
-                          </Button>
-                        )}
-                      </>
-                    )}
                   </div>
-                )}
-                {searchStatus === "success" && !searchResult && (
-                  <div
-                    className="no-result"
-                    style={{
-                      textAlign: "center",
-                      padding: "20px 0",
-                      margin: "30% auto",
-                    }}
-                  >
-                    暂无该用户
-                  </div>
-                )}
-                {searchStatus === "error" && (
-                  <div
-                    className="error-message"
-                    style={{
-                      textAlign: "center",
-                      padding: "20px 0",
-                      color: "#ff4d4f",
-                      margin: "30% auto",
-                    }}
-                  >
-                    搜索出错，请稍后再试
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+                  {searchInput !== userInfo?.phone && (
+                    <>
+                      {searchResult.is_friend ? (
+                        <Button
+                          type="primary"
+                          className="action-button"
+                          onClick={() => handleNewConversation(searchResult)}
+                        >
+                          发消息
+                        </Button>
+                      ) : sentRequests.has(searchResult.id) ? (
+                        <Button
+                          type="default"
+                          className="action-button"
+                          disabled
+                        >
+                          已发送
+                        </Button>
+                      ) : (
+                        <Button
+                          type="primary"
+                          className="action-button"
+                          onClick={() => handleAD(searchResult.id)}
+                        >
+                          添加好友
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+              {searchStatus === "success" && !searchResult && (
+                <div className="search-empty-state">暂无该用户</div>
+              )}
+              {searchStatus === "error" && (
+                <div className="search-error">搜索出错，请稍后再试</div>
+              )}
+            </>
+          )}
         </div>
-        {/* 将Drawer移动到Modal内部 */}
         <Drawer
           title="填写申请信息"
           placement="right"
@@ -611,16 +466,16 @@ const FirendList = observer(() => {
           getContainer={false}
           style={{
             position: "absolute",
-            right: 0, // 从Modal的右边框开始
+            right: 0,
             top: 0,
             height: "100%",
+            padding: 16,
           }}
-          bodyStyle={{ padding: 16 }}
         >
           <Input.TextArea
             rows={4}
-            value={applyMessage} // 绑定输入内容
-            onChange={(e) => setApplyMessage(e.target.value)} // 处理输入变化
+            value={applyMessage}
+            onChange={(e) => setApplyMessage(e.target.value)}
             placeholder={`你好！我是${userInfo.nickname || "匿名用户"}`}
             maxLength={100}
             showCount
@@ -639,4 +494,4 @@ const FirendList = observer(() => {
   );
 });
 
-export default FirendList;
+export default FriendList;

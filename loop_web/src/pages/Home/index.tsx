@@ -5,6 +5,7 @@ import { observer } from "mobx-react-lite";
 import globalStore from "@/store/global";
 import SideNavigation from "@/components/SideNavigation";
 import FirendList from "@/components/FriendList"; // 推测此处可能是拼写错误，应为 FriendList
+import GroupList from "@/components/GroupList"; // 推测此处可能是拼写错误，应为 GroupList
 import EditUser from "@/components/EditUser"; // 导入 EditUser 组件
 import Chat from "@/components/Chat"; // 导入 Chat 组件
 import MessageList from "@/components/MessageList/index";
@@ -18,10 +19,10 @@ import {
   submitOfflineMessage,
 } from "@/api/chat";
 import ChatPrivateVideo from "@/components/ChatPrivateVideo";
-import GroupVideoChat from "@/components/ChatGroupVideo";
 import ChatVideoAcceptor from "@/components/ChatVideoAcceptor";
 import { usePrivatePeerStore } from "@/store/privatePeerStore"; // 确保导入
 import { useGroupPeerStore } from "@/store/groupPeerStore";
+import { v4 as uuidv4 } from "uuid";
 
 // 创建WebSocket上下文
 export const WebSocketContext = createContext<{
@@ -44,7 +45,6 @@ const Home = observer(() => {
     currentFriendAvatar, // 当前聊天好友头像
     setCurrentChatList, // 设置当前聊天列表
     setCurrentMessages, // 设置当前消息列表
-    currentChatInfo, // 当前聊天信息(类型、群组信息等)
   } = chatStore;
 
   // 数据库相关
@@ -56,6 +56,7 @@ const Home = observer(() => {
     setIsShowUserAmend, // 设置用户信息修改弹窗状态
     currentRoute, // 当前路由(会话/好友等)
     setTimeDifference, // 设置客户端与服务器时间差
+    getCurrentTimeDifference, // 获取时间戳
   } = globalStore;
 
   // WebSocket相关状态
@@ -79,22 +80,10 @@ const Home = observer(() => {
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false); // 视频弹窗可见性
   const [isCalling, setIsCalling] = useState(false); // 是否正在呼叫中
   const [callerInfo, setCallerInfo] = useState<any>({}); // 呼叫者信息
+  const isSelfCallerRef = useRef<boolean>(false); // 是否是自己发起的呼叫
 
   // 群视频通话相关状态，选择的成员ID列表
   const [selectedMembers, setSelectedMembers] = useState<any[]>([]);
-
-  const [groupVideoModalVisible, setGroupVideoModalVisible] = useState(false);
-  // const [remoteStreams, setRemoteStreams] = useState<
-  //   Record<number, MediaStream>
-  // >({});
-  const [remoteStreams, setRemoteStreams] = useState<Array<MediaStream>>([]);
-  const [participants, setParticipants] = useState<
-    Array<{
-      id: number;
-      name: string;
-      avatar: string;
-    }>
-  >([]);
 
   /**
    * 计算并设置客户端与服务器的时间差
@@ -103,15 +92,54 @@ const Home = observer(() => {
    * 3. 计算网络延迟和最终时间差
    */
   const LocalTime = async () => {
-    const startTime = Date.now();
-    const { data }: any = await getLocalTime();
-    const endTime = Date.now();
+    const MAX_RETRIES = 3; // 改为3次请求
+    const timeDiffs: number[] = [];
 
-    // 计算平均网络延迟和服务器时间差
-    const networkLatency = (endTime - startTime) / 2;
-    const timeDiff = Math.round(data.time - (startTime + networkLatency));
+    for (let i = 0; i < MAX_RETRIES; i++) {
+      try {
+        const startTime = Date.now();
+        const { data }: any = await getLocalTime();
+        const endTime = Date.now();
 
-    setTimeDifference(timeDiff);
+        // 计算差值
+        const timeDiff = Math.round(data.time - (endTime + startTime) / 2);
+
+        timeDiffs.push(timeDiff);
+      } catch (error) {
+        console.error("获取服务器时间失败:", error);
+      }
+    }
+
+    // 找出与其他两个差值最大的那个
+    if (timeDiffs.length === 3) {
+      // 计算两两之间的差值
+      const diff1 = Math.abs(timeDiffs[0] - timeDiffs[1]);
+      const diff2 = Math.abs(timeDiffs[0] - timeDiffs[2]);
+      const diff3 = Math.abs(timeDiffs[1] - timeDiffs[2]);
+
+      // 找出最大差值对应的索引
+      const maxDiff = Math.max(diff1, diff2, diff3);
+      let indexToRemove = -1;
+
+      if (maxDiff === diff1 && maxDiff === diff2) {
+        indexToRemove = 0; // 第一个与其他两个差值都大
+      } else if (maxDiff === diff1 && maxDiff === diff3) {
+        indexToRemove = 1; // 第二个与其他两个差值都大
+      } else if (maxDiff === diff2 && maxDiff === diff3) {
+        indexToRemove = 2; // 第三个与其他两个差值都大
+      }
+
+      // 移除异常值
+      if (indexToRemove !== -1) {
+        timeDiffs.splice(indexToRemove, 1);
+      }
+    }
+
+    // 计算剩余数据的平均值
+    const avgTimeDiff = Math.round(
+      timeDiffs.reduce((a, b) => a + b, 0) / timeDiffs.length
+    );
+    setTimeDifference(avgTimeDiff);
   };
 
   //  存储离线信息到本地
@@ -122,14 +150,14 @@ const Home = observer(() => {
 
     for (const item of data) {
       if (item?.cmd === 1) {
-        await handleNewStorage(item.data, 1);
+        await handleNewStorage(item.data, 1, item.type);
         processedData.push({
           seq_id: item.data.seq_id,
           sender_id: userId,
           receiver_id: item.data.sender_id,
         });
       } else if (item?.cmd === 2) {
-        await handleNewStorage(item.data, 2);
+        await handleNewStorage(item.data, 2, item.type);
         const existingIndex = processedData.findIndex(
           (msg: any) => msg.receiver_id === item.data.receiver_id
         );
@@ -148,9 +176,18 @@ const Home = observer(() => {
             is_group: true,
           });
         }
+      } else if (item?.cmd === 12) {
+        // 单聊系统消息
+        await handleNewStorage(item.data, 1, item.type);
+        processedData.push({
+          seq_id: item.data.seq_id,
+          sender_id: userId,
+          receiver_id: item.data.sender_id,
+        });
       }
     }
 
+    // 发送离线消息ACK
     await submitOfflineMessage(processedData);
   };
 
@@ -166,12 +203,13 @@ const Home = observer(() => {
         data: {
           sender_id: userInfo.id,
           receiver_id: callerInfo.sender_id,
-          content: "对方已挂断，通话结束",
+          content: "对方已挂断",
         },
       });
 
       // 关闭连接
       usePrivatePeerStore.closePeerConnection();
+      isSelfCallerRef.current = false; // 重置为非主叫方
     }
   }, [usePrivatePeerStore?.isVideoChatStarted]);
 
@@ -245,6 +283,14 @@ const Home = observer(() => {
       case 10: // 群聊ICE候选处理
         await handleGroupIceCandidate(data);
         break;
+      case 11: // 群聊挂断处理
+        break;
+      case 12: // 单聊系统消息
+        await handleSystemMessage(data, 1);
+        break;
+      case 13: // 群聊系统消息
+        await handleSystemMessage(data, 2);
+        break;
     }
   };
 
@@ -255,7 +301,7 @@ const Home = observer(() => {
    * 2. 发送ACK确认
    */
   const handlePrivateMessage = async (data: any, client: any) => {
-    await handleNewStorage(data, 1);
+    await handleNewStorage(data, 1, data.type);
     // 发送ack包
     const ack = {
       cmd: 3,
@@ -265,7 +311,6 @@ const Home = observer(() => {
         receiver_id: data.sender_id,
       },
     } as any;
-    console.log(ack, wsClient, "私聊");
     client.sendMessage(ack);
   };
 
@@ -276,7 +321,7 @@ const Home = observer(() => {
    * 2. 发送ACK确认(带群组标识)
    */
   const handleGroupMessage = async (data: any, client: any) => {
-    await handleNewStorage(data, 2);
+    await handleNewStorage(data, 2, data.type);
     // 发送ack包
     const ack = {
       cmd: 3,
@@ -315,6 +360,11 @@ const Home = observer(() => {
       return prev;
     });
 
+    if (data.not_transmit) {
+      // 更新消息状态未失败
+      handleUpdateMessageStatus(data, "failed");
+      return;
+    }
     // 更新消息状态为成功;
     handleUpdateMessageStatus(data, "success");
   };
@@ -331,15 +381,15 @@ const Home = observer(() => {
     // 单聊发送的offer
     if (isCalling || isVideoModalVisible) {
       // 已经处于呼叫或被呼叫状态，直接拒绝
-      const data: any = {
+      const params: any = {
         cmd: 7, // 拒绝命令
         data: {
           content: "对方通话中，请稍后再拨",
           sender_id: userInfo.id,
-          receiver_id: callerInfo.sender_id,
+          receiver_id: data.sender_id,
         },
       };
-      client.sendMessage(data);
+      client.sendMessage(params);
     } else {
       // 设置呼叫者数据，用于接听
       setCallerInfo(data);
@@ -359,6 +409,10 @@ const Home = observer(() => {
     // 设置远程描述
     await usePrivatePeerStore.setRemoteDescription(data.session_description);
     await usePrivatePeerStore.flushIceCandidates(); // 开始发送 ICE 候选
+    if (callTimeoutRef.current) {
+      //关闭通话定时器
+      clearTimeout(callTimeoutRef.current);
+    }
   };
 
   /**
@@ -391,6 +445,24 @@ const Home = observer(() => {
    * @param data - 包含通话结束信息的对象
    */
   const handleCallEnd = async (data: any) => {
+    console.log("收到挂断消息", isSelfCallerRef.current, data);
+    if (isSelfCallerRef.current) {
+      const params = {
+        seq_id: uuidv4(),
+        sender_id: data.receiver_id,
+        receiver_id: data.sender_id,
+        content: "对方已挂断",
+        send_time: getCurrentTimeDifference(),
+        sender_nickname: userInfo.nickname,
+        sender_avatar: userInfo.avatar,
+      };
+      await handleSendMessage(params, 1, "video");
+    } else {
+      await handleNewStorage(data, 1, "video");
+    }
+    if (callTimeoutRef.current) {
+      clearTimeout(callTimeoutRef.current);
+    }
     // 先关闭连接
     usePrivatePeerStore.closePeerConnection();
 
@@ -407,6 +479,7 @@ const Home = observer(() => {
 
     // 显示挂断消息
     message.success(data.content);
+    isSelfCallerRef.current = false;
   };
 
   /**
@@ -418,105 +491,7 @@ const Home = observer(() => {
    * @param data - 包含发送者信息和SDP offer的对象
    */
   const handleGroupVideoOffer = async (data: any, client: any) => {
-    if (isCalling || isVideoModalVisible || groupVideoModalVisible) {
-      // 已经处于呼叫或被呼叫状态，直接拒绝
-      const rejectData = {
-        cmd: 11, // 拒绝命令
-        data: {
-          content: "对方通话中，请稍后再拨",
-          sender_id: userInfo.id,
-          receiver_id: data.sender_id,
-        },
-      };
-      client.sendMessage(rejectData);
-      return;
-    }
-    // else {
-    //   // 打开弹窗，等待接听
-    //   setIsCalling(true);
-    //   setGroupVideoModalVisible(true);
-    // }
-
-    try {
-      // 获取本地媒体流
-      const stream = await getMediaStream();
-      setLocalStream(stream);
-
-      // 设置参与者信息,过滤掉自己
-      const dataReceiverList = data.receiver_list.filter(
-        (participant: any) => participant.id !== userInfo.id
-      );
-      setParticipants(dataReceiverList);
-
-      // 创建PeerConnection
-      useGroupPeerStore.createPeerConnection(stream);
-
-      console.log(
-        "dataReceiverList设置参与者信息,过滤掉自己",
-        dataReceiverList
-      );
-      // 设置远程流处理器
-      useGroupPeerStore.setupMediaStreamHandlers((remoteStream) => {
-        // setRemoteStreams((prev) => ({
-        //   ...prev,
-        //   0: remoteStream,
-        // }));
-        setRemoteStreams((prev) => [...prev, remoteStream]);
-      });
-      // [remoteStream.id]:
-
-      // useGroupPeerStore.setupMediaStreamHandlers((remoteStream, peerId) => {
-      //   console.log("收到远程流:", remoteStream, "来自:", peerId);
-      //   // 找到对应的参与者
-      //   const participant = dataReceiverList.find((p) => p.id === peerId);
-
-      //   setRemoteStreams((prev) => ({
-      //     ...prev,
-      //     [participant.id]: remoteStream,
-      //   }));
-      //   setStreamIdToParticipantId((prev) => ({
-      //     ...prev,
-      //     [remoteStream.id]: participant.id,
-      //   }));
-      // });
-
-      // 设置远程描述
-      await useGroupPeerStore.setRemoteDescription(data.session_description);
-
-      // 创建并发送Answer
-      const answer = await useGroupPeerStore.createAnswer();
-      client.sendMessage({
-        cmd: 9,
-        data: {
-          sender_id: userInfo.id,
-          receiver_id: data.sender_id,
-          session_description: answer,
-          receiver_list: data.receiver_list,
-        },
-      });
-
-      // 设置ICE候选监听
-      useGroupPeerStore.setupIceCandidateListener(
-        (candidate) => {
-          client.sendMessage({
-            cmd: 10,
-            data: {
-              sender_id: userInfo.id,
-              receiver_id: data.sender_id,
-              candidate_init: candidate,
-              receiver_list: data.receiver_list,
-            },
-          });
-        },
-        () => console.log("ICE收集完成")
-      );
-
-      setGroupVideoModalVisible(true);
-      setIsCalling(false);
-    } catch (error) {
-      console.error("处理群视频邀请失败:", error);
-      message.error("处理群视频邀请失败");
-    }
+    console.log("收到群聊视频Offer", data, client);
   };
 
   /**
@@ -527,10 +502,7 @@ const Home = observer(() => {
    * @param data - 包含SDP answer的对象
    */
   const handleGroupVideoAnswer = async (data: any) => {
-    console.log("收到了answer", data);
-    // 设置远程描述
-    await useGroupPeerStore.setRemoteDescription(data.session_description);
-    await useGroupPeerStore.flushIceCandidates(); // 开始发送ICE候选
+    console.log("收到群聊视频Answer", data);
   };
 
   /**
@@ -541,10 +513,57 @@ const Home = observer(() => {
    * @param data - 包含ICE候选信息的对象
    */
   const handleGroupIceCandidate = async (data: any) => {
-    // 添加远程ICE候选
-    await useGroupPeerStore.addIceCandidate(data.candidate_init);
-    // 开始发送自己的ICE候选
-    await useGroupPeerStore.flushIceCandidates();
+    console.log("收到群聊ICE候选", data);
+  };
+
+  /**
+   * cmd: 12,13 系统消息处理
+   * 存储系统消息到本地数据库
+   * @param data - 包含系统消息内容的对象
+   * @param client - WebSocket客户端实例
+   */
+  const handleSystemMessage = async (data: any, chatType: number) => {
+    console.log("收到系统消息", data);
+
+    // 先获取现有会话数据
+    const existingConversation = await db.conversations
+      .where("[userId+targetId+type]")
+      .equals([userInfo.id, data.sender_id, chatType])
+      .first();
+
+    // 存储到数据库，保留原有showName和headImage
+    await db.upsertConversation(userInfo.id, {
+      targetId: data.sender_id,
+      type: chatType,
+      showName: existingConversation?.showName || data.sender_nickname, // 保留原有名称
+      headImage: existingConversation?.headImage || data.sender_avatar, // 保留原有头像
+      lastContent: data.content,
+      unreadCount: existingConversation?.unreadCount || 0, // 增加未读计数
+      messages: [
+        {
+          id: data.seq_id,
+          targetId: data.sender_id,
+          type: 5, // 消息类型为系统消息
+          sendId: "system", // 发送者为系统
+          content: data.content,
+          sendTime: data.send_time,
+          status: "success",
+        },
+      ],
+    });
+
+    // 更新当前消息列表
+    const res: any = await db.getConversation(
+      userInfo.id,
+      data.sender_id,
+      chatType
+    );
+    console.log(res.messages);
+    setCurrentMessages(res?.messages);
+    // 如果不是当前聊天对象，更新会话列表
+    const conversationsList: any = await db.getUserConversations(userInfo.id); // 获取会话数据
+    // 更新会话列表
+    setCurrentChatList(conversationsList);
   };
 
   // 新增获取媒体流的方法
@@ -589,16 +608,33 @@ const Home = observer(() => {
     if (localStream) {
       localStream.getTracks().forEach((track) => track.stop());
     }
+    if (callTimeoutRef.current) {
+      //关闭通话定时器
+      clearTimeout(callTimeoutRef.current);
+    }
     usePrivatePeerStore.closePeerConnection();
     sendNonChatMessage({
       cmd: 7,
       data: {
         sender_id: userInfo.id,
-        receiver_id: callerInfo.sender_id,
-        content: "对方已挂断，通话结束",
+        receiver_id: Number(currentFriendId),
+        content: "对方已挂断",
       },
     });
+
+    // 存储通话结束信息到聊天记录
+    const params = {
+      seq_id: uuidv4(),
+      sender_id: userInfo.id,
+      receiver_id: Number(currentFriendId),
+      content: "已取消",
+      send_time: getCurrentTimeDifference(),
+      sender_nickname: userInfo.nickname,
+      sender_avatar: userInfo.avatar,
+    };
+    handleSendMessage(params, 1, "video");
     message.success("通话结束");
+    isSelfCallerRef.current = false;
   };
 
   // 私聊作为发送者拨打电话
@@ -608,6 +644,9 @@ const Home = observer(() => {
         // 已经处于呼叫或被呼叫状态，直接返回
         return;
       }
+
+      // 自己为电话发起者
+      isSelfCallerRef.current = true;
 
       // 获取媒体流
       const stream = await getMediaStream();
@@ -624,17 +663,28 @@ const Home = observer(() => {
             cmd: 7,
             data: {
               sender_id: userInfo.id,
-              receiver_id: callerInfo.sender_id,
-              content: "对方已挂断，通话结束",
+              receiver_id: Number(currentFriendId),
+              content: "未接通",
             },
           });
+          // 存储通话结束信息到聊天记录
+          const params = {
+            seq_id: uuidv4(),
+            sender_id: userInfo.id,
+            receiver_id: Number(currentFriendId),
+            content: "未接通",
+            send_time: getCurrentTimeDifference(),
+            sender_nickname: userInfo.nickname,
+            sender_avatar: userInfo.avatar,
+          };
+          handleSendMessage(params, 1, "video");
           // 清理资源
           if (localStream) {
             localStream.getTracks().forEach((track) => track.stop());
             setLocalStream(null);
           }
           usePrivatePeerStore.closePeerConnection();
-          useGroupPeerStore.closePeerConnection();
+          isSelfCallerRef.current = false;
         }
       }, 15000); // 10秒超时
 
@@ -678,102 +728,6 @@ const Home = observer(() => {
 
       // 6. 显示视频弹框
       setIsVideoModalVisible(true);
-    } catch (error) {
-      console.error("获取用户媒体或发送offer失败:", error);
-      message.error("启动视频通话失败");
-
-      // 清理资源
-      if (localStream) {
-        localStream.getTracks().forEach((track) => track.stop());
-        setLocalStream(null);
-      }
-      usePrivatePeerStore.closePeerConnection();
-      if (callTimeoutRef.current) {
-        clearTimeout(callTimeoutRef.current);
-      }
-    }
-  };
-
-  // 群聊作为发送者拨打电话
-  const initiateGroupVideoCall = async () => {
-    try {
-      console.log("发起群聊视频通话", selectedMembers);
-
-      if (isCalling || isVideoModalVisible) {
-        // 已经处于呼叫或被呼叫状态，直接返回
-        return;
-      }
-
-      // 获取媒体流
-      const stream = await getMediaStream();
-
-      // 私聊视频通话的特定逻辑
-      // 设置10秒无人接听计时器
-
-      // 设置参与者信息
-      const newParticipants = selectedMembers.map((item) => ({
-        id: item.user_id,
-        name: item.nickname,
-        avatar: item.avatar,
-      }));
-      console.log("selectedMembers", selectedMembers);
-      setParticipants(newParticipants);
-
-      // 4. 创建PeerConnection (简化参数传递)
-      useGroupPeerStore.createPeerConnection(stream);
-
-      // 5. 设置远程流处理器
-      // useGroupPeerStore.setupMediaStreamHandlers(setRemoteStream);
-      useGroupPeerStore.setupMediaStreamHandlers((remoteStream) => {
-        // setRemoteStreams((prev) => ({
-        //   ...prev,
-        //   [remoteStream.id]: remoteStream,
-        // }));
-        setRemoteStreams((prev) => [...prev, remoteStream]);
-      });
-
-      // 6. 创建并发送Offer
-      const offer = await useGroupPeerStore.createOffer();
-
-      // 参与视频通话的所有人，包含自己
-      const receiverParams = [
-        ...newParticipants,
-        { id: userInfo.id, name: userInfo.nickname, avatar: userInfo.avatar },
-      ];
-      // 准备发送的数据
-      sendNonChatMessage({
-        cmd: 8,
-        data: {
-          sender_id: userInfo.id,
-          receiver_id: Number(currentFriendId),
-          session_description: offer,
-          sender_nickname: userInfo.nickname,
-          sender_avatar: userInfo.avatar,
-          receiver_list: receiverParams,
-        },
-      });
-
-      //发送ICE
-      useGroupPeerStore.setupIceCandidateListener(
-        (candidate) => {
-          // 这个回调会在设置本地描述后触发
-          sendNonChatMessage({
-            cmd: 10, // ICE 候选者消息
-            data: {
-              sender_id: userInfo.id, // 发送者 ID
-              receiver_id: Number(currentFriendId), // 接收者 ID
-              candidate_init: candidate, // 候选者信息
-              receiver_list: receiverParams,
-            },
-          });
-        },
-        () => {
-          console.log("ICE 候选者收集完成");
-        }
-      );
-
-      // 6. 显示视频弹框
-      setGroupVideoModalVisible(true);
     } catch (error) {
       console.error("获取用户媒体或发送offer失败:", error);
       message.error("启动视频通话失败");
@@ -857,8 +811,6 @@ const Home = observer(() => {
     }
   };
 
-  // 群聊作为接收者处理接受视频电话
-
   // 作为接收者处理拒绝视频通话
   const handleRejectCall = () => {
     setIsCalling(false);
@@ -875,6 +827,7 @@ const Home = observer(() => {
       },
     });
     message.success("已取消通话");
+    isSelfCallerRef.current = false;
   };
 
   // 添加发送消息方法
@@ -999,8 +952,13 @@ const Home = observer(() => {
     setCurrentMessages(res?.messages);
   };
 
-  // 处理新消息,添加本地存储
-  const handleNewStorage = async (item: any, chatType: number) => {
+  // 作为接收者处理新消息,添加本地存储
+  const handleNewStorage = async (
+    item: any,
+    chatType: number,
+    messageType: number | string
+  ) => {
+    console.log(item, "item存储消息");
     const userId = userInfo.id;
     const targetId = chatType == 1 ? item.sender_id : item.receiver_id;
     const showName = chatType == 1 ? item.sender_nickname : item.group_name;
@@ -1011,8 +969,64 @@ const Home = observer(() => {
 
     // 先获取当前会话的未读数量
     const existingConversation = await db.conversations
-      .where("[userId+targetId]")
-      .equals([userId, targetId])
+      .where("[userId+targetId+type]")
+      .equals([userId, targetId, chatType])
+      .first();
+
+    // 计算新的未读数量
+    const newUnreadCount = isCurrentFriend
+      ? 0
+      : (existingConversation?.unreadCount || 0) + 1;
+
+    console.log(existingConversation, targetId, "existingConversation");
+    // 先添加到本地存储（乐观更新）
+    await db.upsertConversation(userId, {
+      targetId: targetId,
+      type: chatType,
+      showName: showName || existingConversation?.showName,
+      headImage: headImage || existingConversation?.headImage,
+      lastContent: item.content,
+      unreadCount: newUnreadCount, // 使用计算后的未读数量
+      messages: [
+        {
+          id: item.seq_id || uuidv4(), // 如果没有seq_id，则生成一个新的
+          targetId: item.receiver_id,
+          type: messageType,
+          sendId: item.sender_id,
+          content: item.content,
+          sendTime: item.send_time || getCurrentTimeDifference(),
+          sender_nickname:
+            item.sender_nickname || existingConversation?.showName,
+          sender_avatar: item.sender_avatar || existingConversation?.headImage,
+          status: "success",
+        },
+      ],
+    });
+
+    // 更新聊天记录
+    handleNewConversation(targetId); // 处理新消息
+  };
+
+  // 作为发送者发送消息，添加到本地存储
+  const handleSendMessage = async (
+    item: any,
+    chatType: number,
+    messageType: number | string
+  ) => {
+    console.log(item, "item发送消息");
+    const userId = userInfo.id;
+    const targetId = isSelfCallerRef.current
+      ? item.sender_id
+      : item.receiver_id;
+
+    // 检查是否是当前聊天对象
+    const isCurrentFriend = targetId === currentFriendIdRef.current;
+
+    console.log("isCurrentFriend", userId, targetId);
+    // 先获取当前会话的未读数量
+    const existingConversation = await db.conversations
+      .where("[userId+targetId+type]")
+      .equals([userId, targetId, chatType])
       .first();
 
     // 计算新的未读数量
@@ -1024,15 +1038,15 @@ const Home = observer(() => {
     await db.upsertConversation(userId, {
       targetId: targetId,
       type: chatType,
-      showName: showName,
-      headImage: headImage,
+      showName: currentFriendName,
+      headImage: currentFriendAvatar,
       lastContent: item.content,
       unreadCount: newUnreadCount, // 使用计算后的未读数量
       messages: [
         {
           id: item.seq_id,
           targetId: item.receiver_id,
-          type: 0,
+          type: messageType,
           sendId: item.sender_id,
           content: item.content,
           sendTime: item.send_time,
@@ -1097,17 +1111,18 @@ const Home = observer(() => {
 
         <div className="main-layout-content">
           <div className="main-layout-content-left">
-            {currentRoute === "conversation" ? (
+            {currentRoute === "chat" ? (
               <MessageList />
             ) : currentRoute === "friend" ? (
               <FirendList />
+            ) : currentRoute === "group" ? (
+              <GroupList></GroupList>
             ) : null}
           </div>
           <div className="main-layout-content-right">
             {currentFriendId && (
               <Chat
                 initiatePrivateVideoCall={initiatePrivateVideoCall}
-                initiateGroupVideoCall={initiateGroupVideoCall}
                 setSelectedMembers={setSelectedMembers}
                 selectedMembers={selectedMembers}
               />
@@ -1134,31 +1149,7 @@ const Home = observer(() => {
         </Modal>
 
         {/* 群聊视频通话框 */}
-        <Modal
-          className="group-video-modal"
-          title="群视频通话"
-          open={groupVideoModalVisible}
-          onCancel={() => {
-            setGroupVideoModalVisible(false);
-            // 清理资源
-            if (localStream) {
-              localStream.getTracks().forEach((track) => track.stop());
-            }
-            useGroupPeerStore.closePeerConnection();
-            setRemoteStreams([]);
-          }}
-          footer={null}
-          width={800}
-          destroyOnClose
-        >
-          <GroupVideoChat
-            visible={groupVideoModalVisible}
-            onClose={() => setGroupVideoModalVisible(false)}
-            localStream={localStream}
-            remoteStreams={remoteStreams}
-            participants={participants}
-          />
-        </Modal>
+        {/* 待开发 */}
 
         {/* 右下角弹窗 */}
         <ChatVideoAcceptor

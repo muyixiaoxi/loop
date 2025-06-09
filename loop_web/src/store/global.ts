@@ -4,7 +4,7 @@ import { makePersistable } from "mobx-persist-store"; // 正确导入方式
 class GlobalStore {
   isDarkMode: boolean = false; // 初始值为 false，表示默认是白天模式
   isShowUserAmend: boolean = false; // 个人信息修改弹窗是否显示
-  currentRoute: string = "conversation"; // 当前主页路由
+  currentRoute: string = "chat"; // 当前主页路由
   timeDifference: number = 0; // 服务器和本地时差
 
   constructor() {
@@ -38,6 +38,11 @@ class GlobalStore {
   // 设置时差
   setTimeDifference = (difference: number) => {
     this.timeDifference = difference;
+  };
+
+  // 最新时间
+  getCurrentTimeDifference = () => {
+    return Date.now() + this.timeDifference;
   };
 }
 

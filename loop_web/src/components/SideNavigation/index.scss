@@ -1,54 +1,73 @@
-.side-navigation {
+.navi-bar {
   height: 100vh;
   width: 60px;
   background-color: #d7d7d7;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: space-between;
 
-  .avatar {
-    width: 45px;
-    height: 45px;
-    margin-top: 15px;
-    cursor: pointer;
+  .top {
+    .user-head-image {
+      margin-top: 20px;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
 
-    img {
-      width: 100%;
-      height: 100%;
-      // 使用 cover 让图片覆盖整个容器，可能会裁剪部分图片以适应圆形
-      border-radius: 50%;
-      object-fit: cover;
+      img {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+      }
+    }
+    .menu {
+      height: 200px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-content: center;
+
+      .menu-item {
+        position: relative;
+        color: #8a8a8a;
+        cursor: pointer;
+        width: 60px;
+        height: 46px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 12px;
+
+        .icon {
+          font-size: 26px;
+        }
+        &:hover {
+          font-weight: 600;
+          color: #fff49a;
+        }
+      }
     }
   }
-
-  .choice {
-    width: 100%;
-    flex: 1;
-    margin-top: 30px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-between;
-
-    .conversation {
-      font-size: 30px;
-      margin-top: 20%;
+  .bottom {
+    .bottom-item {
       display: flex;
       justify-content: center;
-    }
+      align-items: center;
+      height: 50px;
+      width: 100%;
+      cursor: pointer;
+      color: #8a8a8a;
+      font-size: 22px;
 
-    .friend {
-      font-size: 30px;
-      margin-top: 40%;
-      display: flex;
-      justify-content: center;
-    }
+      .icon {
+        font-size: 26px;
+      }
 
-    .setting {
-      font-size: 30px;
-      display: flex;
-      justify-content: center;
-      margin-bottom: 40px;
+      // &:hover {
+      //   font-weight: 600;
+      //   color: #fde20b;
+      // }
     }
   }
 }

@@ -4,6 +4,7 @@ import { formatTimestamp } from "@/utils/index";
 import userStore from "@/store/user";
 import ChatStore from "@/store/chat";
 import { getChatDB } from "@/utils/chat-db";
+import { transform } from "@/utils/emotion";
 
 type FriendItemProps = {
   friendId: number; // 好友唯一标识
@@ -83,7 +84,12 @@ const FriendItem = (props: FriendItemProps) => {
           </div>
         </div>
         <div className="friend-content">
-          <div className="friend-content-text">{lastContent}</div>
+          <div
+            className="friend-content-text"
+            dangerouslySetInnerHTML={{
+              __html: transform(lastContent.replace(/\n/g, ""), "emoji-small"),
+            }}
+          ></div>
           {unreadCount > 0 && (
             <div className="friend-unread">{unreadCount}</div>
           )}

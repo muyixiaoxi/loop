@@ -8,7 +8,7 @@ import {
   CheckCircleFilled,
   CloseCircleFilled,
 } from "@ant-design/icons"; // 引入 OpenAIOutlined 图标
-import { Input, Drawer, message, Spin, Modal, Checkbox } from "antd"; // 引入 Modal 组件
+import { Drawer, message, Spin, Modal, Checkbox } from "antd"; // 引入 Modal 组件
 import { getGroupMemberList } from "@/api/group";
 import { WebSocketContext } from "@/pages/Home";
 import chatStore from "@/store/chat";
@@ -17,22 +17,20 @@ import globalStore from "@/store/global";
 import { getChatDB } from "@/utils/chat-db";
 import ChatInfo from "@/components/ChatInfo"; // 导入 ChatInfo 组件
 import { AIchat } from "@/api/chat";
+import { transform } from "@/utils/emotion";
+import ChatInput from "./ChatInput";
 
 // 定义组件props类型
 interface ChatProps {
   initiatePrivateVideoCall: () => Promise<void>; // 新增：私聊视频通话回调函数
-  initiateGroupVideoCall: () => Promise<void>; // 新增：群聊视频通话回调函数
   setSelectedMembers: (members: any) => void; // 新增：设置选中成员的回调函数
   selectedMembers: any[]; // 新增：选中成员的数组
 }
 
 const Chat = observer((props: ChatProps) => {
-  const {
-    initiatePrivateVideoCall,
-    initiateGroupVideoCall,
-    setSelectedMembers,
-    selectedMembers,
-  } = props; // 解构传入的回调函数
+  const { initiatePrivateVideoCall, setSelectedMembers, selectedMembers } =
+    props; // 解构传入的回调函数
+
   const { userInfo } = userStore;
   const { sendMessageWithTimeout } = useContext<any>(WebSocketContext); // 使用WebSocket上下文
   const {
@@ -43,18 +41,16 @@ const Chat = observer((props: ChatProps) => {
     setCurrentMessages,
     currentChatInfo,
   } = chatStore;
-  const { timeDifference } = globalStore;
+  const { getCurrentTimeDifference } = globalStore;
   const db = getChatDB(userInfo.id);
 
   const chatType = currentChatInfo.type;
 
-  const { TextArea } = Input; // 使用TextArea组件
   const [inputValue, setInputValue] = useState(""); // 输入框的值
   const [openDrawer, setOpenDrawer] = useState(false); // 是否打开抽屉
 
   // 新增：管理 SSE 加载状态
   const [isAILoading, setIsAILoading] = useState(false);
-  const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 新增：管理模态框状态和内容
@@ -107,89 +103,81 @@ const Chat = observer((props: ChatProps) => {
     };
   }, [contextMenu.visible]);
 
-  const handleSendMessage = async () => {
+  // 消息发送相关工具函数
+  const createMessagePayload = (content: string, receiverId: string | null) => {
     const messageId = uuidv4();
-    const message = {
+    return {
       cmd: chatType,
       data: {
         seq_id: messageId,
         sender_id: userInfo.id,
-        receiver_id: currentFriendId,
-        content: inputValue,
-        send_time: Date.now() + timeDifference,
+        receiver_id: receiverId,
+        content,
+        send_time: getCurrentTimeDifference(),
         type: 0,
         sender_nickname: userInfo.nickname,
         sender_avatar: userInfo.avatar,
       },
     };
+  };
 
-    await db.upsertConversation(userInfo.id, {
-      targetId: currentFriendId,
-      type: chatType,
-      showName: currentFriendName,
-      headImage: currentFriendAvatar,
-      lastContent: inputValue,
-      unreadCount: 0,
-      messages: [
-        {
-          id: messageId,
-          targetId: currentFriendId,
-          type: 0,
-          sendId: userInfo.id,
-          content: inputValue,
-          sendTime: Date.now() + timeDifference,
-          sender_nickname: userInfo.nickname,
-          sender_avatar: userInfo.avatar,
-          status: "sending",
-        },
-      ],
-    });
+  // 创建会话数据，消息结构体
+  const createConversationData = (
+    targetId: string | null,
+    content: string,
+    messageId: string
+  ) => ({
+    targetId,
+    type: chatType,
+    showName: currentFriendName,
+    headImage: currentFriendAvatar,
+    lastContent: content,
+    unreadCount: 0,
+    messages: [
+      {
+        id: messageId,
+        targetId,
+        type: 0,
+        sendId: userInfo.id,
+        content,
+        sendTime: getCurrentTimeDifference(),
+        sender_nickname: userInfo.nickname,
+        sender_avatar: userInfo.avatar,
+        status: "sending",
+      },
+    ],
+  });
 
-    handleNewConversation();
+  // 发送消息主逻辑
+  const sendMessageCore = async (
+    content: string,
+    receiverId: string | null
+  ) => {
+    // 获取发送的消息
+    const message = createMessagePayload(content, receiverId);
+
+    // 存储本地
+    await db.upsertConversation(
+      userInfo.id,
+      createConversationData(receiverId, content, message.data.seq_id)
+    );
+    // 进行发送
     sendMessageWithTimeout(message);
+  };
+
+  // 发送新消息
+  const handleSendMessage = async () => {
+    if (!inputValue.trim()) return;
+
+    await sendMessageCore(inputValue, currentFriendId);
+    await handleNewConversation();
     setInputValue("");
   };
 
-  // 重新发送
+  // 重新发送失败的消息
   const handleResendMessage = async (failedMessage: any) => {
-    const message = {
-      cmd: chatType,
-      data: {
-        seq_id: uuidv4(),
-        sender_id: userInfo.id,
-        receiver_id: failedMessage.targetId,
-        content: failedMessage.content,
-        send_time: Date.now() + timeDifference,
-        type: 0,
-        sender_nickname: userInfo.nickname,
-        sender_avatar: userInfo.avatar,
-      },
-    };
-
-    await db.upsertConversation(userInfo.id, {
-      targetId: failedMessage.targetId,
-      type: chatType,
-      showName: currentFriendName,
-      headImage: currentFriendAvatar,
-      lastContent: failedMessage.content,
-      unreadCount: 0,
-      messages: [
-        {
-          id: message.data.seq_id,
-          targetId: failedMessage.targetId,
-          type: 0,
-          sendId: userInfo.id,
-          content: failedMessage.content,
-          sendTime: Date.now() + timeDifference,
-          sender_nickname: userInfo.nickname,
-          sender_avatar: userInfo.avatar,
-          status: "sending",
-        },
-      ],
-    });
-
-    handleNewConversation();
-    sendMessageWithTimeout(message);
+    await sendMessageCore(failedMessage.content, failedMessage.targetId);
+    await handleNewConversation();
   };
 
   // 获取聊天信息
@@ -209,16 +197,6 @@ const Chat = observer((props: ChatProps) => {
   useEffect(() => {
     scrollToBottom();
   }, [currentMessages]);
-
-  const handleTextAreaKeyDown = async (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.ctrlKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-    if (e.key === "Enter" && e.ctrlKey) {
-      setInputValue((prev) => prev + "\n");
-    }
-  };
 
   // 处理 AI 回复的函数
   const handleAIReply = async (messageContent: string) => {
@@ -277,7 +255,6 @@ const Chat = observer((props: ChatProps) => {
     } else if (chatType === 2) {
       setSelectedMembers([]);
       // 打开群成员模态框
-
       fetchGroupMembers();
       setIsGroupMemberModalVisible(true);
     }
@@ -318,7 +295,6 @@ const Chat = observer((props: ChatProps) => {
     console.log("已选择成员:", selectedMembers);
     setIsGroupMemberModalVisible(false);
     // 开启群视频通话回调
-    initiateGroupVideoCall();
   };
 
   return (
@@ -331,17 +307,6 @@ const Chat = observer((props: ChatProps) => {
           <div className="firend-name">{currentFriendName}</div>
         </div>
         <div className="chat-header-right">
-          <div className="more-video" onClick={handleVideoCall}>
-            <svg
-              fill="#E46342"
-              height="34px"
-              role="presentation"
-              viewBox="0 0 36 36"
-              width="34px"
-            >
-              <path d="M9 9.5a4 4 0 00-4 4v9a4 4 0 004 4h10a4 4 0 004-4v-9a4 4 0 00-4-4H9zm16.829 12.032l3.723 1.861A1 1 0 0031 22.5v-9a1 1 0 00-1.448-.894l-3.723 1.861A1.5 1.5 0 0025 15.81v4.38a1.5 1.5 0 00.829 1.342z"></path>
-            </svg>
-          </div>
           <div
             className="more-mask"
             onClick={() => {
@@ -370,11 +335,19 @@ const Chat = observer((props: ChatProps) => {
           // 判断是否是好友消息，仅好友消息添加下拉框
           const isFriendMessage = message.sendId !== userInfo.id;
 
+          const messageSystem = (
+            <div className="message-system" key={message.id}>
+              <div className="message-tip">
+                {message.content.split("\n").map((line, i) => (
+                  <div key={i}>{line}</div>
+                ))}
+              </div>
+            </div>
+          );
+
           const messageElement = (
             <div
-              className={`message ${
-                message.sendId === userInfo.id ? "sent" : "received"
-              }`}
+              className={`message ${!isFriendMessage ? "sent" : "received"}`}
               key={message.id}
             >
               {/* 信息是好友发的，展示好友头像 */}
@@ -414,7 +387,26 @@ const Chat = observer((props: ChatProps) => {
                       : undefined
                   }
                 >
-                  {message.content}
+                  {isFriendMessage && message.type === "video" && (
+                    <span
+                      title="视频通话"
+                      className="icon iconfont icon-chat-video"
+                    ></span>
+                  )}
+                  <span
+                    dangerouslySetInnerHTML={{
+                      __html: transform(
+                        message.content.replace(/\n/g, "<br>"),
+                        "emoji-small"
+                      ),
+                    }}
+                  ></span>
+                  {!isFriendMessage && message.type === "video" && (
+                    <span
+                      title="视频通话"
+                      className="icon iconfont icon-chat-video"
+                    ></span>
+                  )}
                 </div>
               </div>
               {/* 信息是自己发的，展示自身头像 */}
@@ -427,28 +419,18 @@ const Chat = observer((props: ChatProps) => {
               )}
             </div>
           );
-          return messageElement;
+          return message.type === 5 ? messageSystem : messageElement;
         })}
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="chat-input">
-        <TextArea
-          ref={textAreaRef}
-          placeholder="按 Ctrl + Enter 换行，按 Enter 发送"
-          rows={4}
-          className="textarea"
-          style={{
-            lineHeight: "1.1",
-            scrollbarWidth: "thin",
-            scrollbarColor: "rgba(0, 0, 0, 0.2) transparent",
-          }}
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={handleTextAreaKeyDown}
-        />
-        {/* 移除输入框的加载状态 */}
-      </div>
+      {/* 聊天输入框 */}
+      <ChatInput
+        value={inputValue}
+        onChange={(value) => setInputValue(value)}
+        onSend={handleSendMessage}
+        handleVideoCall={handleVideoCall}
+      />
 
       <Modal
         title="选择群成员"
