@@ -1046,6 +1046,8 @@ const Home = observer(() => {
       ? item.sender_id
       : item.receiver_id;
 
+    const sendId = isSelfCallerRef.current ? userId : item.receiver_id;
+
     // 检查是否是当前聊天对象
     const isCurrentFriend = targetId === currentFriendIdRef.current;
 
@@ -1074,7 +1076,7 @@ const Home = observer(() => {
           id: item.seq_id,
           targetId: targetId,
           type: messageType,
-          sendId: userId,
+          sendId: sendId,
           content: item.content,
           sendTime: item.send_time,
           sender_nickname: item.sender_nickname,
