@@ -622,16 +622,31 @@ const Home = observer(() => {
     });
 
     // 存储通话结束信息到聊天记录
-    const params = {
-      seq_id: uuidv4(),
-      sender_id: Number(currentFriendId),
-      receiver_id: userInfo.id,
-      content: "已取消",
-      send_time: getCurrentTimeDifference(),
-      sender_nickname: userInfo.nickname,
-      sender_avatar: userInfo.avatar,
-    };
-    handleSendMessage(params, 1, "video");
+    if (isSelfCallerRef.current) {
+      const params = {
+        seq_id: uuidv4(),
+        sender_id: Number(currentFriendId),
+        receiver_id: userInfo.id,
+        content: "已挂断",
+        send_time: getCurrentTimeDifference(),
+        sender_nickname: userInfo.nickname,
+        sender_avatar: userInfo.avatar,
+      };
+      handleSendMessage(params, 1, "video");
+    } else {
+      console.log(callerInfo, "---callerInfo");
+      const params = {
+        seq_id: uuidv4(),
+        sender_id: userInfo.id,
+        receiver_id: callerInfo.sender_id,
+        content: "已挂断",
+        send_time: getCurrentTimeDifference(),
+        sender_nickname: userInfo.nickname,
+        sender_avatar: userInfo.avatar,
+      };
+      handleSendMessage(params, 1, "video");
+    }
+
     message.success("通话结束");
     isSelfCallerRef.current = false;
   };
@@ -825,6 +840,18 @@ const Home = observer(() => {
         content: "对方已拒绝",
       },
     });
+
+    // 存储通话结束信息到聊天记录
+    const params = {
+      seq_id: uuidv4(),
+      sender_id: userInfo.id,
+      receiver_id: Number(currentFriendId),
+      content: "已取消",
+      send_time: getCurrentTimeDifference(),
+      sender_nickname: userInfo.nickname,
+      sender_avatar: userInfo.avatar,
+    };
+    handleSendMessage(params, 1, "video");
     message.success("已取消通话");
     isSelfCallerRef.current = false;
   };
