@@ -69,7 +69,6 @@ const ChatInfo = (props: ChatInfoProps) => {
   const { currentChatInfo, setCurrentFriendData, setCurrentChatList } =
     chatStore;
   const chatType = currentChatInfo.type;
-  console.log(chatType, "chatType");
   const { userInfo } = userStore;
   const db = getChatDB(userInfo.id); // 获取数据库连接
   const { handleUpload } = useOSSUpload(); // 上传图片到OSS
@@ -688,29 +687,30 @@ const ChatInfo = (props: ChatInfoProps) => {
                 清空聊天记录
               </Button>
             </Popconfirm>
-
-            <Popconfirm
-              title=""
-              description={
-                chatType === 2
-                  ? groupInfo.ownerId == userInfo.id
-                    ? "是否确定解散群聊？"
-                    : "是否确定退出群聊？"
-                  : "是否确定删除好友？"
-              }
-              onConfirm={handleGroupAction}
-              okText="Yes"
-              cancelText="No"
-            >
-              <Button color="danger" variant="text">
-                {/* 群聊，只有群主能解散 */}
-                {chatType === 2
-                  ? groupInfo.ownerId == userInfo.id
-                    ? "解散群聊"
-                    : "退出群聊"
-                  : "删除好友"}
-              </Button>
-            </Popconfirm>
+            {friendId !== userInfo.id && (
+              <Popconfirm
+                title=""
+                description={
+                  chatType === 2
+                    ? groupInfo.ownerId == userInfo.id
+                      ? "是否确定解散群聊？"
+                      : "是否确定退出群聊？"
+                    : "是否确定删除好友？"
+                }
+                onConfirm={handleGroupAction}
+                okText="Yes"
+                cancelText="No"
+              >
+                <Button color="danger" variant="text">
+                  {/* 群聊，只有群主能解散 */}
+                  {chatType === 2
+                    ? groupInfo.ownerId == userInfo.id
+                      ? "解散群聊"
+                      : "退出群聊"
+                    : "删除好友"}
+                </Button>
+              </Popconfirm>
+            )}
           </div>
         </div>
         {/* 群聊相关弹窗 */}

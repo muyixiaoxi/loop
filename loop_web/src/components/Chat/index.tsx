@@ -122,7 +122,8 @@ const Chat = observer((props: ChatProps) => {
   const createConversationData = (
     targetId: string | null,
     content: string,
-    messageId: string
+    messageId: string,
+    isSelfMessage: boolean = false
   ) => ({
     targetId,
     type: chatType,
@@ -140,7 +141,7 @@ const Chat = observer((props: ChatProps) => {
         sendTime: getCurrentTimeDifference(),
         sender_nickname: userInfo.nickname,
         sender_avatar: userInfo.avatar,
-        status: "sending",
+        status: isSelfMessage ? "success" : "sending",
       },
     ],
   });
@@ -153,11 +154,25 @@ const Chat = observer((props: ChatProps) => {
     // 获取发送的消息
     const message = createMessagePayload(content, receiverId);
 
+    const isSelfMessage = userInfo.id === Number(receiverId);
+
     // 存储本地
     await db.upsertConversation(
       userInfo.id,
-      createConversationData(receiverId, content, message.data.seq_id)
+      createConversationData(
+        receiverId,
+        content,
+        message.data.seq_id,
+        isSelfMessage
+      )
     );
+
+    // 给自己发送时，不进行发送
+    if (isSelfMessage) return;
+
+    // 给自己发送时，不进行发送
+    if (userInfo.id === Number(receiverId)) return;
+
     // 进行发送
     sendWithRetry(message);
   };

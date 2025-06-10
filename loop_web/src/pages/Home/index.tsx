@@ -44,6 +44,9 @@ const Home = observer(() => {
     setCurrentChatList, // 设置当前聊天列表
   } = chatStore;
 
+  const currentFriendAvatarRef = useRef(currentFriendAvatar); // 当前聊天好友头像引用
+  const currentFriendNameRef = useRef(currentFriendName); // 当前聊天好友名称引用
+
   // 数据库相关
   const db = getChatDB(userInfo.id); // 获取当前用户的聊天数据库实例
 
@@ -144,41 +147,32 @@ const Home = observer(() => {
     const processedData: any = []; // 用于存储处理后的数据;
 
     for (const item of data) {
-      if (item?.cmd === 1) {
-        handleMessageStorage(item.data, 1, item.type);
+      if (item?.cmd === 1 || item?.cmd === 12) {
         processedData.push({
           seq_id: item.data.seq_id,
           sender_id: userId,
           receiver_id: item.data.sender_id,
         });
+        if (item?.cmd === 1) {
+          // 处理单聊普通消息
+          handleMessageStorage(item.data, 1, item.type);
+        } else if (item?.cmd === 12) {
+          // 处理单聊系统消息
+          await handleSystemMessage(item.data, 1);
+        }
       } else if (item?.cmd === 2) {
         await handleMessageStorage(item.data, 2, item.type);
-        const existingIndex = processedData.findIndex(
-          (msg: any) => msg.receiver_id === item.data.receiver_id
-        );
-        if (existingIndex !== -1) {
-          processedData[existingIndex] = {
-            seq_id: item.data.seq_id,
-            sender_id: userId,
-            receiver_id: item.data.receiver_id,
-            is_group: true,
-          };
-        } else {
-          processedData.push({
-            seq_id: item.data.seq_id,
-            sender_id: userId,
-            receiver_id: item.data.receiver_id,
-            is_group: true,
-          });
-        }
-      } else if (item?.cmd === 12) {
-        // 单聊系统消息
-        await handleSystemMessage(item.data, 1);
-        processedData.push({
+        const msgData = {
           seq_id: item.data.seq_id,
           sender_id: userId,
-          receiver_id: item.data.sender_id,
-        });
+          receiver_id: item.data.receiver_id,
+          is_group: true,
+        };
+        // 更新或添加群聊消息ACK
+        const index = processedData.findIndex(
+          (msg: any) => msg.receiver_id === item.data.receiver_id
+        );
+        processedData[index !== -1 ? index : processedData.length] = msgData;
       }
     }
 
@@ -187,23 +181,16 @@ const Home = observer(() => {
   };
 
   useEffect(() => {
+    currentFriendAvatarRef.current = currentFriendAvatar;
+    currentFriendNameRef.current = currentFriendName;
+  }, [currentFriendAvatar, currentFriendName]);
+
+  useEffect(() => {
     // 视频链接状态变化
     if (usePrivatePeerStore.isVideoChatStarted) {
-      console.log("检测到视频已经挂断");
+      console.error("检测到视频已经挂断");
       // 视频已经挂断
       setIsVideoModalVisible(false);
-      // 可以发送拒绝消息给对方
-      sendNonChatMessage({
-        cmd: 7, // 拒绝命令
-        data: {
-          sender_id: userInfo.id,
-          sender_name: userInfo.nickname,
-          sender_avatar: userInfo.avatar,
-          receiver_id: callerInfo.sender_id,
-          content: "对方已挂断",
-        },
-      });
-
       // 关闭连接
       usePrivatePeerStore.closePeerConnection();
       isSelfCallerRef.current = false; // 重置为非主叫方
@@ -248,7 +235,6 @@ const Home = observer(() => {
    */
   const handleWebSocketMessage = async (wsMessage: any, client: any) => {
     const { cmd, data } = wsMessage;
-
     switch (cmd) {
       case 1: // 私聊消息
         await handlePrivateMessage(data, client);
@@ -298,8 +284,8 @@ const Home = observer(() => {
    * 2. 发送ACK确认
    */
   const handlePrivateMessage = async (data: any, client: any) => {
+    // 存储消息到本地
     await handleMessageStorage(data, 1, data.type);
-
     // 发送ack包
     const ack = {
       cmd: 3,
@@ -319,6 +305,7 @@ const Home = observer(() => {
    * 2. 发送ACK确认(带群组标识)
    */
   const handleGroupMessage = async (data: any, client: any) => {
+    // 存储消息到本地
     await handleMessageStorage(data, 2, data.type);
     // 发送ack包
     const ack = {
@@ -446,13 +433,15 @@ const Home = observer(() => {
    * @param data - 包含通话结束信息的对象
    */
   const handleCallEnd = async (data: any) => {
-    console.log("收到挂断消息", isSelfCallerRef.current, data);
-
     const isSender = isSelfCallerRef.current; // 是否是发起方
+    /**
+     * 根据是否是发送方，设置不同的参数
+     * 如果是发送方交换发送者id和接受者id
+     */
     const params = {
       seq_id: uuidv4(),
-      sender_id: data.sender_id,
-      receiver_id: data.receiver_id,
+      sender_id: isSender ? data.receiver_id : data.sender_id,
+      receiver_id: isSender ? data.sender_id : data.receiver_id,
       content: "对方已挂断",
       send_time: getCurrentTimeDifference(),
       sender_nickname: isSender
@@ -463,7 +452,6 @@ const Home = observer(() => {
         : callerInfoRef.current.sender_avatar,
     };
 
-    // 存储消息到本地数据库
     await handleMessageStorage(params, 1, "video", isSender);
 
     if (callTimeoutRef.current) {
@@ -529,8 +517,6 @@ const Home = observer(() => {
    * @param client - WebSocket客户端实例
    */
   const handleSystemMessage = async (data: any, chatType: number) => {
-    console.log("收到系统消息", data);
-
     // 先获取现有会话数据
     const existingConversation = await db.conversations
       .where("[userId+targetId+type]")
@@ -570,11 +556,9 @@ const Home = observer(() => {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const hasVideo = devices.some((device) => device.kind === "videoinput");
     const hasAudio = devices.some((device) => device.kind === "audioinput");
-
     if (!hasVideo || !hasAudio) {
       throw new Error("未检测到可用的摄像头或麦克风");
     }
-
     // 2. 获取媒体流
     const stream = await navigator.mediaDevices
       .getUserMedia({
@@ -594,9 +578,7 @@ const Home = observer(() => {
     if (!stream.getVideoTracks().length || !stream.getAudioTracks().length) {
       throw new Error("获取的媒体流中没有视频或音频轨道");
     }
-
     setLocalStream(stream);
-
     return stream;
   };
 
@@ -636,12 +618,9 @@ const Home = observer(() => {
       receiver_id: isSender ? Number(currentFriendId) : callerInfo.sender_id,
       content: "已挂断",
       send_time: getCurrentTimeDifference(),
-      sender_nickname: isSender
-        ? userInfo.nickname
-        : callerInfo.sender_nickname,
-      sender_avatar: isSender ? userInfo.avatar : callerInfo.sender_avatar,
+      sender_nickname: currentFriendName || callerInfo.sender_nickname,
+      sender_avatar: currentFriendAvatar || callerInfo.sender_avatar,
     };
-
     handleMessageStorage(params, 1, "video", isSender);
 
     message.success("通话结束");
@@ -655,7 +634,6 @@ const Home = observer(() => {
         // 已经处于呼叫或被呼叫状态，直接返回
         return;
       }
-
       // 自己为电话发起者
       isSelfCallerRef.current = true;
 
@@ -687,8 +665,8 @@ const Home = observer(() => {
             receiver_id: Number(currentFriendId),
             content: "未接通",
             send_time: getCurrentTimeDifference(),
-            sender_nickname: userInfo.nickname,
-            sender_avatar: userInfo.avatar,
+            sender_nickname: currentFriendName,
+            sender_avatar: currentFriendAvatar,
           };
           handleMessageStorage(params, 1, "video", true);
           // 清理资源
@@ -841,7 +819,6 @@ const Home = observer(() => {
         content: "对方已拒绝",
       },
     });
-    console.log(callerInfo, "callerInfo");
 
     /**
      * 存储通话结束信息到聊天记录
@@ -994,7 +971,6 @@ const Home = observer(() => {
     messageType: number | string,
     isSender: boolean = false
   ) => {
-    console.log(item, isSender, isSender ? "发送消息" : "接收消息");
     const userId = userInfo.id;
 
     /**
@@ -1008,11 +984,17 @@ const Home = observer(() => {
       : item.receiver_id;
     const sendId = item.sender_id;
 
-    console.log(targetId, sendId, "targetId, sendId");
-
     // 获取显示名称和头像
-    const showName = chatType === 1 ? item.sender_nickname : item.group_name;
-    const headImage = chatType === 1 ? item.sender_avatar : item.group_avatar;
+    const showName = isSender
+      ? currentFriendNameRef.current
+      : chatType === 1
+      ? item.sender_nickname
+      : item.group_name;
+    const headImage = isSender
+      ? currentFriendAvatarRef.current
+      : chatType === 1
+      ? item.sender_avatar
+      : item.group_avatar;
 
     // 检查是否是当前聊天对象
     const isCurrentFriend = targetId === currentFriendIdRef.current;
@@ -1090,7 +1072,6 @@ const Home = observer(() => {
   const handleChatList = async () => {
     const userId = userInfo.id;
     const list: any = await db.getUserConversations(userId);
-    console.log(list, "list");
     setCurrentChatList(list);
   };
 

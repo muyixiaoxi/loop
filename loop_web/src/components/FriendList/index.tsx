@@ -239,6 +239,7 @@ const FriendList = observer(() => {
       nickname: data.nickname,
       avatar: data.avatar,
     };
+    console.log(params, "更新好友数据");
     setCurrentFriendData(params);
 
     const res: any = await db.getConversation(userInfo.id, data.id, 1);

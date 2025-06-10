@@ -48,7 +48,7 @@ const FriendItem = (props: FriendItemProps) => {
       nickname: name,
       avatar: avatar,
     } as any;
-
+    console.log(data, "更新好友数据");
     setCurrentFriendData(data); // 设置当前好友数据
 
     const res: any = await db.getConversation(

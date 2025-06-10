@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { emoTextList, textToImg, transform } from "@/utils/emotion";
 import ChatStore from "@/store/chat";
+import userStore from "@/store/user";
 import "./index.scss";
 
 interface ChatInputProps {
@@ -12,7 +13,8 @@ interface ChatInputProps {
 
 const ChatInput = React.forwardRef<HTMLDivElement, ChatInputProps>(
   ({ value, onChange, onSend, handleVideoCall }) => {
-    const { currentChatInfo } = ChatStore;
+    const { currentChatInfo, currentFriendId } = ChatStore;
+    const { userInfo } = userStore;
     const contentRef = useRef<HTMLDivElement>(null);
     const [isComposing, setIsComposing] = useState(false);
     const [isEmpty, setIsEmpty] = useState(true);
@@ -230,13 +232,14 @@ const ChatInput = React.forwardRef<HTMLDivElement, ChatInputProps>(
             onMouseDown={(e) => e.preventDefault()} // 加这一行
             onClick={handleEmojiIconClick}
           ></div>
-          {currentChatInfo.type === 1 && (
-            <div
-              title="视频通话"
-              className="icon iconfont icon-chat-video chat-tool-item"
-              onClick={handleVideoCall}
-            ></div>
-          )}
+          {currentChatInfo.type === 1 &&
+            Number(currentFriendId) !== userInfo.id && (
+              <div
+                title="视频通话"
+                className="icon iconfont icon-chat-video chat-tool-item"
+                onClick={handleVideoCall}
+              ></div>
+            )}
         </div>
 
         <div className="chat-input-area">
