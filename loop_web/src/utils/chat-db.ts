@@ -103,7 +103,6 @@ class ChatDB extends Dexie {
 
   // 获取特定会话详情
   getConversation = async (userId: number, targetId: number, type: number) => {
-    console.log("getConversation", userId, targetId, type);
     return this.conversations.get([userId, targetId, type]);
   };
 

@@ -23,16 +23,12 @@ import ChatInput from "./ChatInput";
 // 定义组件props类型
 interface ChatProps {
   initiatePrivateVideoCall: () => Promise<void>; // 新增：私聊视频通话回调函数
-  setSelectedMembers: (members: any) => void; // 新增：设置选中成员的回调函数
-  selectedMembers: any[]; // 新增：选中成员的数组
 }
 
 const Chat = observer((props: ChatProps) => {
-  const { initiatePrivateVideoCall, setSelectedMembers, selectedMembers } =
-    props; // 解构传入的回调函数
-
+  const { initiatePrivateVideoCall } = props; // 解构传入的回调函数
   const { userInfo } = userStore;
-  const { sendMessageWithTimeout } = useContext<any>(WebSocketContext); // 使用WebSocket上下文
+  const { sendWithRetry } = useContext<any>(WebSocketContext); // 使用WebSocket上下文
   const {
     currentFriendId,
     currentFriendName,
@@ -70,6 +66,7 @@ const Chat = observer((props: ChatProps) => {
   });
 
   // 群视频通话相关状态
+  const [selectedMembers, setSelectedMembers] = useState<any[]>([]); // 选择的成员ID列表
   const [groupMembers, setGroupMembers] = useState<any[]>([]); // 群成员列表
   const [isGroupMemberModalVisible, setIsGroupMemberModalVisible] =
     useState(false); // 控制群成员模态框显示
@@ -162,7 +159,7 @@ const Chat = observer((props: ChatProps) => {
       createConversationData(receiverId, content, message.data.seq_id)
     );
     // 进行发送
-    sendMessageWithTimeout(message);
+    sendWithRetry(message);
   };
 
   // 发送新消息
