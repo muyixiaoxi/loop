@@ -99,6 +99,7 @@
     .message {
       display: flex;
       max-width: 80%;
+      align-items: flex-start; // 修改为顶部对齐
 
       &.sent {
         align-self: flex-end;
@@ -154,7 +155,7 @@
         height: 36px;
         border-radius: 50%;
         margin-right: 8px;
-        align-self: flex-end;
+        // align-self: flex-end;
       }
 
       .message-content {

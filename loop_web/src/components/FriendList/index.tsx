@@ -465,24 +465,19 @@ const FriendList = observer(() => {
           open={addopen}
           onClose={onaddClose}
           getContainer={false}
-          style={{
-            position: "absolute",
-            right: 0,
-            top: 0,
-            height: "100%",
-            padding: 16,
-          }}
+          className="add-friend-drawer"
         >
           <Input.TextArea
-            rows={4}
+            rows={2}
             value={applyMessage}
             onChange={(e) => setApplyMessage(e.target.value)}
             placeholder={`你好！我是${userInfo.nickname || "匿名用户"}`}
-            maxLength={100}
+            maxLength={20}
             showCount
+            className="message-input"
           />
-          <div style={{ marginTop: 16, textAlign: "right" }}>
-            <Button onClick={onaddClose} style={{ marginRight: 8 }}>
+          <div className="action-buttons">
+            <Button onClick={onaddClose} className="cancel-btn">
               取消
             </Button>
             <Button type="primary" onClick={handleSendRequest}>

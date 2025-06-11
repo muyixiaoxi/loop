@@ -158,8 +158,6 @@
       }
     }
   }
-
-  // ... 其他样式保持不变 ...
 }
 
 .friend-search-modal {
@@ -172,7 +170,7 @@
     background-color: #ffffff;
     display: flex;
     flex-direction: column;
-
+    height: 120px;
     .search-empty-state {
       text-align: center;
       color: #999;
@@ -246,6 +244,25 @@
       padding: 20px 0;
       color: #ff4d4f;
       margin: auto;
+    }
+  }
+
+  // 添加好友抽屉样式
+  .add-friend-drawer {
+    position: absolute;
+    right: 0;
+    top: 0;
+
+    .message-input {
+      margin-bottom: 20px;
+    }
+
+    .action-buttons {
+      text-align: right;
+
+      .cancel-btn {
+        margin-right: 8px;
+      }
     }
   }
 }
