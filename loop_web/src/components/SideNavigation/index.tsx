@@ -37,6 +37,8 @@ const SideNavigation = observer(() => {
     </div>
   );
 
+  console.log(currentRoute, "currentRoute");
+
   return (
     <div className="navi-bar">
       <div className="top">
@@ -49,15 +51,24 @@ const SideNavigation = observer(() => {
 
         <div className="menu">
           {/* 会话记录 */}
-          <div className="menu-item" onClick={() => handleIconClick("chat")}>
+          <div
+            className={`menu-item ${currentRoute === "chat" ? "active" : ""}`}
+            onClick={() => handleIconClick("chat")}
+          >
             <span className="icon iconfont icon-chat"></span>
           </div>
           {/* 好友 */}
-          <div className="menu-item" onClick={() => handleIconClick("friend")}>
+          <div
+            className={`menu-item ${currentRoute === "friend" ? "active" : ""}`}
+            onClick={() => handleIconClick("friend")}
+          >
             <span className="icon iconfont icon-friend"></span>
           </div>
           {/* 群聊 */}
-          <div className="menu-item" onClick={() => handleIconClick("group")}>
+          <div
+            className={`menu-item ${currentRoute === "group" ? "active" : ""}`}
+            onClick={() => handleIconClick("group")}
+          >
             <span className="icon iconfont icon-group"></span>
           </div>
         </div>

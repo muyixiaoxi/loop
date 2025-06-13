@@ -70,18 +70,3 @@
     }
   }
 }
-
-.active {
-  background-color: #da4722d2;
-  border-radius: 20px;
-  color: #fff;
-
-  .friend-time,
-  .friend-desc {
-    color: inherit !important; // 继承父级白色
-  }
-
-  .friend-name {
-    color: #fff; // 显式设置名称颜色
-  }
-}
